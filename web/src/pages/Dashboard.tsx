@@ -88,9 +88,16 @@ function SignedOut({ ready }: { ready: boolean }) {
                 </Button>
               </a>
             ) : (
-              <Notice tone="warn" title="GitHub sign-in isn't set up on this server">
-                The operator needs to create the GitHub App at <code>/setup</code> first.
-              </Notice>
+              <div className="space-y-3">
+                <Notice tone="warn" title="The GitHub App doesn't exist yet">
+                  Whoever runs this server creates it once — GitHub fills in every permission. Be signed in to GitHub as an admin of the organisation that will own it.
+                </Notice>
+                <a href="/setup">
+                  <Button className="h-11 px-5">
+                    <GithubIcon /> Create the GitHub App
+                  </Button>
+                </a>
+              </div>
             )}
             <InstallButton />
           </div>

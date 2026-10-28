@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
     port: 5317,
-    proxy: { "/api": process.env.API_URL ?? "http://localhost:8787" },
+    // /setup is the operator's one-click GitHub App creation, served by the API.
+    proxy: { "/api": process.env.API_URL ?? "http://localhost:8787", "/setup": process.env.API_URL ?? "http://localhost:8787" },
   },
 });

@@ -2,6 +2,7 @@
 // smee.io tunnel that forwards GitHub webhooks to the API.
 //   bun run dev
 
+import { watch } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -21,7 +22,7 @@ const procs: { name: string; color: string; cmd: string[]; cwd: string }[] = [
   ...(webhook ? [{ name: "tunnel", color: "\x1b[35m", cmd: ["bunx", "smee-client", "--url", webhook, "--target", "http://localhost:8787/webhook"], cwd: ROOT }] : []),
 ];
 
-const children = procs.map((p) => {
+function start(p: (typeof procs)[number]) {
   const child = Bun.spawn(p.cmd, { cwd: p.cwd, env, stdout: "pipe", stderr: "pipe" });
   for (const stream of [child.stdout, child.stderr]) {
     void (async () => {
@@ -32,6 +33,18 @@ const children = procs.map((p) => {
     })();
   }
   return child;
+}
+const children = procs.map(start);
+
+// /setup writes the new GitHub App's credentials to .env — restart the API so it picks them up.
+let restartTimer: ReturnType<typeof setTimeout> | undefined;
+watch(join(ROOT, ".env"), () => {
+  clearTimeout(restartTimer);
+  restartTimer = setTimeout(() => {
+    console.log("\x1b[33mdev\x1b[0m    .env changed — restarting the API");
+    children[0]!.kill();
+    children[0] = start(procs[0]!);
+  }, 500);
 });
 
 console.log(`\n  PatchBond dev\n  web     http://localhost:5317\n  api     http://localhost:8787\n  setup   http://localhost:8787/setup${webhook ? `\n  tunnel  ${webhook} → /webhook` : ""}\n`);
