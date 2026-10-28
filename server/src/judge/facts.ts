@@ -203,9 +203,11 @@ export interface RepoRules {
   assignmentRequired: boolean;
   /** "evidence": an unassigned PR counts as forfeit evidence; "flag": a human decides. */
   unassignedEffect: "evidence" | "flag";
+  /** Close PRs still unpaid after this many hours (they reopen when paid). Off when null. */
+  closeUnpaidAfterHours: number | null;
 }
 
-export const DEFAULT_RULES: RepoRules = { assignmentRequired: false, unassignedEffect: "flag" };
+export const DEFAULT_RULES: RepoRules = { assignmentRequired: false, unassignedEffect: "flag", closeUnpaidAfterHours: null };
 
 /** Parses `.github/patchbond.yml` (flat `key: value` lines; unknown keys ignored). */
 export function parseRepoRules(text: string | undefined): RepoRules {
@@ -220,6 +222,8 @@ export function parseRepoRules(text: string | undefined): RepoRules {
   return {
     assignmentRequired: /^(true|yes|on)$/i.test(kv.assignment_required ?? ""),
     unassignedEffect: kv.unassigned_pr === "evidence" ? "evidence" : "flag",
+    // At least an hour, so a contributor always has time to pay.
+    closeUnpaidAfterHours: Number(kv.close_unpaid_after_hours) >= 1 ? Number(kv.close_unpaid_after_hours) : null,
   };
 }
 

@@ -20,6 +20,7 @@ export function hardFacts(facts: Facts, rules: RepoRules = DEFAULT_RULES): strin
   if (facts.duplicate_of) out.push("duplicate");
   if (facts.injection_markers.length) out.push("prompt injection");
   if (facts.unbacked_claims.length) out.push("claims not in the diff");
+  if (facts.malicious?.some((f) => f.severity === "high")) out.push("malicious code");
   if (rules.unassignedEffect === "evidence" && (facts.assignment === "assigned_to_other" || facts.assignment === "unassigned")) out.push("issue not assigned to the author");
   return out;
 }
@@ -34,6 +35,10 @@ export function applyRules({ model, facts, threshold, rules }: RuleInput): Verdi
   }
   const applied: string[] = [];
   let verdict = model.verdict;
+  let confidence = model.confidence;
+  let category = model.category;
+  let reasons = model.reasons;
+  let evidence = model.evidence;
 
   if (verdict === "forfeit") {
     if (model.confidence < threshold) {
@@ -44,18 +49,38 @@ export function applyRules({ model, facts, threshold, rules }: RuleInput): Verdi
       applied.push("A forfeit needs at least one concrete piece of evidence → needs_human");
     } else if (hardFacts(facts, rules).length === 0) {
       verdict = "needs_human";
-      applied.push("No hard fact (failing CI, phantom code, duplicate, injection, claims missing from the diff, or an issue assigned to someone else) → the model can't forfeit on its own → needs_human");
+      applied.push("No hard fact (failing CI, phantom code, duplicate, injection, malicious code, claims missing from the diff, or an issue assigned to someone else) → the model can't forfeit on its own → needs_human");
     } else if (facts.author_reputation === "proven") {
       verdict = "needs_human";
       applied.push("Proven contributor (prior refunds, no forfeits) → a forfeit goes to a human");
     }
   }
+  // Malicious code is decided by the deterministic scan, not by whether the model noticed. The
+  // forfeit is still only proposed: the contributor can challenge it in the window.
+  const high = (facts.malicious ?? []).filter((f) => f.severity === "high");
+  const medium = (facts.malicious ?? []).filter((f) => f.severity === "medium");
+  if (high.length && verdict !== "forfeit") {
+    if (facts.author_reputation === "proven") {
+      verdict = "needs_human";
+      applied.push(`Malicious pattern (${high[0]!.rule}) from a proven contributor → a human decides`);
+    } else {
+      verdict = "forfeit";
+      confidence = Math.max(confidence, 0.9);
+      category = "malicious";
+      reasons = [`Malicious code: ${high.map((f) => `${f.rule} in ${f.file}`).join("; ")}.`, ...reasons].slice(0, 5);
+      evidence = [...high.map((f) => ({ file: f.file, line: null, note: `${f.rule}: ${f.excerpt}` })), ...evidence].slice(0, 10);
+      applied.push(`Malicious pattern found by the server's scan (${high.map((f) => f.rule).join(", ")}) → forfeit proposed; the contributor can challenge it`);
+    }
+  } else if (medium.length && verdict === "refund") {
+    verdict = "needs_human";
+    applied.push(`Risky change (${medium.map((f) => f.rule).join(", ")}) → a human looks before the bond is refunded`);
+  }
   return {
     verdict,
-    confidence: model.confidence,
-    category: model.category,
-    reasons: model.reasons,
-    evidence: model.evidence,
+    confidence,
+    category,
+    reasons,
+    evidence,
     rules_applied: applied,
   };
 }

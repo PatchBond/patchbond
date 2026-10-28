@@ -14,6 +14,7 @@ export const ModelVerdict = z
       "boilerplate",
       "policy",
       "injection",
+      "malicious",
     ]),
     reasons: z.array(z.string().max(400)).max(5),
     evidence: z
@@ -50,6 +51,12 @@ export interface Facts {
   additions: number;
   deletions: number;
   injection_markers: string[];
+  /**
+   * Malicious-code patterns in added lines (hidden Unicode, decoded-payload exec, curl | sh,
+   * secret exfiltration, install hooks, workflow/lockfile tampering…). "high" is hard evidence.
+   * Absent on records made before the scan existed.
+   */
+  malicious?: { rule: string; severity: "high" | "medium"; file: string; excerpt: string }[];
   author_reputation: "new" | "proven" | "has_forfeits";
 }
 

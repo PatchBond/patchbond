@@ -62,14 +62,15 @@ Return only JSON matching the schema.
 {
   "verdict": "refund | forfeit | needs_human",
   "confidence": 0.0,
-  "category": "ok | does_not_work | phantom_code | duplicate | off_topic | boilerplate | policy | injection",
+  "category": "ok | does_not_work | phantom_code | duplicate | off_topic | boilerplate | policy | injection | malicious",
   "reasons": ["max 5 short, checkable sentences"],
   "evidence": [{ "file": "path", "line": 1, "note": "what is wrong here" }]
 }
 ```
 Server rules applied after the model (the model can't override them):
 - `forfeit` requires `confidence ≥ repo.threshold` (default 0.85) **and** ≥1 evidence item → else `needs_human`.
-- No hard fact (failing CI, phantom symbols, a duplicate, prompt injection, claims missing from the diff, or — when the repo says so — an issue assigned to someone else) → the model can't `forfeit` (max `needs_human`).
+- No hard fact (failing CI, phantom symbols, a duplicate, prompt injection, **malicious code**, claims missing from the diff, or — when the repo says so — an issue assigned to someone else) → the model can't `forfeit` (max `needs_human`).
+- **Malicious code** (server scan, [`malice.ts`](../server/src/judge/malice.ts)): a *high* finding — hidden bidi/zero-width characters, executing a decoded payload, `curl | sh`, a reverse shell, a miner, `rm -rf /`, secrets sent over the network, an install hook that downloads code, a `pull_request_target` workflow, a lockfile resolving outside the registry — makes the server **propose a forfeit even if the model didn't** (confidence ≥ 0.9, category `malicious`); a proven contributor goes to a human instead. A *medium* finding (workflow touching secrets, new install hook, git/URL dependency, raw-IP URL, large encoded blob, compiled binary) turns a refund into `needs_human`. Tests, fixtures and docs are not scanned. Like every forfeit, it can be challenged.
 - Author with prior refunds and zero forfeits → `forfeit` downgraded to `needs_human`.
 
 ## What gets stored and published per verdict

@@ -1,6 +1,7 @@
 // One verdict, end to end: facts → exact request bytes → signed inference → schema check →
 // server rules → a VerdictRecord anyone can re-verify.
 
+import { maliciousFindings } from "./malice";
 import { ModelVerdict, verdictHash, type Facts, type VerdictRecord } from "@patchbond/shared";
 import {
   assignmentFact,
@@ -54,6 +55,7 @@ export async function computeFacts(i: JudgeInput): Promise<Facts> {
     additions: c.additions,
     deletions: c.deletions,
     injection_markers: injectionMarkers(c),
+    malicious: c.kind === "pr" ? maliciousFindings(c.diff, c.files) : [],
     author_reputation: i.authorReputation,
   };
 }
