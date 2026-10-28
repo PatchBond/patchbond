@@ -175,13 +175,19 @@ app.get("/setup", (c) => {
   };
   return c.html(`<!doctype html><meta charset="utf-8"><title>Create the PatchBond GitHub App</title>
 <body style="font:16px system-ui;background:#0E1013;color:#ECEAE4;display:grid;place-items:center;min-height:100vh;margin:0">
-<form method="post" action="https://github.com/organizations/${ORG}/settings/apps/new" style="max-width:480px;padding:24px">
+<div style="max-width:520px;padding:24px">
 <h1 style="font-size:22px">Create the PatchBond GitHub App</h1>
-<p>GitHub creates the App in the <b>${ORG}</b> org with the permissions PatchBond needs, then sends you back here and the server saves its credentials to <code>.env</code>.</p>
+<p>GitHub fills in every setting PatchBond needs. You only pick a name and confirm. Then GitHub sends you back here, and the server saves the credentials to <code>.env</code> and restarts.</p>
 <p>Webhooks will go to <code>${process.env.WEBHOOK_URL || `${cfg.publicUrl}/webhook`}</code>.</p>
+${[
+    ["https://github.com/settings/apps/new", "Create on my GitHub account →", "Works for whoever is signed in to GitHub. The App can still be installed on any repo or org."],
+    [`https://github.com/organizations/${ORG}/settings/apps/new`, `Create in the ${ORG} org →`, `Only works if you're signed in as an owner of ${ORG}; otherwise GitHub shows a 404.`],
+  ].map(([action, label, note], i) => `<form method="post" action="${action}" style="margin:18px 0">
 <input type="hidden" name="manifest" value='${JSON.stringify(manifest).replace(/'/g, "&#39;")}'>
-<button style="background:#22C55E;color:#0E1013;border:0;border-radius:10px;padding:12px 18px;font-weight:600;font-size:16px;cursor:pointer">Create on GitHub →</button>
-</form></body>`);
+<button style="background:${i ? "transparent" : "#22C55E"};color:${i ? "#ECEAE4" : "#0E1013"};border:${i ? "1px solid #3a3d44" : "0"};border-radius:10px;padding:12px 18px;font-weight:600;font-size:16px;cursor:pointer">${label}</button>
+<div style="font-size:13px;opacity:.65;margin-top:6px">${note}</div></form>`).join("")}
+<p style="font-size:13px;opacity:.65">If GitHub shows an <b>empty</b> form, it lost these settings. Don't fill it in by hand: come back and click the button again.</p>
+</div></body>`);
 });
 
 app.get("/setup/callback", async (c) => {
