@@ -48,6 +48,12 @@ export interface Deposit {
 
 const TGAS = 1_000_000_000_000n;
 
+/** Mirrors `Policy::default()` in contract/vault/src/types.rs. */
+const DEFAULT_POLICY: Repo["policy"] = {
+  enabled: true, base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8,
+  review_window_sec: 259_200, challenge_window_sec: 259_200, forfeit_threshold_bps: 8_500,
+};
+
 export class Chain {
   readonly provider: JsonRpcProvider;
   private oracle?: Account;
@@ -80,7 +86,10 @@ export class Chain {
   getTotals = () => this.view<{ held: string; refunded: string; forfeited: string; deposits: number }>("get_totals", {});
   getBounty = (repo_id: number, issue: number) => this.view<string>("get_bounty", { repo_id, issue });
 
-  registerRepo = (repo_id: number) => this.call("register_repo", { repo_id, policy: null }, 30n);
+  // Installing the App never starts charging anyone: a new repo starts off, and the maintainer turns
+  // bonds on from the dashboard once they've linked a payout account.
+  registerRepo = (repo_id: number) => this.call("register_repo", { repo_id, policy: { ...DEFAULT_POLICY, enabled: false } }, 30n);
+  setPolicy = (repo_id: number, policy: Repo["policy"]) => this.call("set_policy", { repo_id, policy }, 30n);
   linkRepo = (repo_id: number, payout: string) => this.call("link_repo", { repo_id, payout }, 30n);
   settle = (repo_id: number, number: number, verdict: Verdict, verdict_hash: string) =>
     this.call("settle", { repo_id, number, verdict, verdict_hash }, 150n);
