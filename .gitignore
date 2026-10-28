@@ -11,3 +11,5 @@ dist/
 target/
 *.wasm
 .DS_Store
+# local server data (verdict store)
+server/data/
