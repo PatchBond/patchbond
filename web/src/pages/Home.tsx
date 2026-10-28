@@ -8,7 +8,7 @@ import { BondMachine } from "../components/BondMachine";
 import { CountUp, Reveal, Spotlight, usd } from "../components/fx";
 import { Button, Eyebrow, Mark, Panel, Spinner, VerdictBadge } from "../components/kit";
 import { api, chain } from "../lib/api";
-import { GITHUB_APP_URL, useConfig } from "../lib/config";
+import { installUrl, useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 
 const DEMO_POLICY = { base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8 };
@@ -70,11 +70,11 @@ function Hero() {
             Strangers attach a small deposit to their pull request. Real contributions get <b className="text-ink">every cent back</b>. Slop pays the maintainers whose time it wasted — decided by an AI judge whose every verdict you can verify yourself.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }} className="mt-8 flex flex-wrap gap-3">
-            <a href={GITHUB_APP_URL} target="_blank" rel="noreferrer">
+            <InstallLink>
               <Button className="group h-11 px-5">
                 Install on a repo <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
               </Button>
-            </a>
+            </InstallLink>
             <a href="#try">
               <Button variant="ghost" className="h-11 px-5">
                 <Gavel className="size-4" /> Judge a PR now
@@ -377,14 +377,26 @@ function Closing() {
         <h2 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">Make your repo's attention worth something.</h2>
         <p className="mt-3 max-w-xl text-muted-foreground">Install the GitHub App, set a bond, and let slop pay for the time it takes. Two minutes, no token, no lock-in.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <a href={GITHUB_APP_URL} target="_blank" rel="noreferrer">
+          <InstallLink>
             <Button className="h-11 px-5">Install on GitHub <ArrowRight className="size-4" /></Button>
-          </a>
+          </InstallLink>
           <Link to="/agents">
             <Button variant="ghost" className="h-11 px-5"><Bot className="size-4" /> I run coding agents</Button>
           </Link>
         </div>
       </Reveal>
     </section>
+  );
+}
+
+/** The GitHub App's install page once it exists; the maintainer page (which explains setup) until then. */
+function InstallLink({ children }: { children: React.ReactNode }) {
+  const { href, external } = installUrl(useConfig());
+  return external ? (
+    <a href={href} target="_blank" rel="noreferrer">
+      {children}
+    </a>
+  ) : (
+    <Link to={href}>{children}</Link>
   );
 }

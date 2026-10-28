@@ -31,7 +31,7 @@ It is a **market for maintainer attention — EIP-1559 for open source**: the bo
 
 ## Why this exists
 
-> I maintain an open-source project that a large community contributes to. Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one of them costs a maintainer time to read, check and close — time taken from the people doing real work. AI is here to help open source, not to drown it. So I built PatchBond on NEAR.
+> I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), a security and formal-verification suite for Stellar Soroban, which **122 people have contributed to** through **571 pull requests**. Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one of them costs a maintainer time to read, check and close — time taken from the people doing real work. AI is here to help open source, not to drown it. So I built PatchBond on NEAR.
 >
 > — the PatchBond team
 

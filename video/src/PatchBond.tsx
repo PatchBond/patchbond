@@ -77,7 +77,7 @@ function Hook() {
   return (
     <Stage glow={false}>
       <div style={{ position: "absolute", left: 160, top: 220, opacity: out }}>
-        <In><div style={{ fontSize: 26, color: C.faint, letterSpacing: "0.2em", fontWeight: 700 }}>A MAINTAINER’S STORY</div></In>
+        <In><div style={{ fontSize: 26, color: C.faint, letterSpacing: "0.2em", fontWeight: 700 }}>FROM A MAINTAINER · 122 CONTRIBUTORS · 571 PRS</div></In>
         {lines.map((l, i) => (
           <In key={i} delay={l.d + 10}>
             <div style={{ fontSize: 92, fontWeight: 700, letterSpacing: "-0.035em", lineHeight: 1.08, color: i % 2 ? C.brand : C.ink, marginTop: i === 2 ? 40 : 0 }}>{l.t}</div>

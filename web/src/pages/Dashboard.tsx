@@ -53,7 +53,8 @@ export function Dashboard() {
 
 function InstallButton({ className = "" }: { className?: string }) {
   const cfg = useConfig();
-  const url = cfg.github?.app_url ? `${cfg.github.app_url}/installations/new` : "https://github.com/apps/patchbond/installations/new";
+  if (!cfg.github?.app_url) return null; // nothing to install until the operator creates the App
+  const url = `${cfg.github.app_url}/installations/new`;
   return (
     <a href={url} target="_blank" rel="noreferrer" className={className}>
       <Button variant="ghost">
