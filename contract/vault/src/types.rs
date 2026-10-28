@@ -46,6 +46,9 @@ pub const TREASURY_FEE_BPS: u128 = 1_000;
 pub const BPS: u128 = 10_000;
 /// Longest window a repo may promise or a challenge may stay open.
 pub const MAX_WINDOW_SEC: u64 = 30 * 24 * 3600;
+/// A maintainer's own forfeit only *proposes*; the contributor has this long to dispute it.
+/// Fixed by the contract — the maintainer can't shorten it through their policy.
+pub const MAINTAINER_FORFEIT_WINDOW_MS: u64 = 48 * 3600 * 1000;
 /// Reputation: a forfeit inside this window blocks exemption and raises the price.
 pub const FORFEIT_MEMORY_MS: u64 = 90 * 24 * 3600 * 1000;
 
@@ -272,6 +275,19 @@ pub struct AgentStats {
     pub deposits: u32,
     pub refunds: u32,
     pub forfeits: u32,
+}
+
+/// Public record of how a repo's maintainers use their power to forfeit — shown to contributors
+/// before they pay.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, Default)]
+pub struct MaintainerRecord {
+    /// Forfeits the maintainer proposed themselves (not the AI).
+    pub forfeits: u32,
+    /// …of which the contributor disputed.
+    pub disputed: u32,
+    /// …of which the re-judge overturned (the contributor was right).
+    pub overturned: u32,
 }
 
 /// Global counters for the landing page.

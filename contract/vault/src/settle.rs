@@ -3,7 +3,12 @@
 //!
 //! Held ──oracle verdict──▶ Proposed ──window passes──▶ Settled
 //!   │                         │ └─stake─▶ Challenged ──re-judged──▶ Settled
-//!   └──maintainer / window 0──┴──────── maintainer's final word ───▶ Settled
+//!   ├──window 0──────────────────────────────────────────────────▶ Settled
+//!   └──maintainer forfeit──▶ Proposed (48 h, fixed) ──free dispute──▶ Challenged
+//!
+//! A maintainer can always *refund* at once, but can never take a contributor's bond on their own
+//! say-so: their forfeit is a proposal the contributor can dispute for free, a re-judge decides,
+//! and an overturned maintainer forfeit pays the contributor a penalty escrowed from the vault.
 //!
 //! Money moves only in `execute`, once, when a deposit becomes Settled.
 
@@ -30,8 +35,8 @@ impl PatchBond {
     }
 
     /// The oracle posts the AI verdict: it is *proposed* and stands after the repo's challenge
-    /// window (or settles at once if the window is 0). The repo's payout account settles at once
-    /// at any stage — the maintainer has the final word, and it's public.
+    /// window (or settles at once if the window is 0). The repo's payout account can refund (or
+    /// void) at once at any stage; its forfeit only proposes — see the module docs.
     /// `verdict_hash` = hex sha256 of the signed verdict record on the public verdict page.
     pub fn settle(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String) {
         assert_hash(&verdict_hash);
@@ -47,13 +52,27 @@ impl PatchBond {
         let status = self.unsettled_mut(repo_id, number).status.clone();
 
         if is_maintainer {
-            if let DepositStatus::Challenged { challenger, .. } = &status {
-                require!(
-                    !self.is_repo_payout(repo_id, challenger),
-                    "You challenged this verdict yourself, so the re-judge decides it, not you"
-                );
+            if verdict != Verdict::Forfeit {
+                // Giving the money back needs no safeguard.
+                if let DepositStatus::Challenged { challenger, .. } = &status {
+                    require!(
+                        !self.is_repo_payout(repo_id, challenger),
+                        "You challenged this verdict yourself, so the re-judge decides it, not you"
+                    );
+                }
+                return self.finish(repo_id, number, verdict, verdict_hash, status);
             }
-            return self.finish(repo_id, number, verdict, verdict_hash, status);
+            require!(
+                status == DepositStatus::Held,
+                match status {
+                    DepositStatus::Proposed { verdict: Verdict::Refund, .. } =>
+                        "The AI proposed a refund; to dispute it, stake a challenge (the re-judge decides)",
+                    DepositStatus::Proposed { .. } =>
+                        "A forfeit is already proposed; it stands when its window ends unless the contributor disputes it",
+                    _ => "This deposit is being re-judged; the re-judge decides, not the maintainer",
+                }
+            );
+            return self.propose_maintainer_forfeit(repo_id, number, verdict_hash, now);
         }
         require!(
             status == DepositStatus::Held,
@@ -106,6 +125,27 @@ impl PatchBond {
         self.finish(repo_id, number, verdict, verdict_hash, status);
     }
 
+    /// The contributor disputes a forfeit the *maintainer* proposed — free, because the maintainer is
+    /// an interested party. A stronger model re-judges; the maintainer can no longer decide it.
+    pub fn dispute(&mut self, repo_id: RepoId, number: Number) {
+        let caller = env::predecessor_account_id();
+        require!(
+            self.maintainer_forfeits.contains_key(&(repo_id, number)),
+            "Only a forfeit the maintainer proposed can be disputed for free; an AI verdict is challenged with a stake"
+        );
+        let d = self.unsettled_mut(repo_id, number);
+        require!(caller == d.payer, "Only the person who paid the bond can dispute its forfeit");
+        let DepositStatus::Proposed { verdict, deadline } = d.status.clone() else {
+            env::panic_str("This forfeit is already disputed")
+        };
+        require!(env::block_timestamp_ms() <= deadline, "The dispute window has closed");
+        d.status = DepositStatus::Challenged { verdict, challenger: caller.clone(), stake: U128(0) };
+        let mut rec = self.maintainer_records.get(&repo_id).cloned().unwrap_or_default();
+        rec.disputed += 1;
+        self.maintainer_records.insert(repo_id, rec);
+        events::challenged(repo_id, number, &caller, 0);
+    }
+
     /// Oracle: a real fix for `issue` was merged; pay its whole bounty to the fix's author.
     pub fn pay_bounty(&mut self, repo_id: RepoId, issue: Number, recipient: AccountId) -> Promise {
         self.assert_oracle();
@@ -121,9 +161,29 @@ impl PatchBond {
 }
 
 impl PatchBond {
+    /// The maintainer's forfeit: a 48 h proposal the contributor may dispute for free. Up to one
+    /// bond is escrowed from the vault, paid to the contributor if the dispute wins.
+    fn propose_maintainer_forfeit(&mut self, repo_id: RepoId, number: Number, verdict_hash: String, now: TimestampMs) {
+        self.leave_queue(repo_id);
+        let deadline = now + MAINTAINER_FORFEIT_WINDOW_MS;
+        let d = self.unsettled_mut(repo_id, number);
+        let bond = d.bond.0;
+        d.verdict_hash = Some(verdict_hash.clone());
+        d.status = DepositStatus::Proposed { verdict: Verdict::Forfeit, deadline };
+        let repo = self.repo_mut(repo_id);
+        let escrow = bond.min(repo.vault.0);
+        repo.vault = U128(repo.vault.0 - escrow);
+        self.maintainer_forfeits.insert((repo_id, number), U128(escrow));
+        let mut rec = self.maintainer_records.get(&repo_id).cloned().unwrap_or_default();
+        rec.forfeits += 1;
+        self.maintainer_records.insert(repo_id, rec);
+        events::proposed(repo_id, number, Verdict::Forfeit, &verdict_hash, deadline);
+    }
+
     /// Called from `ft_on_transfer` with a `challenge` msg. Returns the unused amount.
     pub(crate) fn take_challenge(&mut self, challenger: AccountId, amount: u128, repo_id: RepoId, number: Number) -> u128 {
         let is_maintainer = self.is_repo_payout(repo_id, &challenger);
+        let by_maintainer = self.maintainer_forfeits.contains_key(&(repo_id, number));
         let d = self.unsettled_mut(repo_id, number);
         let DepositStatus::Proposed { verdict, deadline } = d.status.clone() else {
             env::panic_str("Only a proposed verdict inside its challenge window can be challenged; your stake was refunded")
@@ -133,10 +193,16 @@ impl PatchBond {
             "The challenge window has closed; your stake was refunded"
         );
         match verdict {
-            Verdict::Forfeit => require!(
-                challenger == d.payer,
-                "Only the person who paid the bond can challenge a forfeit; your stake was refunded"
-            ),
+            Verdict::Forfeit => {
+                require!(
+                    challenger == d.payer,
+                    "Only the person who paid the bond can challenge a forfeit; your stake was refunded"
+                );
+                require!(
+                    !by_maintainer,
+                    "The maintainer proposed this forfeit, so disputing it is free: call dispute instead; your stake was refunded"
+                );
+            }
             Verdict::Refund => require!(
                 is_maintainer,
                 "Only the repo's linked payout account can challenge a refund; your stake was refunded"
@@ -164,6 +230,20 @@ impl PatchBond {
     fn finish(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, from: DepositStatus) {
         if from == DepositStatus::Held {
             self.leave_queue(repo_id);
+        }
+        // A maintainer's forfeit: once the contributor disputed it and it didn't stand, the escrow is
+        // their compensation. A forfeit that stands, or one retracted before any dispute, returns it.
+        if let Some(escrow) = self.maintainer_forfeits.remove(&(repo_id, number)) {
+            let currency = self.deposit_currency_of(repo_id, number);
+            if verdict != Verdict::Forfeit && matches!(from, DepositStatus::Challenged { .. }) {
+                let mut rec = self.maintainer_records.get(&repo_id).cloned().unwrap_or_default();
+                rec.overturned += 1;
+                self.maintainer_records.insert(repo_id, rec);
+                let d = self.deposits.get(&(repo_id, number)).unwrap().clone();
+                self.pay_out(d.payer, escrow.0, d.from_budget, currency);
+            } else {
+                self.credit_vault(repo_id, escrow.0, currency);
+            }
         }
         if let DepositStatus::Challenged { verdict: proposed, challenger, stake } = from {
             let overturned = verdict != proposed;

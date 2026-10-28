@@ -155,7 +155,7 @@ async fn a_maintainer_who_loses_a_challenge_pays_the_contributor() -> anyhow::Re
 }
 
 #[tokio::test]
-async fn the_maintainer_has_the_final_word_on_a_proposed_verdict() -> anyhow::Result<()> {
+async fn a_maintainer_can_refund_at_once_but_not_overrule_a_proposed_refund() -> anyhow::Result<()> {
     let e = optimistic().await?;
     let bond = e.quote(OPT, None).await?;
     e.pay(&e.alice, OPT, 1, bond, json!({})).await?.into_result()?;
@@ -163,15 +163,20 @@ async fn the_maintainer_has_the_final_word_on_a_proposed_verdict() -> anyhow::Re
     let again = e.settle(OPT, 1, "forfeit").await?;
     assert!(failure_text(&again).contains("challenge it instead"), "the oracle can't re-propose");
 
-    e.amaka
-        .call(e.pb.id(), "settle")
-        .args_json(json!({ "repo_id": OPT, "number": 1, "verdict": "forfeit", "verdict_hash": ZERO_HASH }))
-        .gas(Gas::from_tgas(100))
-        .transact()
-        .await?
-        .into_result()?;
+    let maintainer = |verdict: &str| {
+        e.amaka
+            .call(e.pb.id(), "settle")
+            .args_json(json!({ "repo_id": OPT, "number": 1, "verdict": verdict, "verdict_hash": ZERO_HASH }))
+            .gas(Gas::from_tgas(100))
+            .transact()
+    };
+    // Taking the bond against the AI's refund needs a staked challenge, not a say-so.
+    let grab = maintainer("forfeit").await?;
+    assert!(failure_text(&grab).contains("stake a challenge"), "{}", failure_text(&grab));
+    // Giving it back early is always fine.
+    maintainer("refund").await?.into_result()?;
     assert!(e.status(OPT, 1).await?["settled"].is_object());
-    assert_eq!(u(&e.view("get_repo", json!({ "repo_id": OPT })).await?["vault"]), bond - bond / 10);
+    assert_eq!(e.balance(&e.alice).await?, 100 * USDC);
     assert_eq!(e.view("get_repo", json!({ "repo_id": OPT })).await?["open"], 0, "queue counted once");
     Ok(())
 }

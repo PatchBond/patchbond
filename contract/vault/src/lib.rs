@@ -40,6 +40,8 @@ enum StorageKey {
     ClaimableNear,
     BountyHeld,
     Unsettled,
+    MaintainerForfeits,
+    MaintainerRecords,
 }
 
 #[near(contract_state)]
@@ -82,6 +84,10 @@ pub struct PatchBond {
     paused: bool,
     /// Deposits not yet settled per repo (held, proposed or challenged) — `open` only counts held.
     unsettled: LookupMap<RepoId, u32>,
+    /// Forfeits proposed by the maintainer (not the AI), with what was escrowed from the repo's
+    /// vault as a penalty if the contributor's dispute wins.
+    maintainer_forfeits: LookupMap<(RepoId, Number), U128>,
+    maintainer_records: LookupMap<RepoId, MaintainerRecord>,
 }
 
 /// State layout before currencies existed (v0.2, live on testnet); read once by `migrate`.
@@ -131,70 +137,145 @@ struct PatchBondV3Pre {
     paused: bool,
 }
 
+/// v0.3 with `unsettled` (live on testnet 2026-10-28), before the maintainer-forfeit safeguards.
+#[near(serializers = [borsh])]
+struct PatchBondV3 {
+    owner: AccountId,
+    oracle: AccountId,
+    treasury: AccountId,
+    token: AccountId,
+    wnear: Option<AccountId>,
+    currencies: LookupMap<RepoId, Currency>,
+    deposit_currency: LookupMap<(RepoId, Number), Currency>,
+    repos: LookupMap<RepoId, Repo>,
+    deposits: LookupMap<(RepoId, Number), Deposit>,
+    reputation: LookupMap<AccountId, Reputation>,
+    bounties: LookupMap<(RepoId, Number), U128>,
+    claimable: LookupMap<AccountId, U128>,
+    claimable_near: LookupMap<AccountId, U128>,
+    bounty_held: LookupMap<RepoId, U128>,
+    budgets: LookupMap<AccountId, Budget>,
+    passports: LookupMap<AccountId, Passport>,
+    agent_stats: LookupMap<String, AgentStats>,
+    treasury_balance: u128,
+    treasury_near: u128,
+    totals: Totals,
+    totals_near: Totals,
+    paused: bool,
+    unsettled: LookupMap<RepoId, u32>,
+}
+
+impl PatchBondV2 {
+    fn upgrade(self, wnear: Option<AccountId>) -> PatchBondV3Pre {
+        PatchBondV3Pre {
+            owner: self.owner,
+            oracle: self.oracle,
+            treasury: self.treasury,
+            token: self.token,
+            wnear,
+            currencies: LookupMap::new(StorageKey::Currencies),
+            deposit_currency: LookupMap::new(StorageKey::DepositCurrency),
+            repos: self.repos,
+            deposits: self.deposits,
+            reputation: self.reputation,
+            bounties: self.bounties,
+            claimable: self.claimable,
+            claimable_near: LookupMap::new(StorageKey::ClaimableNear),
+            bounty_held: LookupMap::new(StorageKey::BountyHeld),
+            budgets: self.budgets,
+            passports: self.passports,
+            agent_stats: self.agent_stats,
+            treasury_balance: self.treasury_balance,
+            treasury_near: 0,
+            totals: self.totals,
+            totals_near: Totals::default(),
+            paused: self.paused,
+        }
+    }
+}
+
+impl PatchBondV3Pre {
+    fn upgrade(self, wnear: Option<AccountId>) -> PatchBondV3 {
+        PatchBondV3 {
+            owner: self.owner,
+            oracle: self.oracle,
+            treasury: self.treasury,
+            token: self.token,
+            wnear: self.wnear.or(wnear),
+            currencies: self.currencies,
+            deposit_currency: self.deposit_currency,
+            repos: self.repos,
+            deposits: self.deposits,
+            reputation: self.reputation,
+            bounties: self.bounties,
+            claimable: self.claimable,
+            claimable_near: self.claimable_near,
+            bounty_held: self.bounty_held,
+            budgets: self.budgets,
+            passports: self.passports,
+            agent_stats: self.agent_stats,
+            treasury_balance: self.treasury_balance,
+            treasury_near: self.treasury_near,
+            totals: self.totals,
+            totals_near: self.totals_near,
+            paused: self.paused,
+            unsettled: LookupMap::new(StorageKey::Unsettled),
+        }
+    }
+}
+
+impl PatchBondV3 {
+    fn upgrade(self, wnear: Option<AccountId>) -> PatchBond {
+        PatchBond {
+            owner: self.owner,
+            oracle: self.oracle,
+            treasury: self.treasury,
+            token: self.token,
+            wnear: self.wnear.or(wnear),
+            currencies: self.currencies,
+            deposit_currency: self.deposit_currency,
+            repos: self.repos,
+            deposits: self.deposits,
+            reputation: self.reputation,
+            bounties: self.bounties,
+            claimable: self.claimable,
+            claimable_near: self.claimable_near,
+            bounty_held: self.bounty_held,
+            budgets: self.budgets,
+            passports: self.passports,
+            agent_stats: self.agent_stats,
+            treasury_balance: self.treasury_balance,
+            treasury_near: self.treasury_near,
+            totals: self.totals,
+            totals_near: self.totals_near,
+            paused: self.paused,
+            unsettled: self.unsettled,
+            maintainer_forfeits: LookupMap::new(StorageKey::MaintainerForfeits),
+            maintainer_records: LookupMap::new(StorageKey::MaintainerRecords),
+        }
+    }
+}
+
 #[near]
 impl PatchBond {
-    /// One-time upgrade from v0.2 (USDC only) or v0.3-pre to the current layout. Only the contract
-    /// account itself can call it, i.e. right after a redeploy by whoever holds the contract's key.
-    /// Existing repos and deposits stay USDC. `wnear` is used when the old state has none.
+    /// One-time upgrade from any earlier layout (v0.2 USDC-only, v0.3-pre, v0.3) to the current
+    /// one, one step at a time. Only the contract account itself can call it, i.e. right after a
+    /// redeploy by whoever holds the contract's key. `wnear` is used when the old state has none.
     #[private]
     #[init(ignore_state)]
     pub fn migrate(wnear: Option<AccountId>) -> Self {
         use near_sdk::borsh::BorshDeserialize;
         let raw = env::storage_read(b"STATE").unwrap_or_else(|| env::panic_str("No state to migrate"));
-        if let Ok(old) = PatchBondV3Pre::try_from_slice(&raw) {
-            return Self {
-                owner: old.owner,
-                oracle: old.oracle,
-                treasury: old.treasury,
-                token: old.token,
-                wnear: old.wnear.or(wnear),
-                currencies: old.currencies,
-                deposit_currency: old.deposit_currency,
-                repos: old.repos,
-                deposits: old.deposits,
-                reputation: old.reputation,
-                bounties: old.bounties,
-                claimable: old.claimable,
-                claimable_near: old.claimable_near,
-                bounty_held: old.bounty_held,
-                budgets: old.budgets,
-                passports: old.passports,
-                agent_stats: old.agent_stats,
-                treasury_balance: old.treasury_balance,
-                treasury_near: old.treasury_near,
-                totals: old.totals,
-                totals_near: old.totals_near,
-                paused: old.paused,
-                unsettled: LookupMap::new(StorageKey::Unsettled),
-            };
-        }
-        let old = PatchBondV2::try_from_slice(&raw)
-            .unwrap_or_else(|_| env::panic_str("State is neither v0.2 nor v0.3-pre; nothing to migrate"));
-        Self {
-            owner: old.owner,
-            oracle: old.oracle,
-            treasury: old.treasury,
-            token: old.token,
-            wnear,
-            currencies: LookupMap::new(StorageKey::Currencies),
-            deposit_currency: LookupMap::new(StorageKey::DepositCurrency),
-            repos: old.repos,
-            deposits: old.deposits,
-            reputation: old.reputation,
-            bounties: old.bounties,
-            claimable: old.claimable,
-            claimable_near: LookupMap::new(StorageKey::ClaimableNear),
-            bounty_held: LookupMap::new(StorageKey::BountyHeld),
-            budgets: old.budgets,
-            passports: old.passports,
-            agent_stats: old.agent_stats,
-            treasury_balance: old.treasury_balance,
-            treasury_near: 0,
-            totals: old.totals,
-            totals_near: Totals::default(),
-            paused: old.paused,
-            unsettled: LookupMap::new(StorageKey::Unsettled),
-        }
+        let v3 = if let Ok(old) = PatchBondV3::try_from_slice(&raw) {
+            old
+        } else if let Ok(old) = PatchBondV3Pre::try_from_slice(&raw) {
+            old.upgrade(wnear.clone())
+        } else if let Ok(old) = PatchBondV2::try_from_slice(&raw) {
+            old.upgrade(wnear.clone()).upgrade(None)
+        } else {
+            env::panic_str("State matches no earlier layout; nothing to migrate")
+        };
+        v3.upgrade(wnear)
     }
 
     #[init]
@@ -223,6 +304,8 @@ impl PatchBond {
             totals_near: Totals::default(),
             paused: false,
             unsettled: LookupMap::new(StorageKey::Unsettled),
+            maintainer_forfeits: LookupMap::new(StorageKey::MaintainerForfeits),
+            maintainer_records: LookupMap::new(StorageKey::MaintainerRecords),
         }
     }
 
@@ -383,6 +466,16 @@ impl PatchBond {
 
     pub fn get_bounty(&self, repo_id: RepoId, issue: Number) -> U128 {
         self.bounties.get(&(repo_id, issue)).copied().unwrap_or(U128(0))
+    }
+
+    /// How this repo's maintainers have used their own forfeits — shown to contributors before paying.
+    pub fn get_maintainer_record(&self, repo_id: RepoId) -> MaintainerRecord {
+        self.maintainer_records.get(&repo_id).cloned().unwrap_or_default()
+    }
+
+    /// Whether `#number`'s pending forfeit came from the maintainer (free to dispute) rather than the AI.
+    pub fn is_maintainer_forfeit(&self, repo_id: RepoId, number: Number) -> bool {
+        self.maintainer_forfeits.contains_key(&(repo_id, number))
     }
 
     pub fn get_claimable(&self, account_id: AccountId, currency: Option<Currency>) -> U128 {
