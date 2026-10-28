@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PatchBond — pitch deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1013; --panel: #15181d; --raised: #1c2027; --line: #2a2f37;
+    --ink: #eceae4; --ink2: #a3a6ad; --faint: #6b7079;
+    --brand: #22c55e; --brand-soft: rgba(34, 197, 94, .14); --danger: #f87171; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #050607; color: var(--ink); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .deck { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0; }
+  .slide {
+    width: 1920px; height: 1080px; position: relative; overflow: hidden; background: var(--bg);
+    padding: 110px 130px; display: flex; flex-direction: column; transform-origin: top center;
+    background-image: radial-gradient(rgba(236, 234, 228, .07) 1.5px, transparent 1.5px); background-size: 34px 34px;
+  }
+  .slide::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 70% 60% at 50% 40%, transparent 40%, var(--bg) 100%); }
+  .slide > * { position: relative; z-index: 1; }
+  .glow { position: absolute; width: 1100px; height: 700px; border-radius: 50%; background: rgba(34, 197, 94, .13); filter: blur(120px); z-index: 0; }
+  .eyebrow { font-size: 22px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); }
+  h1 { font-size: 104px; line-height: 1.02; letter-spacing: -.035em; font-weight: 700; }
+  h2 { font-size: 72px; line-height: 1.06; letter-spacing: -.03em; font-weight: 700; margin-top: 18px; }
+  .lead { font-size: 34px; line-height: 1.45; color: var(--ink2); margin-top: 28px; max-width: 1300px; }
+  .g { color: var(--brand); } .m { color: var(--ink2); } .f { color: var(--faint); }
+  .row { display: flex; gap: 32px; } .grow { flex: 1; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 28px; padding: 40px; }
+  .card h3 { font-size: 34px; letter-spacing: -.02em; margin-top: 18px; }
+  .card p { font-size: 25px; line-height: 1.45; color: var(--ink2); margin-top: 12px; }
+  .tag { display: inline-block; font-size: 20px; font-weight: 700; color: var(--brand); background: var(--brand-soft); padding: 7px 18px; border-radius: 999px; }
+  .shot { border-radius: 24px; border: 1px solid var(--line); box-shadow: 0 40px 120px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.03); display: block; }
+  .mono { font-family: "JetBrains Mono", monospace; }
+  .foot { position: absolute; left: 130px; right: 130px; bottom: 54px; display: flex; justify-content: space-between; font-size: 20px; color: var(--faint); z-index: 2; }
+  .stat { font-size: 120px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+  .src { font-size: 19px; color: var(--faint); margin-top: 14px; }
+  .pill { display: inline-flex; align-items: center; gap: 12px; font-size: 24px; padding: 12px 22px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--ink2); }
+  table { border-collapse: collapse; width: 100%; font-size: 25px; }
+  td { padding: 17px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { color: var(--ink); font-weight: 600; width: 34%; }
+  td:last-child { color: var(--ink2); }
+  .num { font-variant-numeric: tabular-nums; }
+  @media screen { .slide { box-shadow: 0 30px 80px rgba(0,0,0,.6); } }
+  @media print {
+    @page { size: 1920px 1080px; margin: 0; }
+    html, body { background: var(--bg); }
+    .deck { padding: 0; gap: 0; }
+    .slide { transform: none !important; margin: 0 !important; page-break-after: always; break-after: page; }
+    .hint { display: none; }
+  }
+  .hint { position: fixed; bottom: 14px; right: 18px; font: 13px Inter; color: #6b7079; }
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- 1. Title -->
+<section class="slide" style="justify-content:center">
+  <div class="glow" style="top:-200px;left:300px"></div>
+  <img src="../../brand/patchbond-logo-dark.svg" alt="PatchBond" style="width:820px;margin-left:-40px">
+  <h1 style="margin-top:70px;max-width:1500px">A market for <span class="g">maintainer attention.</span></h1>
+  <p class="lead">Refundable bonds for pull requests on NEAR. Real work gets every cent back. Slop pays the maintainer whose time it wasted — decided by AI anyone can verify.</p>
+  <div class="row" style="margin-top:56px;gap:18px">
+    <span class="pill">EIP-1559 for open source</span><span class="pill">Verifiable AI · NEAR AI Cloud TEE</span><span class="pill">Live on NEAR testnet</span>
+  </div>
+  <div class="foot"><span>github.com/PatchBond/patchbond</span><span>NEAR Hackathon 2026</span></div>
+</section>
+
+<!-- 2. The problem, from a maintainer -->
+<section class="slide" style="justify-content:center">
+  <div class="eyebrow">The problem — from a maintainer</div>
+  <p style="font-size:60px;line-height:1.28;letter-spacing:-.02em;font-weight:600;margin-top:40px;max-width:1600px">
+    “Some people just create <span class="g">tens of PRs</span> resolving issues they weren't even assigned to — or claim a PR does what it <span class="g">doesn't do.</span>”
+  </p>
+  <p class="lead" style="margin-top:48px">Every one costs a maintainer time to read, check and close. The sender spends ten seconds. The maintainer spends an hour. <b style="color:var(--ink)">Nothing connects the two.</b></p>
+  <p style="font-size:30px;margin-top:40px;color:var(--ink)">AI is here to help open source — not to drown it.</p>
+  <div class="foot"><span>The PatchBond team</span><span>2</span></div>
+</section>
+
+<!-- 3. Why now -->
+<section class="slide">
+  <div class="eyebrow">Why now</div>
+  <h2>AI made sending free.<br><span class="m">Receiving still costs a human.</span></h2>
+  <div class="row" style="margin-top:80px">
+    <div class="card grow"><div class="stat g">~25%</div><p>of incoming pull requests are estimated to be low-quality AI output — <b style="color:var(--ink)">31%</b> on larger projects.</p><div class="src">Linux Foundation Research, Oct 2026</div></div>
+    <div class="card grow"><div class="stat">49</div><p>AI-slop security reports on curl's public list. curl moved low-severity reports public because AI reports nearly overwhelmed its team.</p><div class="src">curl maintainer's public list (gist)</div></div>
+    <div class="card grow"><div class="stat" style="font-size:96px">PRs off</div><p>GitHub added options to turn pull requests off or limit them to collaborators — shutting honest newcomers out too.</p><div class="src">GitHub, Aug 2026</div></div>
+  </div>
+  <div class="foot"><span>Sources: docs/RESEARCH.md</span><span>3</span></div>
+</section>
+
+<!-- 4. The idea -->
+<section class="slide" style="justify-content:center">
+  <div class="glow" style="top:100px;left:-200px"></div>
+  <div class="eyebrow">The idea</div>
+  <h1 style="margin-top:24px;max-width:1600px">Make wasting a maintainer's time <span class="g">cost something.</span></h1>
+  <div class="row" style="margin-top:80px;align-items:stretch">
+    <div class="card grow"><span class="tag">1 · Bond</span><h3>Strangers attach a small refundable deposit</h3><p>USDC on NEAR. Maintainers, collaborators and proven contributors pay $0.</p></div>
+    <div class="card grow"><span class="tag">2 · Verifiable AI</span><h3>A TEE model judges it after CI</h3><p>Using facts we compute. The response is signed and public.</p></div>
+    <div class="card grow"><span class="tag">3 · Settle</span><h3>Refund — or the repo is paid</h3><p>Real work: every cent back. Slop: 90% to the repo's vault.</p></div>
+  </div>
+  <p style="font-size:28px;color:var(--ink2);margin-top:50px">The opposite of tea.xyz: spam <b style="color:var(--ink)">costs</b> money instead of earning it. No token. Nobody is paid for submitting.</p>
+  <div class="foot"><span>PatchBond</span><span>4</span></div>
+</section>
+
+<!-- 5. Product -->
+<section class="slide">
+  <div class="eyebrow">The product</div>
+  <div class="row" style="margin-top:30px;align-items:center;gap:70px">
+    <div style="width:620px">
+      <h2 style="font-size:62px">One comment on the PR. One tap to pay.</h2>
+      <p class="lead" style="font-size:29px">The GitHub App asks strangers for a bond with the live price. They pay from any NEAR wallet — <b style="color:var(--ink)">gasless</b>: our relayer pays the fee (NEP-366).</p>
+      <p class="lead" style="font-size:29px">After CI, the verdict lands back on the PR as a check and a comment.</p>
+    </div>
+    <img class="shot" src="../media/pay.png" style="width:1040px">
+  </div>
+  <div class="foot"><span>Real app · NEAR testnet</span><span>5</span></div>
+</section>
+
+<!-- 6. Attention pricing -->
+<section class="slide">
+  <div class="eyebrow">Edge 1 · Attention pricing</div>
+  <h2>EIP-1559 for maintainers.</h2>
+  <p class="lead">The bond follows the repo's open queue — computed <b style="color:var(--ink)">on-chain</b> from unsettled deposits. Tens of PRs at once? Each one makes the next <b style="color:var(--ink)">12.5%</b> more expensive. A quiet repo costs a newcomer cents.</p>
+  <div class="row" style="margin-top:36px;align-items:center;gap:60px">
+    <img class="shot" src="../media/pricing-chart.png" style="width:860px">
+    <div style="flex:1;display:flex;flex-direction:column;gap:22px">
+      <div class="card" style="padding:30px"><span class="tag">Quiet repo</span><p style="margin-top:14px">6 open, capacity 8 → <b style="color:var(--ink)">$1.58</b></p></div>
+      <div class="card" style="padding:30px"><span class="tag" style="color:var(--warn);background:rgba(251,191,36,.12)">Busy</span><p style="margin-top:14px">14 open → <b style="color:var(--ink)">$4.05</b></p></div>
+      <div class="card" style="padding:30px"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Spam wave</span><p style="margin-top:14px">40 open → <b style="color:var(--ink)">$50 ceiling</b></p></div>
+    </div>
+  </div>
+  <div class="foot"><span class="mono">bond = clamp(min, max, base × 1.125^(open − capacity)) × reputation</span><span>6</span></div>
+</section>
+
+<!-- 7. The judge -->
+<section class="slide">
+  <div class="eyebrow">The judge</div>
+  <div class="row" style="margin-top:30px;gap:70px">
+    <div style="width:700px">
+      <h2 style="font-size:60px">Facts first. Then a verifiable model.</h2>
+      <table style="margin-top:36px">
+        <tr><td>CI</td><td>The repo's own checks — we never run contributor code</td></tr>
+        <tr><td>Phantom code</td><td>Calls into the project's own namespace that don't exist</td></tr>
+        <tr><td>Claims vs diff</td><td>“Added tests”, “updated README” — is it in the diff?</td></tr>
+        <tr><td>Assignment</td><td>Was the issue assigned to someone else?</td></tr>
+        <tr><td>Injection</td><td>Text that tries to instruct the judge</td></tr>
+      </table>
+      <p style="font-size:25px;color:var(--ink2);margin-top:30px">A forfeit needs high confidence, evidence <b style="color:var(--ink)">and</b> a hard fact. When in doubt, refund.</p>
+    </div>
+    <img class="shot" src="../media/verdict.png" style="width:900px;height:760px;object-fit:cover;object-position:top">
+  </div>
+  <div class="foot"><span>0 of 15 good PRs forfeited on a labelled set of 30 real PRs</span><span>7</span></div>
+</section>
+
+<!-- 8. Verify it yourself -->
+<section class="slide" style="justify-content:center">
+  <div class="glow" style="top:200px;left:600px"></div>
+  <div class="eyebrow">Don't trust us — verify</div>
+  <h1 style="margin-top:24px;max-width:1500px">Every verdict is <span class="g">signed, public and checkable</span> in your browser.</h1>
+  <div class="row" style="margin-top:70px">
+    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">sha256(request) ✓</h3><p>The exact bytes sent to the model in NEAR AI Cloud's TEE.</p></div>
+    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">sha256(response) ✓</h3><p>The exact answer — nothing edited after the fact.</p></div>
+    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">signer ✓</h3><p>The enclave's key, recovered from the signature (EIP-191).</p></div>
+    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">on-chain hash ✓</h3><p>The hash settled with the money commits to all of it.</p></div>
+  </div>
+  <div class="foot"><span>shared/src/verify.ts — same code in browser and server</span><span>8</span></div>
+</section>
+
+<!-- 9. The edges -->
+<section class="slide">
+  <div class="eyebrow">Not a slop filter — a market</div>
+  <h2>Mechanisms nobody else has. One NEAR contract.</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:56px">
+    <div class="card"><span class="tag">Priority lane</span><h3>Pay for attention, not for submitting</h3><p>A review tip reaches the repo only if a maintainer reviews within the promised window — otherwise it's refunded.</p></div>
+    <div class="card"><span class="tag">Optimistic verdicts</span><h3>Cheap AI by default, strong AI when money's on the line</h3><p>Stake to challenge; a stronger model re-judges with both sides' statements; the loser's stake pays the winner.</p></div>
+    <div class="card"><span class="tag">Slop funds the fix</span><h3>Spam pays whoever really fixes the issue</h3><p>A forfeited PR that claimed to fix #N becomes a bounty on #N, paid when a real fix is merged.</p></div>
+    <div class="card"><span class="tag">Agent passports</span><h3>Capped wallets for coding agents</h3><p>A function-call key that can only pay bonds, a daily cap enforced by the contract, a public record per harness.</p></div>
+  </div>
+  <div class="foot"><span>contract/vault/src</span><span>9</span></div>
+</section>
+
+<!-- 10. Money flow -->
+<section class="slide">
+  <div class="eyebrow">Where the money goes</div>
+  <h2>Held by a contract — <span class="g">never by us.</span></h2>
+  <svg viewBox="0 0 1660 520" style="width:1660px;margin-top:60px" font-family="Inter" font-size="26">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b7079"/></marker></defs>
+    <rect x="0" y="190" width="320" height="140" rx="26" fill="#15181d" stroke="#2a2f37" stroke-width="2"/>
+    <text x="160" y="252" text-anchor="middle" fill="#eceae4" font-weight="700" font-size="30">Bond (USDC)</text>
+    <text x="160" y="292" text-anchor="middle" fill="#a3a6ad" font-size="22">held by the vault contract</text>
+    <path d="M320 260 H460" stroke="#6b7079" stroke-width="3" marker-end="url(#a)"/>
+    <rect x="470" y="190" width="320" height="140" rx="26" fill="#15181d" stroke="#22c55e" stroke-width="2"/>
+    <text x="630" y="252" text-anchor="middle" fill="#22c55e" font-weight="700" font-size="30">Verifiable verdict</text>
+    <text x="630" y="292" text-anchor="middle" fill="#a3a6ad">72 h to challenge</text>
+    <path d="M790 230 C 900 230 900 70 1010 70" stroke="#6b7079" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <path d="M790 260 H1010" stroke="#6b7079" stroke-width="3" marker-end="url(#a)"/>
+    <path d="M790 290 C 900 290 900 450 1010 450" stroke="#6b7079" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <rect x="1020" y="10" width="640" height="120" rx="24" fill="rgba(34,197,94,.12)" stroke="rgba(34,197,94,.4)" stroke-width="2"/>
+    <text x="1050" y="62" fill="#22c55e" font-weight="700" font-size="30">Refund — 100% back to the contributor</text>
+    <text x="1050" y="102" fill="#a3a6ad">+ on-chain reputation; proven people pay $0</text>
+    <rect x="1020" y="200" width="640" height="120" rx="24" fill="rgba(251,191,36,.10)" stroke="rgba(251,191,36,.4)" stroke-width="2"/>
+    <text x="1050" y="252" fill="#fbbf24" font-weight="700" font-size="30">Forfeit — 90% repo vault · 10% treasury</text>
+    <text x="1050" y="292" fill="#a3a6ad">or a bounty on the issue it claimed to fix</text>
+    <rect x="1020" y="390" width="640" height="120" rx="24" fill="#15181d" stroke="#2a2f37" stroke-width="2"/>
+    <text x="1050" y="442" fill="#eceae4" font-weight="700" font-size="30">Maintainer withdraws</text>
+    <text x="1050" y="482" fill="#a3a6ad">to NEAR · any chain via Intents · a DAO</text>
+  </svg>
+  <div class="foot"><span>Only the repo's linked payout account can withdraw — not the owner, not the oracle</span><span>10</span></div>
+</section>
+
+<!-- 11. Agents -->
+<section class="slide">
+  <div class="eyebrow">Agents are the senders now</div>
+  <div class="row" style="margin-top:30px;gap:70px;align-items:center">
+    <div style="width:660px">
+      <h2 style="font-size:60px">Know your agent.</h2>
+      <p class="lead" style="font-size:29px">Coding agents pay bonds through our <b style="color:var(--ink)">MCP server</b> — with a key that can do nothing else. It refuses to start with a full-access key.</p>
+      <p class="lead" style="font-size:29px">A <b style="color:var(--ink)">free pre-flight</b> tells the agent what the judge would flag <i>before</i> it pays.</p>
+    </div>
+    <div style="width:1000px">
+      <img class="shot" src="../media/agents-hero.png" style="width:1000px">
+      <div class="card mono" style="margin-top:30px;padding:30px 34px;font-size:21px;line-height:1.75;color:var(--ink2);background:#0a0c0e">
+        <div class="f">$ bun run e2e:testnet   # stage 9, real NEAR testnet</div>
+        <div><span class="g">✓</span> MCP patchbond_deposit paid $1.00 with the function-call key</div>
+        <div><span class="g">✓</span> third bond refused by the contract: “Daily cap reached…”</div>
+        <div><span class="g">✓</span> the key can't touch the token contract</div>
+        <div><span class="g">✓</span> the key can't call any other PatchBond method</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>mcp/ · 7 tools · paid a real bond on testnet in our e2e</span><span>11</span></div>
+</section>
+
+<!-- 12. NEAR -->
+<section class="slide">
+  <div class="eyebrow">Built on NEAR</div>
+  <h2>Every piece is a NEAR primitive.</h2>
+  <table style="margin-top:50px;font-size:28px">
+    <tr><td>NEAR AI Cloud</td><td>Verifiable inference in a TEE; signatures checked in the browser</td></tr>
+    <tr><td>Rust contract + NEP-297</td><td>Bonds, curve, verdicts, challenges, vaults, budgets, reputation</td></tr>
+    <tr><td>NEP-141 USDC</td><td>ft_transfer_call for bonds, challenges and agent budgets</td></tr>
+    <tr><td>Function-call keys</td><td>Capped agent wallets that can only pay bonds</td></tr>
+    <tr><td>Meta transactions (NEP-366)</td><td>Gasless bonds — our relayer pays the fee</td></tr>
+    <tr><td>NEP-413 signed messages</td><td>Maintainers prove wallet ownership to link a repo</td></tr>
+    <tr><td>NEAR Intents 1Click</td><td>Maintainers get paid on Base, Arbitrum, Ethereum or Solana</td></tr>
+    <tr><td>Sputnik DAO / Trezu</td><td>Hand a repo's vault to a project treasury</td></tr>
+  </table>
+  <div class="foot"><span>Paths to each in the README</span><span>12</span></div>
+</section>
+
+<!-- 13. Proof -->
+<section class="slide">
+  <div class="eyebrow">Proof, not promises</div>
+  <h2>Built, tested, and live on testnet.</h2>
+  <div class="row" style="margin-top:70px">
+    <div class="card grow"><div class="stat num g">49</div><p>real testnet transactions in one end-to-end run — every money path, a gasless bond, an agent via MCP. All passed.</p></div>
+    <div class="card grow"><div class="stat num">97</div><p>automated tests: 33 contract (incl. a 50,000-case money property test), 64 TypeScript.</p></div>
+    <div class="card grow"><div class="stat num">0/15</div><p>good PRs forfeited on a labelled set of 30 real PRs. When in doubt, refund.</p></div>
+  </div>
+  <div class="row" style="margin-top:44px;flex-wrap:wrap;gap:14px">
+    <span class="pill">✓ curve on-chain = curve in the app</span><span class="pill">✓ refund · 90/10 forfeit · void</span><span class="pill">✓ review tip earned / returned</span>
+    <span class="pill">✓ slop funds the fix</span><span class="pill">✓ challenge won after a real window</span><span class="pill">✓ gasless bond: 0 NEAR spent</span>
+    <span class="pill">✓ agent key can't escape its cap</span><span class="pill">✓ no USDC created or lost</span>
+  </div>
+  <p style="font-size:26px;color:var(--ink2);margin-top:40px">Hardened against its own operator: a stolen oracle key can't redirect a vault. Threat model in SECURITY.md.</p>
+  <div class="foot"><span>docs/e2e/testnet-report.md — one explorer link per transaction</span><span>13</span></div>
+</section>
+
+<!-- 14. Ask -->
+<section class="slide" style="justify-content:center">
+  <div class="glow" style="top:-100px;left:400px"></div>
+  <img src="../../brand/patchbond-mark-transparent.svg" alt="" style="width:150px">
+  <h1 style="margin-top:44px;max-width:1500px">Make your repo's attention <span class="g">worth something.</span></h1>
+  <div class="row" style="margin-top:64px">
+    <div class="card grow"><h3 style="margin:0">Maintainers</h3><p>Install the GitHub App on one repo. Pilot with us — we'll tune the judge on your real PRs.</p></div>
+    <div class="card grow"><h3 style="margin:0">Agent builders</h3><p>Plug in the MCP server. Give your agent a wallet that can't hurt you.</p></div>
+    <div class="card grow"><h3 style="margin:0">NEAR</h3><p>Verifiable AI deciding where real money goes — in public, for open source.</p></div>
+  </div>
+  <div class="foot"><span>github.com/PatchBond/patchbond</span><span>MIT · No token</span></div>
+</section>
+
+</div>
+<div class="hint">← → to move · P to print / save as PDF</div>
+<script>
+  // Fit each 1920×1080 slide to the window width on screen; arrow keys jump between slides.
+  const slides = [...document.querySelectorAll(".slide")];
+  function fit() {
+    const s = Math.min(1, (window.innerWidth - 40) / 1920);
+    for (const el of slides) { el.style.transform = `scale(${s})`; el.style.marginBottom = `${-1080 * (1 - s)}px`; }
+  }
+  addEventListener("resize", fit); fit();
+  let i = 0;
+  addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " ") i = Math.min(slides.length - 1, i + 1);
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") i = Math.max(0, i - 1);
+    else if (e.key.toLowerCase() === "p") return print();
+    else return;
+    e.preventDefault();
+    slides[i].scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+</script>
+</body>
+</html>
