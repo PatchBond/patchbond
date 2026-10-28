@@ -154,7 +154,10 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
               <TabsTrigger value="policy"><Settings2 className="size-4" /> Bond policy</TabsTrigger>
               <TabsTrigger value="queue"><Scale className="size-4" /> Needs you</TabsTrigger>
             </TabsList>
-            <TabsContent value="vault" className="pt-4"><Withdraw repo={repo} onDone={onChange} /></TabsContent>
+            <TabsContent value="vault" className="pt-4">
+              <Withdraw repo={repo} onDone={onChange} />
+              <HandOver repo={repo} onDone={onChange} />
+            </TabsContent>
             <TabsContent value="policy" className="pt-4"><PolicyEditor repo={repo} onSaved={onChange} /></TabsContent>
             <TabsContent value="queue" className="pt-4"><Queue repo={repo} /></TabsContent>
           </Tabs>
@@ -184,7 +187,7 @@ function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => v
       const ch = await api.linkChallenge(repo.repo_id, wallet.accountId);
       const signed = await wallet.signMessage({ message: ch.message, recipient: ch.recipient, nonce: Uint8Array.from(atob(ch.nonce), (c) => c.charCodeAt(0)) });
       await api.linkConfirm({ nonce: ch.nonce, account_id: signed.accountId, public_key: signed.publicKey, signature: signed.signature });
-      toast.success(`${repo.full_name} linked to ${signed.accountId}`, { description: "Only this account can withdraw or change the policy." });
+      toast.success(`${repo.full_name} linked to ${signed.accountId}`, { description: "Only this account can withdraw, change the policy or hand it over." });
       onLinked();
     } catch (e) {
       toast.error("Not linked", { description: (e as Error).message || "The wallet closed before signing." });
@@ -192,13 +195,19 @@ function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => v
       setBusy(false);
     }
   }
+  if (payout) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="max-w-xl text-sm text-muted-foreground">
+          This repo pays out to <span className="font-mono text-ink">{payout}</span>. Connect that wallet to manage it. Only that account can hand the repo to another — not PatchBond, not anyone with our keys.
+        </p>
+        {!wallet.accountId && <Button variant="ghost" onClick={() => void wallet.connect()}>Connect {payout}</Button>}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <p className="max-w-xl text-sm text-muted-foreground">
-        {payout
-          ? <>This repo pays out to <span className="font-mono text-ink">{payout}</span>. Connect that wallet to manage it — or re-link it to the wallet you're using.</>
-          : "Link this repository to your NEAR account. You'll sign a free message in your wallet proving you control it — no transaction, no fee."}
-      </p>
+      <p className="max-w-xl text-sm text-muted-foreground">Link this repository to your NEAR account. You'll sign a free message in your wallet proving you control it — no transaction, no fee.</p>
       {wallet.accountId ? (
         <Button onClick={() => void link()} disabled={busy}>
           {busy ? <><Spinner /> Sign in your wallet…</> : <><Link2 className="size-4" /> Link to {wallet.accountId}</>}
@@ -206,6 +215,39 @@ function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => v
       ) : (
         <Button variant="ghost" onClick={() => void wallet.connect()}>Connect a NEAR wallet</Button>
       )}
+    </div>
+  );
+}
+
+function HandOver({ repo, onDone }: { repo: MaintainerRepo; onDone: () => void }) {
+  const cfg = useConfig();
+  const wallet = useWallet();
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const valid = /^[a-z0-9._-]{2,64}$/.test(to) && to !== wallet.accountId;
+  async function go() {
+    setBusy(true);
+    try {
+      const out = await wallet.call(cfg.contract, "set_payout", { repo_id: repo.repo_id, payout: to }, { deposit: "1", tgas: 30 });
+      if (out.error) toast.error("Not handed over", { description: out.error });
+      else toast.success(`${repo.full_name} now pays out to ${to}`);
+      onDone();
+    } catch (e) {
+      toast.error("Not handed over", { description: (e as Error).message || "The wallet closed before signing." });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="mt-6 border-t border-line pt-5">
+      <div className="text-sm font-medium">Hand over to another account</div>
+      <p className="mt-1 text-xs text-faint">E.g. a project DAO (Sputnik / Trezu). After this, only that account controls the vault and policy.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input value={to} onChange={(e) => setTo(e.target.value.trim())} placeholder="project.sputnik-dao.near" className="w-72 rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-brand" />
+        <Button variant="ghost" disabled={!valid || busy} onClick={() => void go()}>
+          {busy ? <Spinner /> : "Hand over"}
+        </Button>
+      </div>
     </div>
   );
 }

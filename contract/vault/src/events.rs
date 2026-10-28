@@ -131,3 +131,7 @@ pub fn budget(agent: &AccountId, owner: &AccountId, balance: u128, daily_cap: u1
 pub fn passport(agent: &AccountId, passport: &Passport) {
     emit("passport", json!({ "agent": agent, "passport": passport }));
 }
+
+pub fn paused(paused: bool) {
+    emit("paused", json!({ "paused": paused }));
+}

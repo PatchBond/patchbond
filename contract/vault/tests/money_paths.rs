@@ -391,3 +391,76 @@ async fn a_voided_deposit_frees_the_slot_for_the_real_author() -> anyhow::Result
     assert_eq!(d["status"], json!("held"));
     Ok(())
 }
+
+#[tokio::test]
+async fn a_stolen_oracle_key_cannot_redirect_a_linked_vault() -> anyhow::Result<()> {
+    let e = setup().await?;
+    e.link(REPO, &e.amaka).await?;
+    // The oracle (or whoever stole its key) tries to point the vault elsewhere.
+    let relink = e
+        .oracle
+        .call(e.pb.id(), "link_repo")
+        .args_json(json!({ "repo_id": REPO, "payout": e.bob.id() }))
+        .transact()
+        .await?;
+    assert!(failure_text(&relink).contains("already linked"), "{}", failure_text(&relink));
+    // Only the current payout account can hand it over.
+    let not_hers = e
+        .bob
+        .call(e.pb.id(), "set_payout")
+        .args_json(json!({ "repo_id": REPO, "payout": e.bob.id() }))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?;
+    assert!(failure_text(&not_hers).contains("Only the repo's current payout account"));
+    e.amaka
+        .call(e.pb.id(), "set_payout")
+        .args_json(json!({ "repo_id": REPO, "payout": e.bob.id() }))
+        .deposit(NearToken::from_yoctonear(1))
+        .transact()
+        .await?
+        .into_result()?;
+    assert_eq!(e.view("get_repo", json!({ "repo_id": REPO })).await?["payout"], json!(e.bob.id()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn pause_stops_new_money_but_never_refunds() -> anyhow::Result<()> {
+    let e = setup().await?;
+    let bond = e.quote(REPO, None).await?;
+    e.pay(&e.alice, REPO, 1, bond, json!({})).await?.into_result()?;
+
+    let stranger = e.alice.call(e.pb.id(), "set_paused").args_json(json!({ "paused": true })).transact().await?;
+    assert!(failure_text(&stranger).contains("Only the contract owner"));
+    e.owner.call(e.pb.id(), "set_paused").args_json(json!({ "paused": true })).transact().await?.into_result()?;
+
+    let blocked = e.pay(&e.alice, REPO, 2, bond, json!({})).await?;
+    assert!(failure_text(&blocked).contains("paused"), "{}", failure_text(&blocked));
+    // The existing bond still settles and refunds while paused.
+    e.settle(REPO, 1, "refund").await?.into_result()?;
+    assert_eq!(e.balance(&e.alice).await?, 100 * USDC);
+
+    e.owner.call(e.pb.id(), "set_paused").args_json(json!({ "paused": false })).transact().await?.into_result()?;
+    e.pay(&e.alice, REPO, 2, bond, json!({})).await?.into_result()?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_penny_budget_is_refused() -> anyhow::Result<()> {
+    let e = setup().await?;
+    let r = e
+        .alice
+        .call(e.ft.id(), "ft_transfer_call")
+        .args_json(json!({
+            "receiver_id": e.pb.id(), "amount": "1",
+            "msg": json!({ "action": "fund_budget", "agent": e.bob.id(), "daily_cap": "1" }).to_string(),
+        }))
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(150))
+        .transact()
+        .await?;
+    assert!(failure_text(&r).contains("at least 1.00 USDC"), "{}", failure_text(&r));
+    assert!(e.view("get_budget", json!({ "agent": e.bob.id() })).await?.is_null());
+    assert_eq!(e.balance(&e.alice).await?, 100 * USDC);
+    Ok(())
+}

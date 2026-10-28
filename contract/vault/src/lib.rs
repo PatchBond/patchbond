@@ -61,10 +61,57 @@ pub struct PatchBond {
     agent_stats: LookupMap<String, AgentStats>,
     treasury_balance: u128,
     totals: Totals,
+    /// Emergency brake on *new* money (bonds, challenges, budgets). Never blocks refunds,
+    /// settlements, withdrawals or claims.
+    paused: bool,
+}
+
+/// State layout before `paused` existed (v0.1 on testnet); read once by `migrate`.
+#[near(serializers = [borsh])]
+struct PatchBondV1 {
+    owner: AccountId,
+    oracle: AccountId,
+    treasury: AccountId,
+    token: AccountId,
+    repos: LookupMap<RepoId, Repo>,
+    deposits: LookupMap<(RepoId, Number), Deposit>,
+    reputation: LookupMap<AccountId, Reputation>,
+    bounties: LookupMap<(RepoId, Number), U128>,
+    claimable: LookupMap<AccountId, U128>,
+    budgets: LookupMap<AccountId, Budget>,
+    passports: LookupMap<AccountId, Passport>,
+    agent_stats: LookupMap<String, AgentStats>,
+    treasury_balance: u128,
+    totals: Totals,
 }
 
 #[near]
 impl PatchBond {
+    /// One-time upgrade of v0.1 state (adds `paused`). Only the contract account itself can call it,
+    /// i.e. right after a redeploy by whoever holds the contract's key.
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate() -> Self {
+        let old: PatchBondV1 = env::state_read().unwrap_or_else(|| env::panic_str("No v0.1 state to migrate"));
+        Self {
+            owner: old.owner,
+            oracle: old.oracle,
+            treasury: old.treasury,
+            token: old.token,
+            repos: old.repos,
+            deposits: old.deposits,
+            reputation: old.reputation,
+            bounties: old.bounties,
+            claimable: old.claimable,
+            budgets: old.budgets,
+            passports: old.passports,
+            agent_stats: old.agent_stats,
+            treasury_balance: old.treasury_balance,
+            totals: old.totals,
+            paused: false,
+        }
+    }
+
     #[init]
     pub fn new(owner: AccountId, oracle: AccountId, treasury: AccountId, token: AccountId) -> Self {
         Self {
@@ -82,6 +129,7 @@ impl PatchBond {
             agent_stats: LookupMap::new(StorageKey::AgentStats),
             treasury_balance: 0,
             totals: Totals::default(),
+            paused: false,
         }
     }
 
@@ -95,6 +143,14 @@ impl PatchBond {
     pub fn set_treasury(&mut self, treasury: AccountId) {
         self.assert_owner();
         self.treasury = treasury;
+    }
+
+    /// Owner: stop or resume new bonds, challenges and budget funding (incident response).
+    /// Refunds, settlements, withdrawals and claims keep working while paused.
+    pub fn set_paused(&mut self, paused: bool) {
+        self.assert_owner();
+        self.paused = paused;
+        events::paused(paused);
     }
 
     // ---------- repos ----------
@@ -124,9 +180,30 @@ impl PatchBond {
     }
 
     /// Oracle: GitHub confirmed the maintainer is an admin of `repo_id`; `payout` now controls it.
+    /// Only an unlinked repo can be linked by the oracle — so a stolen oracle key can't redirect a
+    /// vault that already has an owner. After that, only the payout account can hand it over.
     pub fn link_repo(&mut self, repo_id: RepoId, payout: AccountId) {
         self.assert_oracle();
         let repo = self.repo_mut(repo_id);
+        require!(
+            repo.payout.is_none(),
+            "This repo is already linked; only its current payout account can change it (set_payout)"
+        );
+        repo.payout = Some(payout.clone());
+        repo.linked_at = Some(env::block_timestamp_ms());
+        events::link(repo_id, &payout);
+    }
+
+    /// The current payout account hands the repo to another account (e.g. a project DAO).
+    #[payable]
+    pub fn set_payout(&mut self, repo_id: RepoId, payout: AccountId) {
+        near_sdk::assert_one_yocto();
+        let caller = env::predecessor_account_id();
+        let repo = self.repo_mut(repo_id);
+        require!(
+            repo.payout.as_ref() == Some(&caller),
+            "Only the repo's current payout account can change it"
+        );
         repo.payout = Some(payout.clone());
         repo.linked_at = Some(env::block_timestamp_ms());
         events::link(repo_id, &payout);
@@ -194,6 +271,7 @@ impl PatchBond {
 
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
         near_sdk::serde_json::json!({
+            "paused": self.paused,
             "owner": self.owner, "oracle": self.oracle, "treasury": self.treasury,
             "token": self.token, "treasury_balance": U128(self.treasury_balance),
             "treasury_fee_bps": TREASURY_FEE_BPS,

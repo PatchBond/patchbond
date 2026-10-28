@@ -25,6 +25,7 @@ impl PatchBond {
         passport: Passport,
     ) -> U128 {
         let agent = env::predecessor_account_id();
+        require!(!self.paused, "PatchBond is paused for new deposits while an incident is handled");
         require!(
             !passport.harness.is_empty() && passport.harness.len() <= 32 && passport.model.len() <= 64,
             "passport.harness must be 1–32 characters and passport.model at most 64"
@@ -127,7 +128,13 @@ impl PatchBond {
                 }
                 b
             }
-            None => Budget {
+            None => {
+                // Each budget costs the contract storage; a floor stops penny-budget griefing.
+                require!(
+                    amount >= MIN_BUDGET,
+                    format!("A new budget needs at least {} USDC; your transfer was refunded", crate::deposit::fmt_usdc(MIN_BUDGET))
+                );
+                Budget {
                 owner: owner.clone(),
                 balance: U128(amount),
                 daily_cap: daily_cap.unwrap_or_else(|| {
@@ -135,7 +142,8 @@ impl PatchBond {
                 }),
                 spent_today: U128(0),
                 day: env::block_timestamp_ms() / DAY_MS,
-            },
+                }
+            }
         };
         events::budget(&agent, &owner, b.balance.0, b.daily_cap.0);
         self.budgets.insert(agent, b);

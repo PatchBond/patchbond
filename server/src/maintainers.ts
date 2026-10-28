@@ -107,6 +107,10 @@ export function maintainerRoutes(app: Hono, d: MaintainerDeps) {
     if (!/^[a-z0-9._-]{2,64}$/.test(account_id ?? "")) return c.json({ error: "That isn't a NEAR account id." }, 400);
     const repo = (await adminRepos(cfg, s.token)).find((r) => r.repo_id === repo_id);
     if (!repo) return c.json({ error: "You're not an admin of that repository, or the PatchBond App isn't installed on it." }, 403);
+    const linked = (await d.chain.getRepo(repo_id))?.payout;
+    if (linked) {
+      return c.json({ error: `${repo.full_name} already pays out to ${linked}. Only that account can hand it over (Dashboard → Vault → Hand over).` }, 409);
+    }
     const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64");
     const message = linkMessage(repo.full_name, repo_id, account_id);
     store.saveChallenge({ nonce, session_id: s.id, repo_id, account_id, message, expires_at: Date.now() + CHALLENGE_TTL_MS });

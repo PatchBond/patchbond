@@ -1,7 +1,7 @@
 // Maintainer onboarding: GitHub sign-in → admin repos → NEP-413 wallet proof → oracle links the vault.
 // Real NEP-413 signatures; a fake GitHub and a fake chain/provider.
 
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -33,6 +33,11 @@ beforeAll(() => {
   maintainerRoutes(app, { cfg: loadConfig(), store: new Store(mkdtempSync(join(tmpdir(), "pb-m-"))), chain, provider });
 });
 afterAll(() => gh.stop());
+// Each test starts from an unlinked repo.
+beforeEach(() => {
+  const r = chain.repos.get(REPO.id);
+  if (r) r.payout = null;
+});
 
 /** A tiny cookie jar over app.request. */
 function client() {
@@ -138,4 +143,12 @@ describe("maintainer onboarding", () => {
     await req("/api/auth/github");
     expect((await req("/api/auth/github/callback?code=good&state=evil")).status).toBe(400);
   });
+});
+
+test("once linked, the oracle path can't relink — only the payout account can hand it over", async () => {
+  const req = await signIn();
+  chain.repos.get(REPO.id)!.payout = "amaka.testnet";
+  const r = await req("/api/link/challenge", post({ repo_id: REPO.id, account_id: "thief.testnet" }));
+  expect(r.status).toBe(409);
+  expect(((await r.json()) as { error: string }).error).toContain("already pays out to amaka.testnet");
 });

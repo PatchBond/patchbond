@@ -205,6 +205,8 @@ pub struct Budget {
 }
 
 pub const DAY_MS: u64 = 24 * 3600 * 1000;
+/// Smallest amount that opens a new agent budget (storage-griefing floor).
+pub const MIN_BUDGET: u128 = USDC;
 
 /// Know Your Agent: who runs this agent and on what. The transaction itself is signed by the
 /// agent account's function-call key, so the declaration is attributable.

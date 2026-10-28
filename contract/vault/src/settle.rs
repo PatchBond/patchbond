@@ -191,24 +191,8 @@ impl PatchBond {
         let (bond, tip) = (d.bond.0, d.tip.0);
         let tip_earned =
             verdict != Verdict::Void && d.reviewed_at.is_some_and(|r| r <= d.created_at + window_ms);
-        let (mut to_payer, mut to_vault, mut to_bounty, mut to_treasury) = (0, 0, 0, 0);
-        match verdict {
-            Verdict::Refund | Verdict::Void => to_payer += bond,
-            Verdict::Forfeit => {
-                to_treasury = bond * TREASURY_FEE_BPS / BPS;
-                let repo_share = bond - to_treasury;
-                if d.fixes_issue.is_some() {
-                    to_bounty = repo_share;
-                } else {
-                    to_vault = repo_share;
-                }
-            }
-        }
-        if tip_earned {
-            to_vault += tip;
-        } else {
-            to_payer += tip;
-        }
+        let Split { to_payer, to_vault, to_bounty, to_treasury } =
+            split(bond, tip, verdict, tip_earned, d.fixes_issue.is_some());
 
         // Book-keeping before any transfer, so a failed transfer can never double-pay.
         let repo = self.repo_mut(repo_id);
@@ -297,9 +281,87 @@ impl PatchBond {
     }
 }
 
+/// Where a settled bond and tip go. Pure, so the invariant "nothing created, nothing lost" is
+/// checked exhaustively in tests.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Split {
+    pub to_payer: u128,
+    pub to_vault: u128,
+    pub to_bounty: u128,
+    pub to_treasury: u128,
+}
+
+pub(crate) fn split(bond: u128, tip: u128, verdict: Verdict, tip_earned: bool, fixes_issue: bool) -> Split {
+    let mut s = Split { to_payer: 0, to_vault: 0, to_bounty: 0, to_treasury: 0 };
+    match verdict {
+        Verdict::Refund | Verdict::Void => s.to_payer += bond,
+        Verdict::Forfeit => {
+            s.to_treasury = bond * TREASURY_FEE_BPS / BPS;
+            let repo_share = bond - s.to_treasury;
+            if fixes_issue {
+                s.to_bounty = repo_share;
+            } else {
+                s.to_vault = repo_share;
+            }
+        }
+    }
+    if tip_earned {
+        s.to_vault += tip;
+    } else {
+        s.to_payer += tip;
+    }
+    s
+}
+
 fn assert_hash(h: &str) {
     require!(
         h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()),
         "verdict_hash must be a 64-character hex sha256"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Small deterministic PRNG so the property test needs no extra crates.
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0 >> 11
+        }
+    }
+
+    #[test]
+    fn the_split_never_creates_or_loses_a_unit() {
+        let mut rng = Lcg(42);
+        for _ in 0..50_000 {
+            let bond = (rng.next() % 1_000_000_000) as u128 + 1;
+            let tip = (rng.next() % 100_000_000) as u128;
+            let verdict = [Verdict::Refund, Verdict::Forfeit, Verdict::Void][(rng.next() % 3) as usize];
+            let earned = verdict != Verdict::Void && rng.next().is_multiple_of(2);
+            let issue = rng.next().is_multiple_of(2);
+            let s = split(bond, tip, verdict, earned, issue);
+            assert_eq!(s.to_payer + s.to_vault + s.to_bounty + s.to_treasury, bond + tip, "{bond} {tip} {verdict:?}");
+            match verdict {
+                Verdict::Forfeit => {
+                    assert_eq!(s.to_treasury, bond / 10);
+                    assert!(s.to_payer <= tip, "a forfeit never refunds the bond");
+                    assert_eq!(s.to_bounty > 0, issue);
+                }
+                _ => {
+                    assert_eq!(s.to_treasury, 0, "refunds pay no fee");
+                    assert!(s.to_payer >= bond, "a refund returns the whole bond");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_tip_goes_to_the_vault_only_when_earned() {
+        assert_eq!(split(2_000_000, 500_000, Verdict::Refund, true, false), Split { to_payer: 2_000_000, to_vault: 500_000, to_bounty: 0, to_treasury: 0 });
+        assert_eq!(split(2_000_000, 500_000, Verdict::Refund, false, false), Split { to_payer: 2_500_000, to_vault: 0, to_bounty: 0, to_treasury: 0 });
+        assert_eq!(split(2_000_000, 0, Verdict::Forfeit, false, true), Split { to_payer: 0, to_vault: 0, to_bounty: 1_800_000, to_treasury: 200_000 });
+    }
 }

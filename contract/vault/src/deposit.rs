@@ -22,6 +22,10 @@ impl FungibleTokenReceiver for PatchBond {
             env::predecessor_account_id() == self.token,
             format!("PatchBond only accepts {}; this token was refunded", self.token)
         );
+        require!(
+            !self.paused,
+            "PatchBond is paused for new deposits while an incident is handled; your transfer was refunded. Existing bonds are safe and refunds still work"
+        );
         let msg: TransferMsg = serde_json::from_str(&msg).unwrap_or_else(|e| {
             env::panic_str(&format!(
                 "Couldn't read the transfer msg ({e}); expected e.g. {{\"action\":\"bond\",\"repo_id\":1,\"number\":2,\"kind\":\"pr\",\"github_user\":\"octocat\"}}"

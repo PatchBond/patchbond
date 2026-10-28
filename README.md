@@ -85,8 +85,8 @@ cp .env.example .env          # defaults work: testnet, mock judge
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **50 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
-| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **28 contract tests pass**: 8 unit + 20 on a local NEAR sandbox with real token transfers (every money path, challenges, a real function-call key). |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **51 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
+| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **33 contract tests pass**: 10 unit (incl. a 50,000-case property test of the money split) + 23 on a local NEAR sandbox with real token transfers (every money path, challenges, a real function-call key, link-once, pause). |
 | 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
 | 5 | On testnet, with test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: open <http://localhost:5317/pay/1/1?repo=PatchBond/playground&user=YOUR_GITHUB_LOGIN> | Pay a real bond into the live contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet). The page shows the live quote from the on-chain curve. |
@@ -114,7 +114,7 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 
 | Part | Status |
 |---|---|
-| Vault contract: bonds, curve, refund/forfeit 90/10, void, tips, bounties, withdraw, challenges, agent budgets, reputation, NEP-297 events | ✅ Built, 28 tests, **live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), full e2e on testnet |
+| Vault contract: bonds, curve, refund/forfeit 90/10, void, tips, bounties, withdraw, challenges, agent budgets, reputation, NEP-297 events, link-once + hand-over, pause, state migration | ✅ Built, 33 tests, **live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), full e2e on testnet |
 | AI judge: facts (CI, phantom vs unresolved symbols, duplicates, linked issue, injection), prompt, server safety rules, record + verification | ✅ Built and tested |
 | NEAR AI Cloud verifiable model (`z-ai/glm-5.3-flash`) | ⚠️ Client built; **running on a clearly labelled mock judge** (dev-key signatures, every record marked `mock`) until the NEAR AI account has credits |
 | GitHub App bot: pay-link comment, check runs, deposit watch, judge after CI, settle, finalize, review → tip, merge → bounty, 14-day refund | ✅ Built, 8 scenario tests against a fake GitHub; live App being set up |
@@ -177,7 +177,10 @@ The trust boundary is stated plainly: the contract trusts our **oracle** account
 
 ## Security model
 
-- **Nobody can take a repo's vault** except its linked payout account — not the contract owner, not the oracle ([test](contract/vault/tests/money_paths.rs)).
+Full threat model, key powers and known limits: **[SECURITY.md](SECURITY.md)**.
+
+
+- **Nobody can take a repo's vault** except its linked payout account — not the contract owner, not the oracle; a stolen oracle key can't even relink a linked repo ([tests](contract/vault/tests/money_paths.rs)).
 - **Every outgoing transfer has a callback** that books the money back (vault, treasury, budget or the receiver's claimable balance) if the transfer fails. Book-keeping happens before transfers, so nothing can be paid twice.
 - **Agents hold only a function-call key** limited to `deposit_from_budget`; the contract enforces the daily cap and the budget. The MCP server checks the key on-chain and refuses full-access keys. On testnet, the e2e proves the key can't call the token or any other method.
 - **Prompt injection**: contributor text is fenced as untrusted data, our tags are neutralised, injection attempts are themselves evidence, and the output must match a strict schema.
@@ -190,9 +193,9 @@ The trust boundary is stated plainly: the contract trusts our **oracle** account
 
 | Suite | Count | Command |
 |---|---|---|
-| Contract unit tests (curve, exemption, forfeit tax) | 8 | `cd contract && cargo test -p patchbond-vault --lib` |
-| Contract sandbox tests (real NEP-141 transfers on a local NEAR node) | 20 | `cd contract && cargo test -p patchbond-vault` |
-| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub, maintainer onboarding | 33 | `cd server && bun test` |
+| Contract unit tests (curve, exemption, forfeit tax, money-split property test) | 10 | `cd contract && cargo test -p patchbond-vault --lib` |
+| Contract sandbox tests (real NEP-141 transfers on a local NEAR node) | 23 | `cd contract && cargo test -p patchbond-vault` |
+| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub, maintainer onboarding | 34 | `cd server && bun test` |
 | MCP: client, key safety, stdio protocol | 11 | `cd mcp && bun test` |
 | Shared: verification tamper tests, curve = contract values | 6 | `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 46 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
