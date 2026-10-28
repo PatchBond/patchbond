@@ -1,0 +1,23 @@
+{
+  "name": "patchbond-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "record": "bun record.ts",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts PatchBond out/patchbond.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/google-fonts": "4.0.539",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.539"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/react": "^19.3.0",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2"
+  }
+}

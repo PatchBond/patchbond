@@ -1,0 +1,104 @@
+{
+  "run": "mvsbg2u5",
+  "txs": [
+    {
+      "id": "gasless",
+      "title": "A gasless bond",
+      "hash": "4yUDk8A85exZXWSfqNncy64jwQhdVWCeNDFum55253HY",
+      "signer": "oracle-mvsbg2u5.patchbond-e2e.testnet",
+      "receiver": "gasless-mvsbg2u5.patchbond-e2e.testnet",
+      "action": "Delegate",
+      "ok": true,
+      "feeNear": 0.0007152919216493,
+      "events": [
+        {
+          "standard": "nep141",
+          "event": "ft_transfer",
+          "data": {
+            "old_owner_id": "gasless-mvsbg2u5.patchbond-e2e.testnet",
+            "new_owner_id": "vault-mvsbg2u5.patchbond-e2e.testnet",
+            "amount": "2000000"
+          }
+        },
+        {
+          "standard": "patchbond",
+          "event": "deposit",
+          "data": {
+            "repo_id": 1000001,
+            "number": 20,
+            "kind": "pr",
+            "payer": "gasless-mvsbg2u5.patchbond-e2e.testnet",
+            "github_user": "gasless-mvsbg2u5",
+            "bond": "2000000",
+            "tip": "0",
+            "open": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "forfeit",
+      "title": "Slop forfeited 90 / 10",
+      "hash": "5cgCfDQ4tqB7zbeGp4Xvvpv7BpHXxJK5Fy1WnFthfc5o",
+      "signer": "oracle-mvsbg2u5.patchbond-e2e.testnet",
+      "receiver": "vault-mvsbg2u5.patchbond-e2e.testnet",
+      "action": "FunctionCall",
+      "ok": true,
+      "feeNear": 0.0002700068265426,
+      "events": [
+        {
+          "standard": "patchbond",
+          "event": "settle",
+          "data": {
+            "repo_id": 1000001,
+            "number": 2,
+            "verdict": "forfeit",
+            "verdict_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "to_payer": "0",
+            "to_vault": "1600000",
+            "to_bounty": "0",
+            "to_treasury": "177777"
+          }
+        }
+      ]
+    },
+    {
+      "id": "agent",
+      "title": "An agent pays through MCP",
+      "hash": "FDJxaKvSGiJXTP1T43jWd3siee9Q1Nco1JTfUpJSZ8aD",
+      "signer": "agent-mvsbg2u5.patchbond-e2e.testnet",
+      "receiver": "vault-mvsbg2u5.patchbond-e2e.testnet",
+      "action": "FunctionCall",
+      "ok": true,
+      "feeNear": 0.0003453882059502,
+      "events": [
+        {
+          "standard": "patchbond",
+          "event": "passport",
+          "data": {
+            "agent": "agent-mvsbg2u5.patchbond-e2e.testnet",
+            "passport": {
+              "operator": "mike-mvsbg2u5.patchbond-e2e.testnet",
+              "harness": "claude-code",
+              "model": "claude-opus-5-5"
+            }
+          }
+        },
+        {
+          "standard": "patchbond",
+          "event": "deposit",
+          "data": {
+            "repo_id": 1000003,
+            "number": 1,
+            "kind": "pr",
+            "payer": "agent-mvsbg2u5.patchbond-e2e.testnet",
+            "github_user": "mikes-bot",
+            "bond": "1000000",
+            "tip": "0",
+            "open": 1
+          }
+        }
+      ]
+    }
+  ]
+}
