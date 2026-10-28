@@ -283,7 +283,7 @@ export class PatchBond {
   }
 
   private webUrl() {
-    return process.env.PATCHBOND_WEB ?? this.s.api.replace(/:8787$/, ":5317");
+    return process.env.PATCHBOND_WEB || this.s.api.replace(/:8787$/, ":5317");
   }
 }
 

@@ -125,15 +125,15 @@ app.post("/webhook", async (c) => {
 });
 
 // ---- One-click GitHub App creation (GitHub's manifest flow) ----
-const ORG = process.env.GITHUB_ORG ?? "PatchBond";
+const ORG = process.env.GITHUB_ORG || "PatchBond";
 
 app.get("/setup", (c) => {
   if (bot) return c.html(`<p>The GitHub App is already configured. Install it on a repo from the App's page.</p>`);
   const manifest = {
-    name: process.env.GITHUB_APP_NAME ?? "PatchBond",
+    name: process.env.GITHUB_APP_NAME || "PatchBond",
     url: cfg.webUrl,
     // Behind a tunnel (smee.io) GitHub posts to the tunnel; otherwise straight to this server.
-    hook_attributes: { url: process.env.WEBHOOK_URL ?? `${cfg.publicUrl}/webhook`, active: true },
+    hook_attributes: { url: process.env.WEBHOOK_URL || `${cfg.publicUrl}/webhook`, active: true },
     redirect_url: `${cfg.publicUrl}/setup/callback`,
     public: true,
     default_permissions: {
@@ -146,7 +146,7 @@ app.get("/setup", (c) => {
 <form method="post" action="https://github.com/organizations/${ORG}/settings/apps/new" style="max-width:480px;padding:24px">
 <h1 style="font-size:22px">Create the PatchBond GitHub App</h1>
 <p>GitHub creates the App in the <b>${ORG}</b> org with the permissions PatchBond needs, then sends you back here and the server saves its credentials to <code>.env</code>.</p>
-<p>Webhooks will go to <code>${process.env.WEBHOOK_URL ?? `${cfg.publicUrl}/webhook`}</code>.</p>
+<p>Webhooks will go to <code>${process.env.WEBHOOK_URL || `${cfg.publicUrl}/webhook`}</code>.</p>
 <input type="hidden" name="manifest" value='${JSON.stringify(manifest).replace(/'/g, "&#39;")}'>
 <button style="background:#22C55E;color:#0E1013;border:0;border-radius:10px;padding:12px 18px;font-weight:600;font-size:16px;cursor:pointer">Create on GitHub →</button>
 </form></body>`);

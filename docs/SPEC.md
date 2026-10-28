@@ -1,6 +1,6 @@
 # PatchBond — product and technical spec
 
-Status: draft, 2026-10-26. Nothing here is built yet; code starts 2026-11-01.
+Status: design spec (2026-10-26), building since 2026-10-28. What is built vs planned: see the README, "What's real".
 Items marked **VERIFY** must be checked on day 1 before we depend on them.
 
 ---
