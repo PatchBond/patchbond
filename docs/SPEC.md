@@ -78,7 +78,7 @@ When a contribution is accepted, the repo can attach a tip from its vault ("$10 
    - `refund` → deposit returned to the contributor, check ✅.
    - `forfeit` → deposit to the vault (90/10), check ❌ with reasons, PR labelled `patchbond:forfeit` (the maintainer decides whether to close).
    - `needs_human` → maintainer gets a one-click Refund / Forfeit in the PR comment or dashboard. Default after 14 days with no action: refund.
-7. The maintainer can override any verdict within 7 days (it's their repo). The override is recorded publicly next to the AI verdict.
+7. The maintainer can refund at any time. A maintainer's *forfeit* is a 48 h proposal (contract constant) that the contributor can dispute for free; a stronger model re-judges and the maintainer can't decide it; if overturned, up to one bond escrowed from the repo's vault goes to the contributor. Forfeits, disputes and overturns are public (`get_maintainer_record`), shown on the pay page before anyone pays.
 
 Issues and bug reports follow the same loop. For bug reports the judge checks: is there a reproduction, does it reference real code (files/functions exist at that commit), is it a duplicate.
 
@@ -260,7 +260,7 @@ Borrowed from optimistic rollups and UMA, applied to AI decisions:
 1. A **cheap verifiable model** (GLM-5.3-flash, ~$0.003) gives the verdict. It stands after a challenge window (72 h).
 2. Either side can **challenge by staking** (= the bond). The case is re-judged by a **stronger verifiable model** (Kimi K3) that sees both sides' statements; its signature is checked like the first.
 3. Overturned → challenger's stake back and the money moves the right way. Upheld → challenger's stake goes to the other side (contributor appeals → repo vault).
-4. Final word: the maintainer (recorded publicly, counts toward the repo's override rate).
+4. The maintainer can always refund; their own forfeit is a disputable proposal (see §3.7), recorded publicly in the repo's maintainer record.
 - Why it matters: cheap by default, expensive AI only when someone puts money on the line. Accountability of AI decisions as a market mechanism — nobody does this.
 
 ### 13.4 Slop funds the fix (small, great story)

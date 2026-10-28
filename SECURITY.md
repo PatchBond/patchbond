@@ -13,7 +13,7 @@ don't open a public issue.
 
 | Key | Can | Cannot |
 |---|---|---|
-| **Repo payout account** (the maintainer, or their DAO) | Withdraw its own vault; change its bond policy; settle its repo's deposits (final word, public); hand the repo to another account (`set_payout`) | Touch other repos; judge a challenge it raised itself |
+| **Repo payout account** (the maintainer, or their DAO) | Withdraw its own vault; change its bond policy; refund any deposit at once; *propose* a forfeit (48 h, disputable for free, re-judged); hand the repo to another account (`set_payout`) | Touch other repos; forfeit a bond on its own say-so; overrule an AI refund without a staked challenge; decide a dispute or a challenge it raised; shorten the 48 h dispute window |
 | **Oracle** (our server) | Register repos; link an **unlinked** repo after GitHub sign-in + a NEP-413 wallet proof; propose verdicts; resolve challenges; mark reviews; pay bounties to merged fixes | Withdraw any vault; relink a repo that already has a payout account; move funds to itself |
 | **Owner** | Rotate oracle and treasury; withdraw the 10% treasury balance to the treasury account; pause **new** deposits | Touch vaults, deposits, bounties, budgets or claims; block refunds or withdrawals |
 | **Agent function-call key** | Call `deposit_from_budget` on the PatchBond contract, within the budget's daily cap | Attach tokens; call any other method or contract; withdraw or raise its own budget |
@@ -36,7 +36,7 @@ don't open a public issue.
 
 ## Trust assumptions and known limits
 
-- **The oracle is trusted for GitHub facts** (who is an admin, PR state, CI results), because a contract can't read GitHub. A compromised oracle could propose wrong verdicts — mitigated by the challenge window, the maintainer's final word and the public record — but it cannot withdraw or redirect a linked vault.
+- **The oracle is trusted for GitHub facts** (who is an admin, PR state, CI results), because a contract can't read GitHub. A compromised oracle could propose wrong verdicts — mitigated by the challenge window, the maintainer's instant refund and the public record — but it cannot withdraw or redirect a linked vault.
 - **The AI verdict is independently verifiable** (TEE signature over the exact bytes, checked in the browser). Checking that signature *inside the contract* (`ecrecover`) is a planned stretch goal.
 - **Upgrades** — the contract account's key (held by the team) can redeploy the code. That is normal for a hackathon deployment and is how the v0.1 → v0.2 `migrate` ran on testnet. For a production mainnet deployment the plan is to move upgrades behind a DAO with a time lock, or remove the key.
 - **Storage** — the contract pays NEAR for storage out of its own balance; the floors above make griefing it cost more than it does.
