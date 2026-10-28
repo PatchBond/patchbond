@@ -1,0 +1,13 @@
+{
+  "network": "testnet",
+  "rpc": "https://rpc.testnet.near.org",
+  "contract": "patchbond-dev.testnet",
+  "owner": "patchbond-dev.testnet",
+  "oracle": "patchbond-oracle.testnet",
+  "treasury": "patchbond-dev.testnet",
+  "token": "3e2210e1184b45b64c8a434c0a7e7b23cc04ea7eb7a6c3c32520d03d4afcb8af",
+  "token_symbol": "USDC",
+  "token_decimals": 6,
+  "deployed_at": "2026-10-28",
+  "deploy_tx": "Azc5Frjk6bukbTKE2jueAViNJVhoqs81DDAaTHjkSiPw"
+}
