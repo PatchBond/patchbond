@@ -50,9 +50,16 @@ NEAR AI Cloud verifiable inference + signatures (judge) · NEP-141 USDC + `ft_tr
 - Submissions only 1–14 Nov; one per team; can't be edited. Prizes fixed in USD, paid in NEAR within 30 days.
 - 1Click JWT optional (0.2% fee without it; https://partners.near-intents.org).
 
-## Network decision
-- **Testnet** for the contract, GitHub App, judge, web app and MCP — everything judges reproduce.
-- **Mainnet** only for (a) the NEAR Intents cross-chain payout with tiny amounts and (b) optionally a final mainnet deploy for the hosted demo — each **only with the human's explicit go-ahead**.
+## Network decision (confirmed by the human 2026-10-28)
+- **Build and test everything on testnet first.** Testnet stays the README's "reproduce it yourself" path, so AI judges can test for free. Live testnet deploy: `deploy/testnet.json` (`patchbond-dev.testnet`, oracle `patchbond-oracle.testnet`, Circle testnet USDC).
+- **The final demo runs on mainnet**: once testnet is solid, deploy the contract to mainnet for the demo video and hosted demo, and run the NEAR Intents cross-chain payout for real with tiny amounts. **Every mainnet step (deploy, spending, signing) needs the human's explicit go-ahead at the time.**
+- Keep everything network-agnostic: account IDs, USDC contract and RPC come from `deploy/<network>.json` + env, never hardcoded.
+- Human's personal testnet tester account: `tester1604.testnet` (Meteor wallet) — a tester, not a deployer.
+
+## Submission
+- Prize address (`nearAddress`): **crypticdev.near** (exists on mainnet). Never use it for deploys or signing.
+- GitHub org: **https://github.com/PatchBond** (created by the human). Push only with the human's OK.
+- **Claude must never appear as a contributor**: no `Co-Authored-By: Claude` (or any Claude/Anthropic) trailers, author or committer — every commit is authored and committed by the repo-local identity below. Check `git log --format='%an %ce %b' | grep -i claude` is empty before any push.
 
 ## Hard rules for agents working here
 - Never, without the human's explicit confirmation: push, force-push, make the repo public, post on X, sign mainnet transactions, spend tokens, deploy to mainnet, submit the application.
