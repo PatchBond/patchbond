@@ -1,7 +1,10 @@
 // Everything PatchBond says on GitHub. Short, specific, and always says what to do next.
 
-import type { VerdictRecord } from "@patchbond/shared";
-import { usd } from "../near";
+import { formatAmount, SYMBOL, type Currency, type VerdictRecord } from "@patchbond/shared";
+
+/** "$2.00 USDC" or "0.78 NEAR" */
+export const money = (units: string, currency: Currency) =>
+  `${currency === "usdc" ? "$" : ""}${formatAmount(units, currency)} ${SYMBOL[currency]}`;
 
 export const CHECK_NAME = "PatchBond";
 export const MARKER = "<!-- patchbond -->";
@@ -11,7 +14,7 @@ export function payLink(webUrl: string, repoId: number, number: number, fullName
   return `${webUrl}/pay/${repoId}/${number}?${q}`;
 }
 
-export function depositComment(o: { author: string; bond: string; open: number; target: number; link: string; webUrl: string }) {
+export function depositComment(o: { author: string; bond: string; currency: Currency; open: number; target: number; link: string; webUrl: string }) {
   return `${MARKER}
 👋 Thanks for the contribution, @${o.author}!
 
@@ -19,7 +22,7 @@ This repository uses **PatchBond**: outside contributions carry a small **refund
 
 | | |
 |---|---|
-| **Deposit** | **$${usd(o.bond)} USDC** — the queue has ${o.open} open submission${o.open === 1 ? "" : "s"} (capacity ${o.target}); the price follows the queue |
+| **Deposit** | **${money(o.bond, o.currency)}** — the queue has ${o.open} open submission${o.open === 1 ? "" : "s"} (capacity ${o.target}); the price follows the queue |
 | **Real contribution** | Deposit back in full |
 | **Slop** | Deposit goes to the maintainers |
 

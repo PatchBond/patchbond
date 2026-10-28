@@ -8,6 +8,8 @@
   "token": "3e2210e1184b45b64c8a434c0a7e7b23cc04ea7eb7a6c3c32520d03d4afcb8af",
   "token_symbol": "USDC",
   "token_decimals": 6,
+  "wnear": "wrap.testnet",
   "deployed_at": "2026-10-28",
-  "deploy_tx": "Azc5Frjk6bukbTKE2jueAViNJVhoqs81DDAaTHjkSiPw"
+  "deploy_tx": "Azc5Frjk6bukbTKE2jueAViNJVhoqs81DDAaTHjkSiPw",
+  "upgraded_at": "2026-10-28 (v0.3: NEAR bonds)"
 }

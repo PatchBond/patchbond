@@ -76,6 +76,16 @@ describe("GitHub bot", () => {
     expect(store.submission(REPO.id, 1)?.state).toBe("awaiting_deposit");
   });
 
+  test("a repo that takes NEAR quotes its deposit in NEAR", async () => {
+    await deliver("pull_request", prOpened(1));
+    const repo = chain.repos.get(REPO.id)!;
+    chain.repos.set(REPO.id, { ...repo, currency: "near" });
+    chain.quote = async () => (78n * 10n ** 22n).toString(); // 0.78 NEAR
+    await deliver("pull_request", prOpened(2));
+    expect(comments()[1]).toContain("**0.78 NEAR**");
+    expect(comments()[1]).not.toContain("USDC");
+  });
+
   test("maintainers are exempt: a green check, no comment, no deposit", async () => {
     await deliver("pull_request", prOpened(4, "MEMBER"));
     const check = gh.posted(/\/check-runs$/)[0]!.body as { conclusion: string; output: { title: string } };

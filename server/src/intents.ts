@@ -5,8 +5,13 @@
 
 const ONE_CLICK = "https://1click.chaindefuser.com/v0";
 
-/** Mainnet USDC on NEAR (Circle), the origin of every payout. */
+/** Mainnet USDC on NEAR (Circle): the origin of a USDC vault's payout. */
 export const NEAR_USDC = "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
+/** Mainnet wNEAR: the origin of a NEAR vault's payout (swapped to USDC on the way out). */
+export const NEAR_WNEAR = "nep141:wrap.near";
+
+/** Smallest payout worth quoting, per vault currency: 0.10 USDC / 0.10 NEAR. */
+const MIN_IN = { usdc: 100_000n, near: 10n ** 23n } as const;
 
 export const CHAINS = {
   base: { name: "Base", asset: "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near", address: "evm" },
@@ -18,8 +23,10 @@ export const CHAINS = {
 export type Chain = keyof typeof CHAINS;
 
 export interface PayoutQuoteRequest {
-  /** USDC units (6 decimals). */
+  /** Units of the vault's currency (USDC: 6 decimals, NEAR: 24). */
   amount: string;
+  /** The vault's currency; USDC when omitted. The destination is always USDC. */
+  currency?: "usdc" | "near";
   chain: string;
   recipient: string;
   /** NEAR account that gets the money back if the swap can't complete. */
@@ -42,7 +49,11 @@ export class IntentsError extends Error {}
 export function validate(r: PayoutQuoteRequest): Chain {
   if (!(r.chain in CHAINS)) throw new IntentsError(`Unsupported chain "${r.chain}". Choose one of: ${Object.keys(CHAINS).join(", ")}.`);
   const chain = r.chain as Chain;
-  if (!/^\d+$/.test(r.amount) || BigInt(r.amount) < 100_000n) throw new IntentsError("The amount must be at least 0.10 USDC.");
+  const currency = r.currency ?? "usdc";
+  if (!(currency in MIN_IN)) throw new IntentsError(`Unsupported currency "${currency}". Use usdc or near.`);
+  if (!/^\d+$/.test(r.amount) || BigInt(r.amount) < MIN_IN[currency]) {
+    throw new IntentsError(`The amount must be at least 0.10 ${currency.toUpperCase()}.`);
+  }
   const ok = CHAINS[chain].address === "evm" ? /^0x[0-9a-fA-F]{40}$/.test(r.recipient) : /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(r.recipient);
   if (!ok) throw new IntentsError(`That doesn't look like a ${CHAINS[chain].name} address.`);
   if (!/^[a-z0-9._-]{2,64}$/.test(r.refund_to)) throw new IntentsError("refund_to must be a NEAR account.");
@@ -58,7 +69,7 @@ export async function dryQuote(r: PayoutQuoteRequest, http: typeof fetch = fetch
       dry: true,
       swapType: "EXACT_INPUT",
       slippageTolerance: 100,
-      originAsset: NEAR_USDC,
+      originAsset: r.currency === "near" ? NEAR_WNEAR : NEAR_USDC,
       depositType: "ORIGIN_CHAIN",
       destinationAsset: CHAINS[chain].asset,
       amount: r.amount,

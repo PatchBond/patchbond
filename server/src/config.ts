@@ -12,6 +12,8 @@ export interface Deployment {
   oracle: string;
   token: string;
   token_decimals: number;
+  /** wNEAR, for repos that take NEAR bonds. */
+  wnear?: string;
 }
 
 const ROOT = resolve(import.meta.dir, "../..");

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { curveBond, formatUsdc, parseUsdc } from "../src";
+import { curveBond, formatAmount, formatUsdc, parseAmount, parseUsdc } from "../src";
 
 const p = { base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8 };
 
@@ -21,4 +21,15 @@ describe("curve matches the contract's unit tests", () => {
     expect(parseUsdc("10")).toBe(10_000_000n);
     expect(() => parseUsdc("abc")).toThrow();
   });
+});
+
+test("NEAR amounts use 24 decimals", () => {
+  const one = 10n ** 24n;
+  expect(parseAmount("1.5", "near")).toBe(one + one / 2n);
+  expect(formatAmount(one / 10n, "near")).toBe("0.10");
+  expect(formatAmount(parseAmount("25", "near"), "near")).toBe("25.00");
+  expect(() => parseAmount("1.5 NEAR", "near")).toThrow("isn't an amount");
+  // USDC helpers are unchanged.
+  expect(parseUsdc("2.5")).toBe(2_500_000n);
+  expect(formatUsdc(780_000)).toBe("0.78");
 });

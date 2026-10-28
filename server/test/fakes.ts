@@ -106,7 +106,7 @@ export function fakeChain(repoId: number) {
     getBounty: async () => "0",
     registerRepo: async (id) => {
       log.push(`register ${id}`);
-      repos.set(id, { payout: null, policy, vault: "0", open: 0, linked_at: null, stats: { deposits: 0, refunds: 0, forfeits: 0, forfeited_total: "0", tips_earned: "0" } });
+      repos.set(id, { payout: null, policy, vault: "0", open: 0, linked_at: null, stats: { deposits: 0, refunds: 0, forfeits: 0, forfeited_total: "0", tips_earned: "0" }, currency: "usdc" });
       return undefined as never;
     },
     settle: async (r, n, verdict, hash) => {

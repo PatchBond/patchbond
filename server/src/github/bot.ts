@@ -8,7 +8,7 @@ import type { Store, Submission } from "../store";
 import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
 import { gatherPr } from "./gather";
-import { CHECK_NAME, MARKER, checkSummary, depositComment, payLink, verdictComment } from "./text";
+import { CHECK_NAME, MARKER, checkSummary, depositComment, money, payLink, verdictComment } from "./text";
 
 const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
@@ -105,7 +105,7 @@ export class Bot {
     const check = await this.check(gh, repo, pr.head.sha, "in_progress", null, checkSummary("awaiting", `Pay the refundable deposit: ${link}`));
     const { data: comment } = await gh.rest.issues.createComment({
       owner: repo.owner.login, repo: repo.name, issue_number: pr.number,
-      body: depositComment({ author, bond, open: onChain.open, target: onChain.policy.target_open, link, webUrl: this.cfg.webUrl }),
+      body: depositComment({ author, bond, currency: onChain.currency ?? "usdc", open: onChain.open, target: onChain.policy.target_open, link, webUrl: this.cfg.webUrl }),
     });
     this.store.upsertSubmission({ ...base, check_run_id: check, comment_id: comment.id, state: "awaiting_deposit" });
     this.log(`asked ${author} for a deposit on ${repo.full_name}#${pr.number}`);
@@ -178,7 +178,8 @@ export class Bot {
     }
     this.store.linkGithub(s.author, d.payer);
     this.store.setState(s.repo_id, s.number, "deposit_received", { deposit_seen_at: Date.now() });
-    await this.updateCheck(gh, s, "in_progress", null, checkSummary("received", `Deposit of ${Number(d.bond) / 1e6} USDC from ${d.payer}. The AI judge runs once CI finishes.`));
+    const currency = (await this.chain.getRepo(s.repo_id))?.currency ?? "usdc";
+    await this.updateCheck(gh, s, "in_progress", null, checkSummary("received", `Deposit of ${money(d.bond, currency)} from ${d.payer}. The AI judge runs once CI finishes.`));
     this.log(`deposit received for ${s.full_name}#${s.number} from ${d.payer}`);
   }
 

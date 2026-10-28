@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CHAINS, dryQuote, NEAR_USDC, validate } from "../src/intents";
+import { CHAINS, dryQuote, NEAR_USDC, NEAR_WNEAR, validate } from "../src/intents";
 
 const ok = { amount: "5000000", chain: "base", recipient: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", refund_to: "amaka.near" };
 
@@ -23,6 +23,18 @@ describe("NEAR Intents payout quotes", () => {
     expect(sent.originAsset).toBe(NEAR_USDC);
     expect(sent.destinationAsset).toBe(CHAINS.base.asset);
     expect(q).toMatchObject({ dry: true, chain: "Base", amount_out: "4996590", seconds: 22 });
+  });
+
+  test("a NEAR vault swaps wNEAR into USDC on the chosen chain", async () => {
+    let sent: Record<string, unknown> = {};
+    const fake = (async (_url: string, init: RequestInit) => {
+      sent = JSON.parse(String(init.body));
+      return Response.json({ signature: "ed25519:x", quote: { amountIn: "1", amountOut: "1", minAmountOut: "1", timeEstimate: 30 } });
+    }) as unknown as typeof fetch;
+    expect(() => validate({ ...ok, currency: "near", amount: "5000000" })).toThrow("at least 0.10 NEAR");
+    await dryQuote({ ...ok, currency: "near", amount: (2n * 10n ** 24n).toString() }, fake);
+    expect(sent.originAsset).toBe(NEAR_WNEAR);
+    expect(sent.destinationAsset).toBe(CHAINS.base.asset);
   });
 
   test("a 1Click error is passed on in plain words", async () => {

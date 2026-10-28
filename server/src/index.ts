@@ -35,6 +35,7 @@ app.get("/api/config", (c) =>
     rpc: cfg.deployment.rpc,
     contract: cfg.deployment.contract,
     token: cfg.deployment.token,
+    wnear: cfg.deployment.wnear ?? null,
     oracle: cfg.deployment.oracle,
     judge: { model: inference.model, mock: inference.mock, ...(inference instanceof MockInference ? { mock_signing_address: inference.signingAddress } : {}) },
     github: {

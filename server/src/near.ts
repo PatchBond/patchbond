@@ -1,5 +1,6 @@
 // The vault contract, from the oracle's side: views for anyone, calls signed with the oracle key.
 
+import type { Currency } from "@patchbond/shared";
 import { Account, JsonRpcProvider, type KeyPairString } from "near-api-js";
 import type { Config } from "./config";
 
@@ -23,6 +24,8 @@ export interface Repo {
   open: number;
   linked_at: number | null;
   stats: { deposits: number; refunds: number; forfeits: number; forfeited_total: string; tips_earned: string };
+  /** What bonds, tips and the vault are in. */
+  currency: Currency;
 }
 
 export type DepositStatus =
@@ -100,9 +103,3 @@ export class Chain {
     this.call("resolve_challenge", { repo_id, number, verdict, verdict_hash }, 200n);
 }
 
-/** 2_500_000 → "2.50" (USDC, 6 decimals) */
-export function usd(units: string | bigint | number): string {
-  const n = BigInt(units);
-  const cents = (n + 5_000n) / 10_000n;
-  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, "0")}`;
-}
