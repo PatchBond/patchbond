@@ -1,7 +1,12 @@
 import { formatUsdc, verifyRecord, type Check, type VerdictRecord } from "@patchbond/shared";
+import { ShieldCheck } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Scramble } from "../components/fx";
+import { Seal, type SealState } from "../components/Seal";
 import { useParams } from "react-router";
-import { Button, Eyebrow, Hash, Notice, Panel, Spinner, VERDICT_STYLE, VerdictBadge } from "../components/ui";
+import { Button, Eyebrow, Hash, Notice, Panel, Spinner, VERDICT_STYLE, VerdictBadge } from "../components/kit";
 import { api, chain, explorerTx, type Deposit, type Repo } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
@@ -10,7 +15,7 @@ import { useWallet } from "../lib/wallet";
 export function VerdictPage() {
   const { id = "" } = useParams();
   const { data: r, error, loading } = useAsync(() => api.verdict(id), [id]);
-  if (loading) return <div className="grid min-h-[50vh] place-items-center text-muted"><Spinner /></div>;
+  if (loading) return <div className="grid min-h-[50vh] place-items-center text-muted-foreground"><Spinner /></div>;
   if (error || !r) return <div className="mx-auto max-w-xl px-4 py-24"><Notice tone="error" title="Verdict not found">{error}</Notice></div>;
   return <Verdict r={r} />;
 }
@@ -30,7 +35,7 @@ function Verdict({ r }: { r: VerdictRecord }) {
       )}
 
       <div className="animate-rise">
-        <a href={ghUrl} target="_blank" rel="noreferrer" className="text-sm text-muted hover:text-ink">
+        <a href={ghUrl} target="_blank" rel="noreferrer" className="text-sm text-muted-foreground hover:text-ink">
           {r.repo.full_name} <span className="text-faint">#{r.number}</span> · by @{r.author} ↗
         </a>
         <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -61,11 +66,11 @@ function Verdict({ r }: { r: VerdictRecord }) {
                 <ul className="mt-3 space-y-2">
                   {r.final.evidence.map((e, i) => (
                     <li key={i} className="rounded-lg border border-line bg-bg px-3 py-2 text-sm">
-                      <span className="font-mono text-xs text-accent">
+                      <span className="font-mono text-xs text-brand">
                         {e.file}
                         {e.line ? `:${e.line}` : ""}
                       </span>
-                      <div className="mt-0.5 text-muted">{e.note}</div>
+                      <div className="mt-0.5 text-muted-foreground">{e.note}</div>
                     </li>
                   ))}
                 </ul>
@@ -83,11 +88,12 @@ function Verdict({ r }: { r: VerdictRecord }) {
           <Facts r={r} />
           <VerifyPanel r={r} />
           <RawBytes r={r} />
+          <Appeals r={r} />
         </div>
 
         <div className="space-y-6">
           <OnChain r={r} />
-          <Panel className="p-5 text-sm leading-relaxed text-muted">
+          <Panel className="p-5 text-sm leading-relaxed text-muted-foreground">
             <Eyebrow>Why you can trust this</Eyebrow>
             <p className="mt-3">
               The model ran inside a trusted execution environment on NEAR AI Cloud. The enclave signed <span className="font-mono text-ink">model:sha256(request):sha256(response)</span>. This page
@@ -105,7 +111,7 @@ function Verdict({ r }: { r: VerdictRecord }) {
 
 function ConfidenceBar({ value }: { value: number }) {
   return (
-    <div className="flex items-center gap-2 text-sm text-muted" title="Model confidence">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground" title="Model confidence">
       <div className="h-1.5 w-28 overflow-hidden rounded-full bg-raised">
         <div className="h-full rounded-full bg-ink/70" style={{ width: `${Math.round(value * 100)}%` }} />
       </div>
@@ -127,7 +133,7 @@ function Facts({ r }: { r: VerdictRecord }) {
     ["Size", `${f.files_changed} files · +${f.additions} −${f.deletions}`, "meh"],
     ["Author", f.author_reputation, f.author_reputation === "has_forfeits" ? "bad" : f.author_reputation === "proven" ? "ok" : "meh"],
   ];
-  const dot = { ok: "bg-accent", bad: "bg-danger", meh: "bg-faint" };
+  const dot = { ok: "bg-brand", bad: "bg-danger", meh: "bg-faint" };
   return (
     <Panel className="p-6">
       <Eyebrow>Facts the server computed (the model can't invent these)</Eyebrow>
@@ -153,47 +159,77 @@ function VerifyPanel({ r }: { r: VerdictRecord }) {
 
   async function run() {
     setRunning(true);
+    setChecks(null);
     setShown(0);
     const c = await verifyRecord(r);
     setChecks(c);
     for (let i = 1; i <= c.length; i++) {
-      await new Promise((ok) => setTimeout(ok, 260));
+      await new Promise((ok) => setTimeout(ok, 420));
       setShown(i);
     }
     setRunning(false);
+    if (c.every((x) => x.ok)) toast.success("Verified in your browser", { description: "Bytes, signer and on-chain hash all match." });
+    else toast.error("This record doesn't match its signature", { description: "Don't trust it." });
   }
-  const allOk = checks && shown === checks.length && checks.every((c) => c.ok);
-  const failed = checks && shown === checks.length && checks.some((c) => !c.ok);
+  const done = checks && shown === checks.length;
+  const allOk = done && checks.every((c) => c.ok);
+  const state: SealState = running ? "checking" : done ? (allOk ? "ok" : "bad") : "idle";
 
   return (
-    <Panel className={`p-6 transition ${allOk ? "border-accent/50" : failed ? "border-danger/50" : ""}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <Panel className={`relative overflow-hidden p-6 transition-colors duration-500 ${allOk ? "border-brand/50" : done ? "border-danger/50" : ""}`}>
+      {allOk && <motion.div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-brand/15 blur-3xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} />}
+      <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
+        <Seal state={state} size={132} mock={r.mock} />
+        <div className="flex-1">
           <Eyebrow>Verify it yourself</Eyebrow>
-          <p className="mt-1 text-sm text-muted">Runs in your browser. Nothing is sent anywhere.</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            Recomputes both SHA-256 hashes from the exact bytes, recovers the signer from the signature, and matches the hash posted on-chain. Runs in your browser — nothing is sent anywhere.
+          </p>
+          <Button onClick={() => void run()} disabled={running} className={`mt-4 ${checks ? "" : "animate-pulse-ring"}`}>
+            {running ? <><Spinner /> Checking…</> : checks ? "Run again" : <><ShieldCheck className="size-4" /> Verify signature</>}
+          </Button>
         </div>
-        <Button onClick={() => void run()} disabled={running} className={checks ? "" : "animate-pulse-ring"}>
-          {running ? <><Spinner /> Checking…</> : checks ? "Run again" : "Verify signature"}
-        </Button>
       </div>
       {checks && (
-        <ol className="mt-5 space-y-2">
-          {checks.slice(0, shown).map((c) => (
-            <li key={c.name} className="flex gap-3 rounded-lg border border-line bg-bg px-3 py-2.5">
-              <span className={`animate-tick mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-xs font-bold ${c.ok ? "bg-accent text-accent-ink" : "bg-danger text-bg"}`}>
-                {c.ok ? "✓" : "×"}
-              </span>
-              <div className="min-w-0">
-                <div className="text-sm font-medium">{c.name}</div>
-                <div className="truncate font-mono text-xs text-faint">{c.detail}</div>
-              </div>
-            </li>
-          ))}
+        <ol className="relative mt-6 space-y-2">
+          {checks.map((c, i) => {
+            const visible = i < shown;
+            const active = i === shown && running;
+            return (
+              <motion.li
+                key={c.name}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: visible || active ? 1 : 0.35, y: 0 }}
+                className="flex gap-3 rounded-xl border border-line bg-bg px-3 py-2.5"
+              >
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center">
+                  {visible ? (
+                    <motion.span
+                      initial={{ scale: 0, rotate: -45 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                      className={`grid size-5 place-items-center rounded-full text-xs font-bold ${c.ok ? "bg-brand text-brand-ink" : "bg-danger text-bg"}`}
+                    >
+                      {c.ok ? "✓" : "×"}
+                    </motion.span>
+                  ) : active ? (
+                    <Spinner className="size-3.5 text-faint" />
+                  ) : (
+                    <span className="size-2 rounded-full bg-line" />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">{c.name}</div>
+                  <Scramble text={c.detail} active={active} className="block truncate font-mono text-xs text-faint" />
+                </div>
+              </motion.li>
+            );
+          })}
         </ol>
       )}
       {allOk && (
-        <div className="animate-rise mt-4 text-sm text-accent">
-          ✓ Untouched. {r.mock ? "Signed by the dev key " : "Signed by enclave key "}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="relative mt-4 text-sm text-brand">
+          ✓ Untouched. Signed by {r.mock ? "the dev key " : "the enclave key "}
           <span className="font-mono">{r.signature.signing_address.slice(0, 10)}…</span>
           {!r.mock && (
             <>
@@ -204,9 +240,8 @@ function VerifyPanel({ r }: { r: VerdictRecord }) {
               .
             </>
           )}
-        </div>
+        </motion.div>
       )}
-      {failed && <div className="animate-rise mt-4 text-sm text-danger">This record doesn't match its signature. Don't trust it.</div>}
     </Panel>
   );
 }
@@ -229,7 +264,7 @@ function RawBytes({ r }: { r: VerdictRecord }) {
     <Panel className="p-6">
       <Eyebrow>Exact bytes</Eyebrow>
       <dl className="mt-3 grid gap-2 text-sm">
-        <Row k="Signed text"><span className="break-all font-mono text-xs text-muted">{r.signature.text}</span></Row>
+        <Row k="Signed text"><span className="break-all font-mono text-xs text-muted-foreground">{r.signature.text}</span></Row>
         <Row k="Signature"><Hash value={r.signature.signature} label="signature" /></Row>
         <Row k="Signer"><Hash value={r.signature.signing_address} label="signing address" /></Row>
         <Row k="Chat id"><Hash value={r.chat_id} label="chat id" /></Row>
@@ -237,15 +272,15 @@ function RawBytes({ r }: { r: VerdictRecord }) {
       </dl>
       {(["request_body", "response_body"] as const).map((k) => (
         <details key={k} className="group mt-4 rounded-lg border border-line">
-          <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm text-muted hover:text-ink">
+          <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm text-muted-foreground hover:text-ink">
             {k === "request_body" ? "Request sent to the model" : "Response from the model"}
             <span className="text-xs text-faint">{(r[k].length / 1024).toFixed(1)} KB</span>
           </summary>
           <div className="border-t border-line p-3">
-            <button onClick={() => download(`${r.id}-${k === "request_body" ? "request" : "response"}.json`, r[k])} className="mb-2 text-xs text-accent hover:underline">
+            <button onClick={() => download(`${r.id}-${k === "request_body" ? "request" : "response"}.json`, r[k])} className="mb-2 text-xs text-brand hover:underline">
               Download exact bytes
             </button>
-            <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted">{pretty(r[k])}</pre>
+            <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">{pretty(r[k])}</pre>
           </div>
         </details>
       ))}
@@ -281,6 +316,8 @@ function OnChain({ r }: { r: VerdictRecord }) {
     try {
       const out = await f();
       setResult(out.error ? { tone: "error", text: out.error, hash: out.hash } : { tone: "ok", text: `${label}: done.`, hash: out.hash });
+      if (out.error) toast.error(`${label} failed`, { description: out.error });
+      else toast.success(`${label}: confirmed on-chain`);
       reload();
     } catch (e) {
       setResult({ tone: "error", text: (e as Error).message || "The wallet rejected the request." });
@@ -294,7 +331,7 @@ function OnChain({ r }: { r: VerdictRecord }) {
     return (
       <Panel className="p-5">
         <Eyebrow>On-chain</Eyebrow>
-        <p className="mt-3 text-sm text-muted">No deposit for this {r.kind === "pr" ? "PR" : "issue"} on {cfg.network}. This verdict is a demo judgement — nothing was settled.</p>
+        <p className="mt-3 text-sm text-muted-foreground">No deposit for this {r.kind === "pr" ? "PR" : "issue"} on {cfg.network}. This verdict is a demo judgement — nothing was settled.</p>
       </Panel>
     );
   }
@@ -309,15 +346,15 @@ function OnChain({ r }: { r: VerdictRecord }) {
       <Eyebrow>On-chain · {cfg.network}</Eyebrow>
       <div className="mt-3 flex items-baseline justify-between">
         <span className="num text-3xl font-semibold">${formatUsdc(deposit.bond)}</span>
-        <span className="text-sm text-muted">bond{deposit.tip !== "0" ? ` + $${formatUsdc(deposit.tip)} tip` : ""}</span>
+        <span className="text-sm text-muted-foreground">bond{deposit.tip !== "0" ? ` + $${formatUsdc(deposit.tip)} tip` : ""}</span>
       </div>
       <div className="mt-1 text-xs text-faint">paid by <span className="font-mono">{deposit.payer}</span></div>
       <div className="mt-4 rounded-lg border border-line bg-bg px-3 py-2.5 text-sm">
         <div className="font-medium">{status.title}</div>
-        <div className="mt-0.5 text-muted">{status.detail}</div>
+        <div className="mt-0.5 text-muted-foreground">{status.detail}</div>
       </div>
       {deposit.verdict_hash && (
-        <div className={`mt-3 text-xs ${hashMatches ? "text-accent" : "text-warn"}`}>
+        <div className={`mt-3 text-xs ${hashMatches ? "text-brand" : "text-warn"}`}>
           {hashMatches ? "✓ On-chain hash matches this verdict" : "On-chain hash is from a different verdict (e.g. a maintainer override or re-judge)"}
         </div>
       )}
@@ -358,7 +395,7 @@ function OnChain({ r }: { r: VerdictRecord }) {
           </Button>
         )}
       </div>
-      {busy && <div className="mt-3 flex items-center gap-2 text-sm text-muted"><Spinner /> {busy}: confirm in your wallet…</div>}
+      {busy && <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Spinner /> {busy}: confirm in your wallet…</div>}
       {result && (
         <div className="mt-3">
           <Notice tone={result.tone}>
@@ -426,4 +463,56 @@ function fmtDuration(ms: number) {
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   return h > 0 ? `${h} h ${m} min` : `${m} min ${Math.floor((ms % 60_000) / 1000)} s`;
+}
+
+function Appeals({ r }: { r: VerdictRecord }) {
+  const wallet = useWallet();
+  const { data, reload } = useAsync(() => api.appeals(r.id), [r.id]);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function send() {
+    setBusy(true);
+    try {
+      await api.appeal(r.id, note.trim(), wallet.accountId ?? "anonymous");
+      setNote("");
+      toast.success("Appeal attached", { description: "The maintainer sees it next to this verdict." });
+      reload();
+    } catch (e) {
+      toast.error("Not sent", { description: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Panel className="p-6">
+      <Eyebrow>Appeals</Eyebrow>
+      <p className="mt-1.5 text-sm text-muted-foreground">Think the judge got it wrong? Say exactly what it misread — file and line. To force a re-judge by a stronger model, stake a challenge in the on-chain panel.</p>
+      {!!data?.length && (
+        <ul className="mt-4 space-y-2">
+          {data.map((a, i) => (
+            <li key={i} className="rounded-xl border border-line bg-bg px-3 py-2.5 text-sm">
+              <div className="flex justify-between text-xs text-faint">
+                <span className="font-mono">{a.author}</span>
+                <span>{new Date(a.created_at).toLocaleString()}</span>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap">{a.note}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        rows={3}
+        placeholder="e.g. parse_with_validation() is defined in src/validate.c:40 on the base branch — the judge missed it."
+        className="mt-4 w-full resize-y rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-faint focus:border-brand"
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <span className="text-xs text-faint">{note.trim().length}/2000 · at least 10 characters</span>
+        <Button variant="ghost" disabled={busy || note.trim().length < 10} onClick={() => void send()}>
+          {busy ? <Spinner /> : "Attach appeal"}
+        </Button>
+      </div>
+    </Panel>
+  );
 }

@@ -12,7 +12,7 @@ import { VerdictPage } from "./pages/Verdict";
 import { RepoPage } from "./pages/Repo";
 import { Agents } from "./pages/Agents";
 import { NotFound } from "./pages/NotFound";
-import { Notice, Spinner } from "./components/ui";
+import { Notice, Spinner } from "./components/kit";
 import { ConfigContext } from "./lib/config";
 
 function App() {
@@ -28,7 +28,7 @@ function App() {
   }
   if (!cfg) {
     return (
-      <div className="grid min-h-screen place-items-center text-muted">
+      <div className="grid min-h-screen place-items-center text-muted-foreground">
         <Spinner />
       </div>
     );

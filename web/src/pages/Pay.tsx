@@ -2,7 +2,7 @@ import { formatUsdc, parseUsdc } from "@patchbond/shared";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
-import { Button, Eyebrow, Notice, Panel, Spinner } from "../components/ui";
+import { Button, Eyebrow, Notice, Panel, Spinner } from "../components/kit";
 import { chain, explorerTx } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
@@ -86,7 +86,7 @@ export function Pay() {
           {fullName}
           <span className="text-faint">#{number}</span>
         </h1>
-        <p className="mt-3 leading-relaxed text-muted">
+        <p className="mt-3 leading-relaxed text-muted-foreground">
           This repository asks outside contributors for a small refundable deposit so maintainers' time goes to real work. If your pull request is a real contribution, you get{" "}
           <b className="text-ink">every cent back</b>.
         </p>
@@ -97,10 +97,10 @@ export function Pay() {
             ["Real work → refunded", "Automatically, to the wallet you paid from. Disagree with a verdict? Challenge it."],
           ].map(([t, b], i) => (
             <li key={t} className="flex gap-3">
-              <span className="num grid size-6 shrink-0 place-items-center rounded-full bg-raised text-xs font-semibold text-muted">{i + 1}</span>
+              <span className="num grid size-6 shrink-0 place-items-center rounded-full bg-raised text-xs font-semibold text-muted-foreground">{i + 1}</span>
               <div>
                 <div className="font-medium">{t}</div>
-                <div className="text-muted">{b}</div>
+                <div className="text-muted-foreground">{b}</div>
               </div>
             </li>
           ))}
@@ -115,13 +115,13 @@ export function Pay() {
           <Notice tone="info" title="Already judged">This submission's deposit is settled. See the verdict on the pull request.</Notice>
         ) : deposit && !(typeof deposit.status === "object" && "settled" in deposit.status) ? (
           <div className="text-center">
-            <div className="mx-auto grid size-14 place-items-center rounded-full bg-accent-soft text-2xl text-accent">✓</div>
+            <div className="mx-auto grid size-14 place-items-center rounded-full bg-brand-soft text-2xl text-brand">✓</div>
             <h2 className="mt-4 text-xl font-semibold">Deposit held</h2>
-            <p className="mt-2 text-sm text-muted">
+            <p className="mt-2 text-sm text-muted-foreground">
               ${formatUsdc(deposit.bond)} from <span className="font-mono">{deposit.payer}</span>. The judge runs after CI; the verdict appears on the pull request.
             </p>
             {result?.hash && (
-              <a className="mt-4 inline-block text-sm text-accent underline" href={explorerTx(cfg, result.hash)} target="_blank" rel="noreferrer">
+              <a className="mt-4 inline-block text-sm text-brand underline" href={explorerTx(cfg, result.hash)} target="_blank" rel="noreferrer">
                 View transaction
               </a>
             )}
@@ -131,7 +131,7 @@ export function Pay() {
         ) : (
           <>
             <div className="flex items-baseline justify-between">
-              <span className="text-sm text-muted">Deposit</span>
+              <span className="text-sm text-muted-foreground">Deposit</span>
               <span className="num text-4xl font-semibold tracking-tight">${formatUsdc(bond + tip)}</span>
             </div>
             {bond === 0n && wallet.accountId && (
@@ -139,30 +139,30 @@ export function Pay() {
             )}
 
             <label className="mt-6 block text-sm">
-              <span className="text-muted">Your GitHub username</span>
+              <span className="text-muted-foreground">Your GitHub username</span>
               <input
                 value={githubUser}
                 onChange={(e) => setGithubUser(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-line bg-bg px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
+                className="mt-1.5 w-full rounded-xl border border-line bg-bg px-3 py-2.5 font-mono text-sm outline-none focus:border-brand"
                 placeholder="octocat"
               />
               <span className="mt-1 block text-xs text-faint">Must be the PR's author — a deposit paid for someone else's PR is refunded.</span>
             </label>
 
             <details className="mt-4 rounded-xl border border-line">
-              <summary className="cursor-pointer px-3 py-2.5 text-sm text-muted hover:text-ink">Optional: priority tip, linked issue</summary>
+              <summary className="cursor-pointer px-3 py-2.5 text-sm text-muted-foreground hover:text-ink">Optional: priority tip, linked issue</summary>
               <div className="space-y-4 border-t border-line p-3">
                 <label className="block text-sm">
-                  <span className="text-muted">Review tip (USDC)</span>
-                  <input value={tipText} onChange={(e) => setTipText(e.target.value)} inputMode="decimal" placeholder="0.00" className="mt-1.5 w-full rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-accent" />
+                  <span className="text-muted-foreground">Review tip (USDC)</span>
+                  <input value={tipText} onChange={(e) => setTipText(e.target.value)} inputMode="decimal" placeholder="0.00" className="mt-1.5 w-full rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-brand" />
                   <span className="mt-1 block text-xs text-faint">
                     The repo earns it only if a maintainer reviews within {Math.round(repo.policy.review_window_sec / 3600)} h. Otherwise it comes back to you.
                   </span>
                   {tipError && <span className="mt-1 block text-xs text-danger">{tipError}</span>}
                 </label>
                 <label className="block text-sm">
-                  <span className="text-muted">Fixes issue #</span>
-                  <input value={fixes} onChange={(e) => setFixes(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="e.g. 42" className="mt-1.5 w-full rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-accent" />
+                  <span className="text-muted-foreground">Fixes issue #</span>
+                  <input value={fixes} onChange={(e) => setFixes(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="e.g. 42" className="mt-1.5 w-full rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-brand" />
                   <span className="mt-1 block text-xs text-faint">If this PR is judged slop, its deposit becomes a bounty for whoever really fixes that issue.</span>
                 </label>
               </div>

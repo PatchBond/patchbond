@@ -1,7 +1,7 @@
 import { formatUsdc } from "@patchbond/shared";
 import { Link, useParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
-import { Eyebrow, Notice, Panel, Spinner, Stat, VerdictBadge } from "../components/ui";
+import { Eyebrow, Notice, Panel, Spinner, Stat, VerdictBadge } from "../components/kit";
 import { api, chain } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
@@ -18,7 +18,7 @@ export function RepoPage() {
     <div className="mx-auto max-w-5xl px-4 py-12">
       <Eyebrow>Repository</Eyebrow>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">{name}</h1>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-sm text-muted-foreground">
         {repo.payout ? <>Payouts to <span className="font-mono">{repo.payout}</span></> : "No payout account linked yet — forfeits wait safely in the vault."}
         {!repo.policy.enabled && " · PatchBond is off"}
       </p>
@@ -36,12 +36,12 @@ export function RepoPage() {
         </Panel>
       </div>
       <Panel className="mt-6 divide-y divide-line">
-        {verdicts?.length === 0 && <div className="p-6 text-sm text-muted">No verdicts yet.</div>}
+        {verdicts?.length === 0 && <div className="p-6 text-sm text-muted-foreground">No verdicts yet.</div>}
         {verdicts?.map((v) => (
           <Link key={v.id} to={`/v/${v.id}`} className="flex items-center gap-4 px-5 py-4 hover:bg-raised/60">
             <VerdictBadge verdict={v.final.verdict} />
             <span className="text-faint">#{v.number}</span>
-            <span className="min-w-0 flex-1 truncate text-sm text-muted">{v.final.reasons[0]}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{v.final.reasons[0]}</span>
           </Link>
         ))}
       </Panel>

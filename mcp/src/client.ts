@@ -92,13 +92,17 @@ export class PatchBond {
     const agent = this.requireAgent();
     const cfg = await this.config();
     const pub = KeyPair.fromString(agent.key as KeyPairString).getPublicKey().toString();
-    const res = await this.http(cfg.rpc, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_access_key", finality: "final", account_id: agent.accountId, public_key: pub } }),
-    });
-    const body = (await res.json()) as { result?: { permission: unknown }; error?: unknown };
-    const perm = body.result?.permission;
+    // A key added moments ago may not be visible yet: look at the latest block and retry briefly.
+    let perm: unknown;
+    for (let attempt = 0; attempt < 4 && !perm; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 1000 * attempt));
+      const res = await this.http(cfg.rpc, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_access_key", finality: "optimistic", account_id: agent.accountId, public_key: pub } }),
+      });
+      perm = ((await res.json()) as { result?: { permission: unknown } }).result?.permission;
+    }
     if (!perm) throw new PatchBondError(`The key in PATCHBOND_AGENT_KEY isn't on ${agent.accountId}. Add it as a function-call key first.`);
     if (perm === "FullAccess") {
       throw new PatchBondError(

@@ -14,13 +14,13 @@ export function Mark({ size = 28, className = "" }: { size?: number; className?:
       </g>
       <circle cx="178" cy="140" r="36" fill="none" stroke="currentColor" strokeWidth="28" />
       <circle cx="178" cy="372" r="36" fill="none" stroke="currentColor" strokeWidth="28" />
-      <circle cx="340" cy="238" r="80" fill="var(--accent)" />
-      <g stroke="var(--accent-ink)" strokeWidth="5" opacity="0.4">
+      <circle cx="340" cy="238" r="80" fill="var(--brand)" />
+      <g stroke="var(--brand-ink)" strokeWidth="5" opacity="0.4">
         {ridges.map(([x1, y1, x2, y2], i) => (
           <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />
         ))}
       </g>
-      <path d="M313 240 L333 260 L369 222" fill="none" stroke="var(--accent-ink)" strokeWidth="22" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M313 240 L333 260 L369 222" fill="none" stroke="var(--brand-ink)" strokeWidth="22" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -29,10 +29,10 @@ type Variant = "primary" | "ghost" | "danger" | "quiet";
 
 export function Button({ variant = "primary", className = "", children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   const styles: Record<Variant, string> = {
-    primary: "bg-accent text-accent-ink hover:brightness-110 shadow-[0_1px_0_rgba(255,255,255,.15)_inset]",
+    primary: "bg-brand text-brand-ink hover:brightness-110 shadow-[0_1px_0_rgba(255,255,255,.15)_inset]",
     ghost: "border border-line text-ink hover:bg-raised",
     danger: "border border-danger/40 text-danger hover:bg-danger-soft",
-    quiet: "text-muted hover:text-ink",
+    quiet: "text-muted-foreground hover:text-ink",
   };
   return (
     <button
@@ -57,16 +57,16 @@ export function Notice({ tone = "info", title, children }: { tone?: "info" | "wa
     info: "border-line bg-raised text-ink",
     warn: "border-warn/30 bg-warn-soft text-ink",
     error: "border-danger/30 bg-danger-soft text-ink",
-    ok: "border-accent/30 bg-accent-soft text-ink",
+    ok: "border-brand/30 bg-brand-soft text-ink",
   }[tone];
   const icon = { info: "ℹ", warn: "!", error: "×", ok: "✓" }[tone];
-  const iconTone = { info: "text-muted", warn: "text-warn", error: "text-danger", ok: "text-accent" }[tone];
+  const iconTone = { info: "text-muted-foreground", warn: "text-warn", error: "text-danger", ok: "text-brand" }[tone];
   return (
     <div role={tone === "error" ? "alert" : "status"} className={`flex gap-3 rounded-xl border px-4 py-3 text-sm ${t}`}>
       <span className={`mt-px font-bold ${iconTone}`}>{icon}</span>
       <div className="min-w-0">
         {title && <div className="font-semibold">{title}</div>}
-        <div className="text-muted [&_a]:text-accent [&_a]:underline">{children}</div>
+        <div className="text-muted-foreground [&_a]:text-brand [&_a]:underline">{children}</div>
       </div>
     </div>
   );
@@ -84,7 +84,7 @@ export function Hash({ value, chars = 10, label }: { value: string; chars?: numb
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       }}
-      className="font-mono text-xs text-muted hover:text-ink"
+      className="font-mono text-xs text-muted-foreground hover:text-ink"
     >
       {copied ? "copied ✓" : short}
     </button>
@@ -92,10 +92,10 @@ export function Hash({ value, chars = 10, label }: { value: string; chars?: numb
 }
 
 export const VERDICT_STYLE = {
-  refund: { label: "Refunded", tone: "text-accent bg-accent-soft border-accent/30", dot: "bg-accent", blurb: "Real contribution — deposit back in full" },
+  refund: { label: "Refunded", tone: "text-brand bg-brand-soft border-brand/30", dot: "bg-brand", blurb: "Real contribution — deposit back in full" },
   forfeit: { label: "Forfeited", tone: "text-danger bg-danger-soft border-danger/30", dot: "bg-danger", blurb: "Wasted maintainers' time — deposit goes to the repo" },
   needs_human: { label: "Needs a maintainer", tone: "text-warn bg-warn-soft border-warn/30", dot: "bg-warn", blurb: "Not clear-cut — a maintainer decides" },
-  void: { label: "Voided", tone: "text-muted bg-raised border-line", dot: "bg-faint", blurb: "Paid in error — refunded" },
+  void: { label: "Voided", tone: "text-muted-foreground bg-raised border-line", dot: "bg-faint", blurb: "Paid in error — refunded" },
 } as const;
 
 export function VerdictBadge({ verdict, size = "sm" }: { verdict: keyof typeof VERDICT_STYLE; size?: "sm" | "lg" }) {
@@ -119,7 +119,7 @@ export function Stat({ label, value, sub }: { label: string; value: ReactNode; s
     <div>
       <div className="text-xs text-faint">{label}</div>
       <div className="num mt-1 text-2xl font-semibold tracking-tight">{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-muted">{sub}</div>}
+      {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
     </div>
   );
 }

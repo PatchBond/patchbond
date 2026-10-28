@@ -13,6 +13,8 @@ import { Account, JsonRpcProvider, KeyPair, type KeyPairString } from "near-api-
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { judge, type JudgeInput } from "../src/judge/judge";
 import { MockInference } from "../src/judge/nearai";
 
@@ -316,8 +318,46 @@ try {
   const bot = new Actor(agent!.id, fck.toString());
   const passport = { operator: mike!.id, harness: "claude-code", model: "claude-opus-5-5" };
   const agentPay = (n: number) => bot.call(vault.id, "deposit_from_budget", { repo_id: R3, number: n, kind: "pr", github_user: "mikes-bot", passport }, { tgas: 50n, label: `agent (function-call key) pays bond on R3#${n}` });
-  check(!(await agentPay(1)).panic, "agent pays $1 with its function-call key");
-  check(!(await agentPay(2)).panic, "agent pays another $1");
+  // The real MCP server, spawned like Claude Code would, holding only the function-call key.
+  // A stub API serves the network config and stands in for GitHub (PR acme/widget#1 → repo R3).
+  const stub = Bun.serve({
+    port: 0,
+    fetch(req) {
+      const u = new URL(req.url).pathname;
+      if (u === "/api/config") return Response.json({ network: "testnet", rpc: RPC, contract: vault.id, token: ft.id });
+      if (u.startsWith("/api/submissions/")) return Response.json({ verdicts: [] });
+      if (u === "/gh/repos/acme/widget") return Response.json({ id: R3, full_name: "acme/widget" });
+      if (u === "/gh/repos/acme/widget/pulls/1") return Response.json({ user: { login: "mikes-bot" }, state: "open", title: "Fix", body: "" });
+      return new Response("no", { status: 404 });
+    },
+  });
+  const mcp = new Client({ name: "e2e", version: "0" });
+  await mcp.connect(
+    new StdioClientTransport({
+      command: "bun",
+      args: [join(ROOT, "mcp/src/index.ts")],
+      env: {
+        ...process.env,
+        PATCHBOND_API: `http://localhost:${stub.port}`,
+        PATCHBOND_GITHUB_API: `http://localhost:${stub.port}/gh`,
+        PATCHBOND_AGENT_ACCOUNT: agent!.id,
+        PATCHBOND_AGENT_KEY: fck.toString(),
+        PATCHBOND_OPERATOR: mike!.id,
+        PATCHBOND_HARNESS: "claude-code",
+        PATCHBOND_MODEL: "claude-opus-5-5",
+      } as Record<string, string>,
+    }),
+  );
+  const viaMcp = await mcp.callTool({ name: "patchbond_deposit", arguments: { pr_url: "https://github.com/acme/widget/pull/1" } });
+  const paid = viaMcp.structuredContent as { paid?: boolean; bond_usdc?: string; tx?: string; budget_left_today_usdc?: string } | undefined;
+  check(!viaMcp.isError && paid?.paid === true, `MCP patchbond_deposit paid $${paid?.bond_usdc} on testnet with the function-call key`, JSON.stringify(viaMcp.content).slice(0, 200));
+  if (paid?.tx) txs.push({ step: `${step}: agent pays via the MCP server`, hash: paid.tx.split("/").pop()! });
+  eq(paid?.budget_left_today_usdc, "1.50", "MCP reports $1.50 left today");
+  const mcpBudget = (await mcp.callTool({ name: "patchbond_budget", arguments: {} })).structuredContent as { balance_usdc: string };
+  eq(mcpBudget.balance_usdc, "9.00", "MCP patchbond_budget reads the on-chain budget");
+  await mcp.close();
+  stub.stop(true);
+  check(!(await agentPay(2)).panic, "agent pays another $1 directly with the same key");
   const over = await agentPay(3);
   check(!!over.panic?.includes("Daily cap reached"), `third bond refused by the contract: “${over.panic?.slice(0, 70)}…”`);
   const escape = await bot.call(ft.id, "ft_transfer", { receiver_id: bot.id, amount: "1" }, { deposit: 1n });
