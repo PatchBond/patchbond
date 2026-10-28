@@ -3,6 +3,7 @@
 
 import { formatUsdc, parseUsdc, type VerdictRecord } from "@patchbond/shared";
 import { Link2, LogOut, Scale, Settings2, Vault } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -156,6 +157,7 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
             </TabsList>
             <TabsContent value="vault" className="pt-4">
               <Withdraw repo={repo} onDone={onChange} />
+              <CrossChain repo={repo} />
               <HandOver repo={repo} onDone={onChange} />
             </TabsContent>
             <TabsContent value="policy" className="pt-4"><PolicyEditor repo={repo} onSaved={onChange} /></TabsContent>
@@ -214,6 +216,68 @@ function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => v
         </Button>
       ) : (
         <Button variant="ghost" onClick={() => void wallet.connect()}>Connect a NEAR wallet</Button>
+      )}
+    </div>
+  );
+}
+
+const CHAINS = [
+  ["base", "Base", "0x…"],
+  ["arb", "Arbitrum", "0x…"],
+  ["eth", "Ethereum", "0x…"],
+  ["sol", "Solana", "base58 address"],
+] as const;
+
+function CrossChain({ repo }: { repo: MaintainerRepo }) {
+  const cfg = useConfig();
+  const wallet = useWallet();
+  const vault = BigInt(repo.onchain?.vault ?? "0");
+  const [chainId, setChainId] = useState<string>("base");
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [quote, setQuote] = useState<Awaited<ReturnType<typeof api.intentsQuote>> | null>(null);
+  async function ask() {
+    setBusy(true);
+    setQuote(null);
+    try {
+      // Quote the whole vault (or $5 when it's empty, to show what it would look like).
+      const amount = (vault > 100_000n ? vault : 5_000_000n).toString();
+      setQuote(await api.intentsQuote({ amount, chain: chainId, recipient: to.trim(), refund_to: wallet.accountId ?? "" }));
+    } catch (e) {
+      toast.error("No quote", { description: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+  const meta = CHAINS.find(([id]) => id === chainId)!;
+  return (
+    <div className="mt-6 border-t border-line pt-5">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        Receive on another chain <span className="rounded-full bg-raised px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-faint">NEAR Intents</span>
+      </div>
+      <p className="mt-1 text-xs text-faint">USDC lands on the chain you pick, through NEAR Intents 1Click.{cfg.network === "testnet" ? " Intents has no testnet, so this shows a live dry-run quote; nothing moves." : ""}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <div className="flex rounded-xl border border-line p-0.5">
+          {CHAINS.map(([id, name]) => (
+            <button key={id} onClick={() => setChainId(id)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${chainId === id ? "bg-raised text-ink" : "text-muted-foreground hover:text-ink"}`}>
+              {name}
+            </button>
+          ))}
+        </div>
+        <input value={to} onChange={(e) => setTo(e.target.value)} placeholder={`${meta[1]} address (${meta[2]})`} className="min-w-64 flex-1 rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-brand" />
+        <Button variant="ghost" disabled={busy || !to.trim()} onClick={() => void ask()}>
+          {busy ? <Spinner /> : "Get quote"}
+        </Button>
+      </div>
+      {quote && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-3 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm">
+          <div>
+            Send <b className="num">${formatUsdc(quote.amount_in)}</b> → receive <b className="num text-brand">${formatUsdc(quote.amount_out)}</b> USDC on {quote.chain} in about <b>{quote.seconds} s</b>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            At least ${formatUsdc(quote.min_amount_out)} guaranteed · withdraw fee ${formatUsdc(quote.fees.withdraw, 4)} · {cfg.network === "testnet" ? "dry-run quote — nothing moved" : "live on mainnet"}
+          </div>
+        </motion.div>
       )}
     </div>
   );
@@ -297,7 +361,7 @@ function Withdraw({ repo, onDone }: { repo: MaintainerRepo; onDone: () => void }
         {busy ? <Spinner /> : <Vault className="size-4" />} Withdraw to {wallet.accountId}
       </Button>
       {err && vault > 0n && <span className="text-xs text-danger">{err}</span>}
-      <p className="basis-full text-xs text-faint">Paying out to another chain (NEAR Intents) or a DAO treasury is coming next.</p>
+
     </div>
   );
 }

@@ -85,7 +85,7 @@ cp .env.example .env          # defaults work: testnet, mock judge
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **52 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **55 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
 | 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **33 contract tests pass**: 10 unit (incl. a 50,000-case property test of the money split) + 23 on a local NEAR sandbox with real token transfers (every money path, challenges, a real function-call key, link-once, pause). |
 | 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
@@ -122,7 +122,8 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 | MCP server for agents (7 tools, key safety check) | ✅ Built, paid a real bond on testnet in the e2e |
 | Maintainer dashboard: GitHub sign-in, NEP-413 wallet proof → `link_repo`, withdraw, bond-policy editor with live price preview, needs-human queue | ✅ Built, 6 tests (forged signature, wrong account, function-call key, replay, non-admin, CSRF) |
 | Re-judging challenges with a stronger model (Kimi K3) seeing both sides' statements, then `resolve_challenge` | ✅ Built and tested (runs on the mock until NEAR AI credits) |
-| Payout to any chain via NEAR Intents 1Click; payout to a Sputnik DAO / Trezu treasury | 🔨 Planned |
+| Payout to another chain via NEAR Intents 1Click (Base, Arbitrum, Ethereum, Solana) | ✅ Live **dry-run quotes** from the real 1Click API in the dashboard (Intents has no testnet); the mainnet withdraw-and-bridge runs only with the team's go-ahead |
+| Payout to a Sputnik DAO / Trezu treasury | ✅ `set_payout` hands a repo to a DAO account, which then withdraws by proposal |
 | Gasless contributors (NEP-366 meta transactions) | 🔨 Planned |
 | On-chain verification of the TEE signature (`ecrecover`); sealed security reports | 🧪 Stretch (feasibility proven in a throwaway test) |
 | Bank/card payouts, GitLab, a token | ❌ Out of scope. **No token, ever. Nobody is paid for submitting.** |
@@ -173,7 +174,9 @@ The trust boundary is stated plainly: the contract trusts our **oracle** account
 | **NEAR AI Cloud** verifiable inference + TEE signatures | [`server/src/judge/nearai.ts`](server/src/judge/nearai.ts), [`shared/src/verify.ts`](shared/src/verify.ts) |
 | NEAR Connect wallet selector (testnet-capable wallets only on testnet) | [`web/src/lib/wallet.tsx`](web/src/lib/wallet.tsx) |
 | Named accounts / sub-accounts (contract, oracle, throwaway e2e stacks) | [`deploy/testnet.json`](deploy/testnet.json), [`server/e2e/testnet.ts`](server/e2e/testnet.ts) |
-| Planned: NEAR Intents 1Click, NEP-366 meta transactions, Sputnik DAO / Trezu | see [What's real](#whats-real) |
+| NEAR Intents 1Click (cross-chain payout quotes) | [`server/src/intents.ts`](server/src/intents.ts), dashboard → Vault |
+| Sputnik DAO / Trezu as payout accounts (`set_payout`) | [`lib.rs`](contract/vault/src/lib.rs) |
+| Planned: NEP-366 meta transactions (gasless contributors) | see [What's real](#whats-real) |
 
 ## Security model
 
@@ -195,7 +198,7 @@ Full threat model, key powers and known limits: **[SECURITY.md](SECURITY.md)**.
 |---|---|---|
 | Contract unit tests (curve, exemption, forfeit tax, money-split property test) | 10 | `cd contract && cargo test -p patchbond-vault --lib` |
 | Contract sandbox tests (real NEP-141 transfers on a local NEAR node) | 23 | `cd contract && cargo test -p patchbond-vault` |
-| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding | 35 | `cd server && bun test` |
+| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding, Intents quotes | 38 | `cd server && bun test` |
 | MCP: client, key safety, stdio protocol | 11 | `cd mcp && bun test` |
 | Shared: verification tamper tests, curve = contract values | 6 | `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 46 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |

@@ -15,6 +15,7 @@ import { preflight } from "./judge/preflight";
 import { makeInference } from "./judge/inference";
 import { MockInference } from "./judge/nearai";
 import { maintainerRoutes } from "./maintainers";
+import { dryQuote, IntentsError, type PayoutQuoteRequest } from "./intents";
 
 const cfg = loadConfig();
 const chain = new Chain(cfg);
@@ -114,6 +115,15 @@ app.post("/api/appeals", async (c) => {
 app.get("/api/appeals/:verdict", (c) => c.json(store.appeals(c.req.param("verdict"))));
 
 maintainerRoutes(app, { cfg, store, chain, provider: chain.provider });
+
+// Payout option B: a dry NEAR Intents quote for receiving USDC on another chain.
+app.post("/api/intents/quote", async (c) => {
+  try {
+    return c.json(await dryQuote(await c.req.json<PayoutQuoteRequest>()));
+  } catch (e) {
+    return c.json({ error: e instanceof IntentsError ? e.message : `Quote failed: ${(e as Error).message}` }, 400);
+  }
+});
 
 app.post("/webhook", async (c) => {
   if (!bot) return c.json({ error: "GitHub App not configured on this server (see /setup)" }, 503);

@@ -51,6 +51,8 @@ export const api = {
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? `Appeal failed (${res.status})`);
   },
+  intentsQuote: (b: { amount: string; chain: string; recipient: string; refund_to: string }) =>
+    post<{ dry: true; chain: string; amount_in: string; amount_out: string; min_amount_out: string; seconds: number; fees: { withdraw: string; refund: string } }>("/api/intents/quote", b),
   judge: async (url: string) => {
     const res = await fetch("/api/judge", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }) });
     const body = await res.json();
