@@ -22,7 +22,7 @@ async function record(): Promise<VerdictRecord> {
     request_body,
     response_body,
     signature: { text, signature: await signer.signMessage({ message: text }), signing_address: signer.address, signing_algo: "ecdsa" },
-    facts: { ci: "failure", ci_failed_checks: ["build"], phantom_symbols: ["parseFoo"], duplicate_of: null, issue: null, files_changed: 1, additions: 3, deletions: 0, injection_markers: [], author_reputation: "new" },
+    facts: { ci: "failure", ci_failed_checks: ["build"], phantom_symbols: ["parseFoo"], unresolved_symbols: [], duplicate_of: null, issue: null, files_changed: 1, additions: 3, deletions: 0, injection_markers: [], author_reputation: "new" },
     model_verdict: { ...verdict, reasons: [...verdict.reasons], evidence: [...verdict.evidence] },
     final: { verdict: "forfeit", confidence: 0.93, category: "phantom_code", reasons: [...verdict.reasons], evidence: [...verdict.evidence], rules_applied: [] },
     verdict_hash: "",

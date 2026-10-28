@@ -84,12 +84,21 @@ const IGNORE = new Set(
   malloc free memcpy memset strlen strcmp strcpy fprintf sprintf snprintf close open read write`.split(/\s+/),
 );
 
+/** Removes string literals and trailing comments so prose can't look like a call. */
+function codeOnly(line: string): string {
+  return line
+    .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g, '""')
+    .replace(/\/\/.*$|#.*$|\/\*.*?(\*\/|$)/, "");
+}
+
 /**
- * Called identifiers in added lines that the diff itself doesn't define. These are candidates;
- * `phantomSymbols` keeps the ones the repo doesn't define at the base commit either.
+ * Called identifiers in added lines that the diff itself doesn't define. ALL_CAPS names are
+ * skipped (macros and constants usually come from system headers).
  */
 export function calledSymbols(diff: string, max = 15): string[] {
-  const added = addedLines(diff).filter((l) => !/^\s*(\/\/|#|\*|\/\*|--)/.test(l));
+  const added = addedLines(diff)
+    .filter((l) => !/^\s*(\/\/|#|\*|\/\*|--)/.test(l))
+    .map(codeOnly);
   const text = added.join("\n");
   const defined = new Set<string>();
   for (const m of text.matchAll(
@@ -98,25 +107,60 @@ export function calledSymbols(diff: string, max = 15): string[] {
     defined.add(m[1]!);
   }
   const calls = new Set<string>();
-  for (const m of text.matchAll(/(?<![.\w])([A-Za-z_][A-Za-z0-9_]{3,})\s*\(/g)) {
+  for (const m of text.matchAll(/(?<![.\w>:])([A-Za-z_][A-Za-z0-9_]{3,})\s*\(/g)) {
     const name = m[1]!;
-    if (!defined.has(name) && !IGNORE.has(name.toLowerCase())) calls.add(name);
+    if (defined.has(name) || IGNORE.has(name.toLowerCase()) || /^[A-Z0-9_]+$/.test(name)) continue;
+    calls.add(name);
   }
   return [...calls].slice(0, max);
 }
 
-/** Keeps the symbols the repo doesn't define anywhere (lookup = code search on the base branch). */
-export async function phantomSymbols(
+/** `pcap_open_live` → "pcap"; `parseFooBar` → "parse"; single-part names → null. */
+export function namespaceOf(name: string): string | null {
+  const parts = name.split(/_+|(?<=[a-z0-9])(?=[A-Z])/).filter(Boolean);
+  return parts.length >= 2 ? parts[0]!.toLowerCase() : null;
+}
+
+export interface SymbolIndex {
+  has(id: string): boolean;
+  /** How many distinct repo identifiers start with this namespace. */
+  namespaceSize(ns: string): number;
+}
+
+/** A namespace is the project's own when many repo identifiers share it… */
+const OWN_NAMESPACE = 5;
+/** …and it isn't a generic verb every codebase uses (`onReset`, `get_value`, `handleClick`). */
+const GENERIC_NS = new Set(
+  `on get set is has can should handle make create to from new do use init update add remove delete
+  report mark read write load save run check build render fetch process show print find with as test`.split(/\s+/),
+);
+
+/**
+ * Splits called names the repo doesn't define into phantom (in the project's own namespace — the
+ * classic hallucination) and unresolved (could be a library). If the index can't be built,
+ * both are empty: when in doubt, don't accuse.
+ */
+export async function symbolFacts(
   diff: string,
-  existsInRepo: (symbol: string) => Promise<boolean>,
-): Promise<string[]> {
-  const out: string[] = [];
-  for (const s of calledSymbols(diff)) {
-    // A lookup error means "unknown", never "phantom": when in doubt, don't accuse.
-    const exists = await existsInRepo(s).catch(() => true);
-    if (!exists) out.push(s);
+  index: () => Promise<SymbolIndex>,
+): Promise<{ phantom_symbols: string[]; unresolved_symbols: string[] }> {
+  const called = calledSymbols(diff);
+  if (called.length === 0) return { phantom_symbols: [], unresolved_symbols: [] };
+  let idx: SymbolIndex;
+  try {
+    idx = await index();
+  } catch {
+    return { phantom_symbols: [], unresolved_symbols: [] };
   }
-  return out;
+  const phantom: string[] = [];
+  const unresolved: string[] = [];
+  for (const s of called) {
+    if (idx.has(s)) continue;
+    const ns = namespaceOf(s);
+    if (ns && !GENERIC_NS.has(ns) && idx.namespaceSize(ns) >= OWN_NAMESPACE) phantom.push(s);
+    else unresolved.push(s);
+  }
+  return { phantom_symbols: phantom, unresolved_symbols: unresolved };
 }
 
 function tokens(s: string): Set<string> {

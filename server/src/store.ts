@@ -1,0 +1,108 @@
+// Local state: published verdict records and the GitHub side of each submission.
+// The chain is the source of truth for money; this is the source for verdict bytes and PR plumbing.
+
+import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import type { VerdictRecord } from "@patchbond/shared";
+
+export type SubmissionState = "awaiting_deposit" | "deposit_received" | "judging" | "judged" | "exempt" | "closed";
+
+export interface Submission {
+  repo_id: number;
+  number: number;
+  full_name: string;
+  installation_id: number;
+  author: string;
+  head_sha: string;
+  check_run_id: number | null;
+  comment_id: number | null;
+  state: SubmissionState;
+  verdict_id: string | null;
+  deposit_seen_at: number | null;
+  updated_at: number;
+}
+
+export class Store {
+  readonly db: Database;
+
+  constructor(dir: string) {
+    mkdirSync(dir, { recursive: true });
+    this.db = new Database(join(dir, "patchbond.sqlite"), { create: true });
+    this.db.exec(`
+      PRAGMA journal_mode = WAL;
+      CREATE TABLE IF NOT EXISTS verdicts (
+        id TEXT PRIMARY KEY, repo_id INTEGER NOT NULL, number INTEGER NOT NULL,
+        verdict TEXT NOT NULL, created_at TEXT NOT NULL, record TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS verdicts_repo ON verdicts (repo_id, number);
+      CREATE TABLE IF NOT EXISTS submissions (
+        repo_id INTEGER NOT NULL, number INTEGER NOT NULL, full_name TEXT NOT NULL,
+        installation_id INTEGER NOT NULL, author TEXT NOT NULL, head_sha TEXT NOT NULL,
+        check_run_id INTEGER, comment_id INTEGER, state TEXT NOT NULL, verdict_id TEXT,
+        deposit_seen_at INTEGER, updated_at INTEGER NOT NULL,
+        PRIMARY KEY (repo_id, number));
+      CREATE TABLE IF NOT EXISTS github_accounts (
+        github_user TEXT PRIMARY KEY, near_account TEXT NOT NULL, seen_at INTEGER NOT NULL);
+    `);
+  }
+
+  saveVerdict(r: VerdictRecord) {
+    this.db
+      .query("INSERT OR REPLACE INTO verdicts VALUES (?, ?, ?, ?, ?, ?)")
+      .run(r.id, r.repo.id, r.number, r.final.verdict, r.created_at, JSON.stringify(r));
+  }
+
+  verdict(id: string): VerdictRecord | null {
+    const row = this.db.query<{ record: string }, [string]>("SELECT record FROM verdicts WHERE id = ?").get(id);
+    return row ? JSON.parse(row.record) : null;
+  }
+
+  recentVerdicts(limit = 50, repoId?: number): VerdictRecord[] {
+    const rows = repoId
+      ? this.db.query<{ record: string }, [number, number]>("SELECT record FROM verdicts WHERE repo_id = ? ORDER BY created_at DESC LIMIT ?").all(repoId, limit)
+      : this.db.query<{ record: string }, [number]>("SELECT record FROM verdicts ORDER BY created_at DESC LIMIT ?").all(limit);
+    return rows.map((r) => JSON.parse(r.record));
+  }
+
+  upsertSubmission(s: Omit<Submission, "updated_at">) {
+    this.db
+      .query(
+        `INSERT INTO submissions VALUES ($repo_id, $number, $full_name, $installation_id, $author, $head_sha,
+           $check_run_id, $comment_id, $state, $verdict_id, $deposit_seen_at, $now)
+         ON CONFLICT (repo_id, number) DO UPDATE SET head_sha = $head_sha, full_name = $full_name,
+           check_run_id = COALESCE($check_run_id, check_run_id), comment_id = COALESCE($comment_id, comment_id),
+           state = $state, verdict_id = COALESCE($verdict_id, verdict_id),
+           deposit_seen_at = COALESCE($deposit_seen_at, deposit_seen_at), updated_at = $now`,
+      )
+      .run({ ...prefix(s), $now: Date.now() });
+  }
+
+  submission(repoId: number, number: number): Submission | null {
+    return this.db.query<Submission, [number, number]>("SELECT * FROM submissions WHERE repo_id = ? AND number = ?").get(repoId, number);
+  }
+
+  submissionsIn(...states: SubmissionState[]): Submission[] {
+    const q = `SELECT * FROM submissions WHERE state IN (${states.map(() => "?").join(",")})`;
+    return this.db.query<Submission, string[]>(q).all(...states);
+  }
+
+  setState(repoId: number, number: number, state: SubmissionState, patch: Partial<Submission> = {}) {
+    const s = this.submission(repoId, number);
+    if (s) this.upsertSubmission({ ...s, ...patch, state });
+  }
+
+  linkGithub(githubUser: string, nearAccount: string) {
+    this.db.query("INSERT OR REPLACE INTO github_accounts VALUES (?, ?, ?)").run(githubUser.toLowerCase(), nearAccount, Date.now());
+  }
+
+  nearAccountOf(githubUser: string): string | null {
+    return (
+      this.db.query<{ near_account: string }, [string]>("SELECT near_account FROM github_accounts WHERE github_user = ?").get(githubUser.toLowerCase())
+        ?.near_account ?? null
+    );
+  }
+}
+
+function prefix(o: object): Record<string, string | number | null> {
+  return Object.fromEntries(Object.entries(o).map(([k, v]) => [`$${k}`, v ?? null]));
+}

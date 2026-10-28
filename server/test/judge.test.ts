@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { verifyRecord, type Facts, type ModelVerdict } from "@patchbond/shared";
-import { calledSymbols, ciFact, duplicateOf, injectionMarkers, linkedIssue, type Contribution } from "../src/judge/facts";
+import { calledSymbols, namespaceOf, ciFact, duplicateOf, injectionMarkers, linkedIssue, type Contribution } from "../src/judge/facts";
 import { judge, type JudgeInput } from "../src/judge/judge";
 import { MockInference, MOCK_MODEL } from "../src/judge/nearai";
 import { userMessage } from "../src/judge/prompt";
@@ -26,7 +26,11 @@ function input(over: Partial<Contribution> = {}, extra: Partial<JudgeInput> = {}
     },
     checkRuns: [{ name: "build", status: "completed", conclusion: "failure" }],
     openItems: [],
-    symbolExists: async (s) => s === "parse",
+    // A C repo whose own functions are named parse_*.
+    symbolIndex: async () => ({
+      has: (s) => ["parse", "parse_header", "parse_body", "parse_opts", "parse_len", "parse_flags"].includes(s),
+      namespaceSize: (ns) => (ns === "parse" ? 5 : 0),
+    }),
     issueLookup: async () => ({ exists: true, open: true }),
     authorReputation: "new",
     threshold: 0.85,
@@ -35,7 +39,7 @@ function input(over: Partial<Contribution> = {}, extra: Partial<JudgeInput> = {}
 }
 
 const facts = (f: Partial<Facts> = {}): Facts => ({
-  ci: "success", ci_failed_checks: [], phantom_symbols: [], duplicate_of: null, issue: null,
+  ci: "success", ci_failed_checks: [], phantom_symbols: [], unresolved_symbols: [], duplicate_of: null, issue: null,
   files_changed: 1, additions: 1, deletions: 0, injection_markers: [], author_reputation: "new", ...f,
 });
 const mv = (v: Partial<ModelVerdict> = {}): ModelVerdict => ({
@@ -53,6 +57,28 @@ describe("facts", () => {
   test("called symbols skip builtins, comments and things the diff defines", () => {
     expect(calledSymbols(SLOP_DIFF)).toEqual(["sanitize_input_buffer", "parse_with_validation"]);
     expect(calledSymbols("+function helperThing() {}\n+helperThing();\n+// fakeCall()")).toEqual([]);
+  });
+
+  test("strings, comments and ALL_CAPS macros are not calls", () => {
+    expect(calledSymbols('+  log_msg("failed unsuccessfully (again)"); // retryLater()\n+  if (WIFEXITED(st)) {}')).toEqual(["log_msg"]);
+    expect(namespaceOf("pcap_open_live")).toBe("pcap");
+    expect(namespaceOf("parseFooBar")).toBe("parse");
+    expect(namespaceOf("sigemptyset")).toBeNull();
+  });
+
+  test("generic verbs are never a project namespace", async () => {
+    const r = await judge(input({ diff: "+  onReset(s);\n+  get_thing(s);" }, {
+      symbolIndex: async () => ({ has: () => false, namespaceSize: () => 100 }),
+    }), new MockInference());
+    expect(r.facts.phantom_symbols).toEqual([]);
+    expect(r.facts.unresolved_symbols).toEqual(["onReset", "get_thing"]);
+  });
+
+  test("library calls are only 'unresolved'; made-up names in the project's namespace are phantom", async () => {
+    const diff = "+  sigemptyset(&set);\n+  parse_with_validation(s);\n+  json_decode(s);";
+    const r = await judge(input({ diff }), new MockInference());
+    expect(r.facts.phantom_symbols).toEqual(["parse_with_validation"]);
+    expect(r.facts.unresolved_symbols).toEqual(["sigemptyset", "json_decode"]);
   });
 
   test("linked issue and injection markers", () => {
@@ -97,7 +123,8 @@ describe("server rules only ever soften a forfeit", () => {
 describe("judge (mock inference)", () => {
   test("phantom code is forfeited, and the record verifies", async () => {
     const r = await judge(input(), new MockInference());
-    expect(r.facts.phantom_symbols).toEqual(["sanitize_input_buffer", "parse_with_validation"]);
+    expect(r.facts.phantom_symbols).toEqual(["parse_with_validation"]);
+    expect(r.facts.unresolved_symbols).toEqual(["sanitize_input_buffer"]);
     expect(r.final.verdict).toBe("forfeit");
     expect(r.mock).toBe(true);
     expect(r.model).toBe(MOCK_MODEL);
@@ -129,9 +156,8 @@ describe("judge (mock inference)", () => {
   });
 
   test("a failed symbol lookup never produces a phantom accusation", async () => {
-    const r = await judge(input({}, {}), new MockInference());
-    const r2 = await judge({ ...input(), symbolExists: async () => { throw new Error("rate limited"); } }, new MockInference());
-    expect(r.facts.phantom_symbols.length).toBe(2);
-    expect(r2.facts.phantom_symbols).toEqual([]);
+    const r = await judge({ ...input(), symbolIndex: async () => { throw new Error("rate limited"); } }, new MockInference());
+    expect(r.facts.phantom_symbols).toEqual([]);
+    expect(r.final.verdict).not.toBe("forfeit");
   });
 });

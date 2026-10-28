@@ -8,7 +8,8 @@
     "start": "bun src/index.ts",
     "typecheck": "tsc -p .",
     "test": "bun test",
-    "eval": "bun src/judge/eval.ts"
+    "eval": "bun src/judge/eval.ts",
+    "judge-pr": "bun src/cli/judge-pr.ts"
   },
   "dependencies": {
     "@patchbond/shared": "workspace:*",

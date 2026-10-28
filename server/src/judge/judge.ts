@@ -7,10 +7,11 @@ import {
   duplicateOf,
   injectionMarkers,
   linkedIssue,
-  phantomSymbols,
+  symbolFacts,
   type CheckRun,
   type Contribution,
   type OpenItem,
+  type SymbolIndex,
 } from "./facts";
 import { modelContent, type Inference } from "./nearai";
 import { requestBody, type RepoContext } from "./prompt";
@@ -23,8 +24,8 @@ export interface JudgeInput {
   contribution: Contribution;
   checkRuns: CheckRun[];
   openItems: OpenItem[];
-  /** Looks a symbol up at the base commit (code search). */
-  symbolExists: (symbol: string) => Promise<boolean>;
+  /** Identifiers in the repo at the base commit. */
+  symbolIndex: () => Promise<SymbolIndex>;
   /** Looks up the issue the PR claims to fix. */
   issueLookup: (n: number) => Promise<{ exists: boolean; open: boolean; title?: string }>;
   authorReputation: Facts["author_reputation"];
@@ -37,7 +38,7 @@ export async function computeFacts(i: JudgeInput): Promise<Facts> {
   const issueNo = linkedIssue(`${c.title}\n${c.body}`);
   return {
     ...ciFact(i.checkRuns),
-    phantom_symbols: c.kind === "pr" ? await phantomSymbols(c.diff, i.symbolExists) : [],
+    ...(c.kind === "pr" ? await symbolFacts(c.diff, i.symbolIndex) : { phantom_symbols: [], unresolved_symbols: [] }),
     duplicate_of: duplicateOf(c, i.openItems),
     issue: issueNo === null ? null : { number: issueNo, ...(await i.issueLookup(issueNo).catch(() => ({ exists: false, open: false }))) },
     files_changed: c.files.length,

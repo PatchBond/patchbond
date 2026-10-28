@@ -33,7 +33,10 @@ export type ModelVerdict = z.infer<typeof ModelVerdict>;
 export interface Facts {
   ci: "success" | "failure" | "pending" | "none";
   ci_failed_checks: string[];
+  /** Called names in the project's own namespace (e.g. `pcap_*`) that don't exist: strong evidence. */
   phantom_symbols: string[];
+  /** Called names not found in the repo but possibly from a library: a hint, never grounds alone. */
+  unresolved_symbols: string[];
   duplicate_of: { number: number; title: string; similarity: number } | null;
   issue: { number: number; exists: boolean; open: boolean; title?: string } | null;
   files_changed: number;
