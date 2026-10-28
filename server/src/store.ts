@@ -41,6 +41,9 @@ export class Store {
         check_run_id INTEGER, comment_id INTEGER, state TEXT NOT NULL, verdict_id TEXT,
         deposit_seen_at INTEGER, updated_at INTEGER NOT NULL,
         PRIMARY KEY (repo_id, number));
+      CREATE TABLE IF NOT EXISTS appeals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, verdict_id TEXT NOT NULL, author TEXT NOT NULL,
+        note TEXT NOT NULL, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS github_accounts (
         github_user TEXT PRIMARY KEY, near_account TEXT NOT NULL, seen_at INTEGER NOT NULL);
     `);
@@ -89,6 +92,16 @@ export class Store {
   setState(repoId: number, number: number, state: SubmissionState, patch: Partial<Submission> = {}) {
     const s = this.submission(repoId, number);
     if (s) this.upsertSubmission({ ...s, ...patch, state });
+  }
+
+  addAppeal(verdictId: string, author: string, note: string) {
+    this.db.query("INSERT INTO appeals (verdict_id, author, note, created_at) VALUES (?, ?, ?, ?)").run(verdictId, author, note, Date.now());
+  }
+
+  appeals(verdictId: string): { author: string; note: string; created_at: number }[] {
+    return this.db
+      .query<{ author: string; note: string; created_at: number }, [string]>("SELECT author, note, created_at FROM appeals WHERE verdict_id = ? ORDER BY id")
+      .all(verdictId);
   }
 
   linkGithub(githubUser: string, nearAccount: string) {

@@ -5,6 +5,7 @@ import { judge, type JudgeInput } from "../src/judge/judge";
 import { MockInference, MOCK_MODEL } from "../src/judge/nearai";
 import { userMessage } from "../src/judge/prompt";
 import { applyRules } from "../src/judge/rules";
+import { preflight } from "../src/judge/preflight";
 
 const SLOP_DIFF = `diff --git a/src/parse.c b/src/parse.c
 --- a/src/parse.c
@@ -159,5 +160,21 @@ describe("judge (mock inference)", () => {
     const r = await judge({ ...input(), symbolIndex: async () => { throw new Error("rate limited"); } }, new MockInference());
     expect(r.facts.phantom_symbols).toEqual([]);
     expect(r.final.verdict).not.toBe("forfeit");
+  });
+});
+
+describe("pre-flight advice", () => {
+  test("clean PR → low risk, likely refund", () => {
+    expect(preflight(facts())).toMatchObject({ risk: "low", likely: "refund", warnings: [] });
+  });
+  test("phantom code or injection → high risk with a concrete fix", () => {
+    const p = preflight(facts({ phantom_symbols: ["parse_magic"] }));
+    expect(p.risk).toBe("high");
+    expect(p.warnings[0]).toContain("parse_magic");
+    expect(preflight(facts({ injection_markers: ["ignore previous instructions"] })).likely).toBe("forfeit");
+  });
+  test("failing CI or a missing issue → medium, a human would look", () => {
+    expect(preflight(facts({ ci: "failure", ci_failed_checks: ["test"] })).likely).toBe("needs_human");
+    expect(preflight(facts({ issue: { number: 9, exists: false, open: false } })).warnings[0]).toContain("#9");
   });
 });

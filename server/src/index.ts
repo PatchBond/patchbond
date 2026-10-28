@@ -10,7 +10,8 @@ import { Chain } from "./near";
 import { Store } from "./store";
 import { Bot } from "./github/bot";
 import { gatherPr, parseGithubUrl } from "./github/gather";
-import { judge } from "./judge/judge";
+import { computeFacts, judge } from "./judge/judge";
+import { preflight } from "./judge/preflight";
 import { makeInference } from "./judge/inference";
 import { MockInference } from "./judge/nearai";
 
@@ -78,6 +79,34 @@ app.post("/api/judge", async (c) => {
     return c.json({ error: (e as Error).message }, 400);
   }
 });
+
+// Pre-flight: the judge's facts as advice before paying. Free — no model call.
+const preflightAt = new Map<string, number>();
+app.post("/api/preflight", async (c) => {
+  const { url } = await c.req.json<{ url: string }>().catch(() => ({ url: "" }));
+  const ip = c.req.header("x-forwarded-for") ?? "local";
+  if (Date.now() - (preflightAt.get(ip) ?? 0) < 5_000) return c.json({ error: "One pre-flight every 5 seconds, please." }, 429);
+  preflightAt.set(ip, Date.now());
+  try {
+    const t = parseGithubUrl(url);
+    if (t.kind !== "pr") return c.json({ error: "Pre-flight needs a pull request URL (…/pull/123)." }, 400);
+    const input = await gatherPr(new Octokit({ auth: process.env.GITHUB_TOKEN }), t, { authorReputation: "new", threshold: 0.85 });
+    return c.json({ repo_id: input.repo.id, author: input.author, ...preflight(await computeFacts(input)) });
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 400);
+  }
+});
+
+// Appeals: a note from either side, shown next to the verdict. Staking a challenge is on-chain.
+app.post("/api/appeals", async (c) => {
+  const body = await c.req.json<{ verdict_id?: string; note?: string; from?: string }>().catch(() => ({}) as Record<string, string>);
+  const note = (body.note ?? "").trim();
+  if (!body.verdict_id || !store.verdict(body.verdict_id)) return c.json({ error: "Unknown verdict_id." }, 404);
+  if (note.length < 10 || note.length > 2000) return c.json({ error: "The note must be 10–2000 characters: say what the judge got wrong." }, 400);
+  store.addAppeal(body.verdict_id, (body.from ?? "anonymous").slice(0, 64), note);
+  return c.json({ ok: true });
+});
+app.get("/api/appeals/:verdict", (c) => c.json(store.appeals(c.req.param("verdict"))));
 
 app.post("/webhook", async (c) => {
   if (!bot) return c.json({ error: "GitHub App not configured on this server (see /setup)" }, 503);

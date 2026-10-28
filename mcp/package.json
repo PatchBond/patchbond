@@ -1,0 +1,25 @@
+{
+  "name": "@patchbond/mcp",
+  "version": "0.1.0",
+  "description": "PatchBond MCP server: lets coding agents check a repo's bond, pre-flight their PR, and pay from a capped budget",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "patchbond-mcp": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc -p .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@patchbond/shared": "workspace:*",
+    "near-api-js": "^7.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}
