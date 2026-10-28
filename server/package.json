@@ -1,0 +1,25 @@
+{
+  "name": "@patchbond/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc -p .",
+    "test": "bun test",
+    "eval": "bun src/judge/eval.ts"
+  },
+  "dependencies": {
+    "@patchbond/shared": "workspace:*",
+    "hono": "^4.13.14",
+    "near-api-js": "^7.4.0",
+    "octokit": "^5.0.5",
+    "viem": "^2.57.13",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}
