@@ -190,7 +190,7 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
               <CrossChain repo={repo} />
               <HandOver repo={repo} onDone={onChange} />
             </TabsContent>
-            <TabsContent value="policy" className="pt-4"><PolicyEditor repo={repo} onSaved={onChange} /></TabsContent>
+            <TabsContent value="policy" className="pt-4"><PolicyTab repo={repo} onSaved={onChange} /></TabsContent>
             <TabsContent value="queue" className="pt-4"><Queue repo={repo} /></TabsContent>
           </Tabs>
         )}
@@ -424,7 +424,74 @@ const DEFAULT_PRICES: Record<Currency, { base: string; min: string; max: string 
   near: { base: "1.00", min: "0.10", max: "25.00" },
 };
 
-function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => void }) {
+/** The policy in force, read from the contract — with Edit to change it. */
+function PolicyTab({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const r = repo.onchain!;
+  const p = r.policy;
+  const currency = r.currency ?? "usdc";
+  if (editing) {
+    return (
+      <PolicyEditor
+        repo={repo}
+        onCancel={() => setEditing(false)}
+        onSaved={() => {
+          setEditing(false);
+          onSaved();
+        }}
+      />
+    );
+  }
+  const isDefault =
+    currency === "usdc" && p.base_bond === "2000000" && p.min_bond === "250000" && p.max_bond === "50000000" && p.target_open === 8 &&
+    p.review_window_sec === 259200 && p.challenge_window_sec === 259200 && p.forfeit_threshold_bps === 8500;
+  const rows: [string, string][] = [
+    ["Paid in", SYMBOL[currency]],
+    ["Base bond", `${money(p.base_bond, currency)} at capacity`],
+    ["Range", `${money(p.min_bond, currency)} – ${money(p.max_bond, currency)}`],
+    ["Review capacity", `${p.target_open} outside PRs at once`],
+    ["Review window", `${p.review_window_sec / 3600} h (earns the priority tip)`],
+    ["Challenge window", `${p.challenge_window_sec / 3600} h before a verdict stands`],
+    ["Forfeit threshold", `${p.forfeit_threshold_bps / 100}% AI confidence`],
+  ];
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+      <div className="space-y-4">
+        <div className={`rounded-xl border px-4 py-3 text-sm ${p.enabled ? "border-brand/30 bg-brand-soft" : "border-line bg-bg"}`}>
+          <div className="font-medium">{p.enabled ? "On — outside PRs are asked for a refundable deposit" : "Off — nobody is asked for a deposit"}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            {p.enabled
+              ? "Maintainers, collaborators and proven contributors are never asked. Nobody is blocked from opening a PR."
+              : "Your settings are saved. Turn PatchBond on (Edit) when you're ready for contributors to see it."}
+          </div>
+        </div>
+        <div className="rounded-xl border border-line bg-bg">
+          <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+            <span className="text-sm font-medium">Current policy</span>
+            <span className="rounded-full bg-raised px-2 py-0.5 text-[11px] text-muted-foreground">{isDefault ? "Default settings" : "Your settings · on-chain"}</span>
+          </div>
+          <dl className="divide-y divide-line text-sm">
+            {rows.map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-4 px-4 py-2">
+                <dt className="text-muted-foreground">{k}</dt>
+                <dd className="num text-right">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <Button onClick={() => setEditing(true)}>
+          <Settings2 className="size-4" /> Edit policy
+        </Button>
+      </div>
+      <div className="rounded-2xl border border-line bg-bg p-4">
+        <div className="mb-2 text-xs text-faint">What newcomers pay as the queue grows</div>
+        <AttentionMeter policy={p} open={r.open} maxOpen={Math.max(24, p.target_open * 3)} compact currency={currency} />
+      </div>
+    </div>
+  );
+}
+
+function PolicyEditor({ repo, onSaved, onCancel }: { repo: MaintainerRepo; onSaved: () => void; onCancel: () => void }) {
   const cfg = useConfig();
   const wallet = useWallet();
   const r = repo.onchain!;
@@ -477,9 +544,14 @@ function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => 
       const out = switching
         ? await wallet.call(cfg.contract, "set_currency", { repo_id: repo.repo_id, currency, policy: next }, { tgas: 30 })
         : await wallet.call(cfg.contract, "set_policy", { repo_id: repo.repo_id, policy: next }, { tgas: 30 });
-      if (out.error) toast.error("Policy not saved", { description: out.error });
-      else toast.success(switching ? `Bonds are now paid in ${SYMBOL[currency]}` : "Bond policy saved on-chain");
-      onSaved();
+      if (out.error) {
+        toast.error("Policy not saved", { description: out.error });
+      } else {
+        toast.success(switching ? `Bonds are now paid in ${SYMBOL[currency]}` : "Bond policy saved on-chain", {
+          description: next.enabled ? "PatchBond is on for this repo." : "PatchBond is still off — nobody is asked for a deposit yet.",
+        });
+        onSaved();
+      }
     } catch (e) {
       toast.error("Not saved", { description: (e as Error).message || "The wallet closed before signing." });
     } finally {
@@ -545,9 +617,12 @@ function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => 
           {field("challengeH", "Challenge window", "before a verdict stands", "h")}
         </div>
         {err && <Notice tone="error">{err}</Notice>}
-        <Button onClick={() => void save()} disabled={busy || !!err || (switching && !!switchBlocked)}>
-          {busy ? <Spinner /> : <Settings2 className="size-4" />} {switching ? `Switch to ${SYMBOL[currency]} and save` : "Save policy on-chain"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void save()} disabled={busy || !!err || (switching && !!switchBlocked)}>
+            {busy ? <Spinner /> : <Settings2 className="size-4" />} {switching ? `Switch to ${SYMBOL[currency]} and save` : "Save policy on-chain"}
+          </Button>
+          <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>
+        </div>
       </div>
       <div className="rounded-2xl border border-line bg-bg p-4">
         <div className="mb-2 text-xs text-faint">Live preview — drag to see what newcomers would pay</div>
