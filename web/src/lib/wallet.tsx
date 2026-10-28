@@ -8,12 +8,26 @@ export interface CallResult {
   error: string | null;
 }
 
+/** One function call inside a transaction. */
+export interface Act {
+  methodName: string;
+  args: object;
+  /** yoctoNEAR (or token-less 1 yocto for NEP-141 calls). */
+  deposit?: string;
+  tgas?: number;
+}
+
 interface WalletState {
   accountId: string | null;
   connecting: boolean;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   call: (receiverId: string, methodName: string, args: object, opts?: { deposit?: string; tgas?: number }) => Promise<CallResult>;
+  /**
+   * Several actions per transaction and/or several transactions, signed once in the wallet (e.g.
+   * register with wNEAR + wrap NEAR + pay the bond). Reports the first contract panic, if any.
+   */
+  send: (txs: { receiverId: string; actions: Act[] }[]) => Promise<CallResult>;
   /**
    * Gasless (NEP-366): the wallet signs a delegate action and PatchBond's relayer pays the gas.
    * Falls back to a normal transaction if the wallet can't sign delegate actions.
@@ -68,21 +82,29 @@ export function WalletProvider({ cfg, children }: { cfg: AppConfig; children: Re
     setAccountId(null);
   }, [connector]);
 
-  const call = useCallback<WalletState["call"]>(
-    async (receiverId, methodName, args, opts = {}) => {
+  const send = useCallback<WalletState["send"]>(
+    async (txs) => {
       const wallet = await connector.wallet();
-      const outcome = await wallet.signAndSendTransaction({
-        receiverId,
-        actions: [
-          {
-            type: "FunctionCall",
-            params: { methodName, args, gas: `${opts.tgas ?? 150}000000000000`, deposit: opts.deposit ?? "0" },
-          },
-        ],
+      const toActions = (acts: Act[]) =>
+        acts.map((a) => ({
+          type: "FunctionCall" as const,
+          params: { methodName: a.methodName, args: a.args, gas: `${a.tgas ?? 150}000000000000`, deposit: a.deposit ?? "0" },
+        }));
+      if (txs.length === 1) {
+        return readOutcome(await wallet.signAndSendTransaction({ receiverId: txs[0]!.receiverId, actions: toActions(txs[0]!.actions) }));
+      }
+      const outcomes = await wallet.signAndSendTransactions({
+        transactions: txs.map((t) => ({ receiverId: t.receiverId, actions: toActions(t.actions) })),
       });
-      return readOutcome(outcome);
+      const results = outcomes.map(readOutcome);
+      return results.find((r) => r.error) ?? results[results.length - 1]!;
     },
     [connector],
+  );
+
+  const call = useCallback<WalletState["call"]>(
+    (receiverId, methodName, args, opts = {}) => send([{ receiverId, actions: [{ methodName, args, ...opts }] }]),
+    [send],
   );
 
   const callGasless = useCallback<WalletState["callGasless"]>(
@@ -114,7 +136,7 @@ export function WalletProvider({ cfg, children }: { cfg: AppConfig; children: Re
     [connector],
   );
 
-  return <Ctx.Provider value={{ accountId, connecting, connect, disconnect, call, callGasless, signMessage }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ accountId, connecting, connect, disconnect, call, send, callGasless, signMessage }}>{children}</Ctx.Provider>;
 }
 
 export function useWallet() {

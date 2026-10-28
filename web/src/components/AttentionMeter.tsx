@@ -1,7 +1,7 @@
 // The bond curve as a live "attention meter": price vs the repo's open queue — the exact maths the
 // contract runs (shared/src/curve.ts). Drag on the chart when interactive.
 
-import { curveBond, formatUsdc, type CurvePolicy } from "@patchbond/shared";
+import { curveBond, DECIMALS, SYMBOL, type Currency, type CurvePolicy } from "@patchbond/shared";
 import { motion } from "motion/react";
 import { useId, useMemo, useRef, type PointerEvent } from "react";
 import { AnimatedNumber } from "./fx";
@@ -16,18 +16,23 @@ export function AttentionMeter({
   onOpenChange,
   maxOpen = 40,
   compact = false,
+  currency = "usdc",
 }: {
   policy: CurvePolicy;
   open: number;
   onOpenChange?: (n: number) => void;
   maxOpen?: number;
   compact?: boolean;
+  currency?: Currency;
 }) {
   const gid = useId();
   const svg = useRef<SVGSVGElement>(null);
   const dragging = useRef(false);
-  const max = Number(policy.max_bond);
-  const pts = useMemo(() => Array.from({ length: maxOpen + 1 }, (_, i) => Number(curveBond(policy, i))), [policy, maxOpen]);
+  // Everything below is in whole USDC / NEAR (display units), not token units.
+  const unit = 10 ** DECIMALS[currency];
+  const fmt = (v: number, digits = 2) => (currency === "usdc" ? `$${v.toFixed(digits)}` : `${v.toFixed(digits)} Ⓝ`);
+  const max = Number(policy.max_bond) / unit;
+  const pts = useMemo(() => Array.from({ length: maxOpen + 1 }, (_, i) => Number(curveBond(policy, i)) / unit), [policy, maxOpen, unit]);
   const top = Math.min(max, Math.max(...pts));
   const step = niceStep(top / 4);
   const yMax = Math.ceil((top * 1.05) / step) * step;
@@ -37,7 +42,7 @@ export function AttentionMeter({
   const line = pts.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
   const area = `${line} L${x(maxOpen)},${H - PAD.b} L${x(0)},${H - PAD.b} Z`;
   const cur = Math.min(Math.max(open, 0), maxOpen);
-  const bond = curveBond(policy, open);
+  const bond = Number(curveBond(policy, open)) / unit;
   const target = policy.target_open;
   const ticks = Array.from({ length: Math.round(yMax / step) + 1 }, (_, i) => i * step);
   const state = open > target * 2 ? "flooded" : open > target ? "busy" : "calm";
@@ -65,8 +70,8 @@ export function AttentionMeter({
         <div>
           <div className="text-xs text-faint">Bond right now</div>
           <div className={`num font-semibold tracking-tight ${compact ? "text-4xl" : "text-5xl"}`}>
-            <AnimatedNumber value={Number(bond) / 1e6} format={(n) => `$${n.toFixed(2)}`} />
-            <span className="ml-2 text-base font-medium text-faint">USDC</span>
+            <AnimatedNumber value={bond} format={(n) => (currency === "usdc" ? `$${n.toFixed(2)}` : n.toFixed(2))} />
+            <span className="ml-2 text-base font-medium text-faint">{SYMBOL[currency]}</span>
           </div>
         </div>
         <div className="text-right text-sm">
@@ -84,7 +89,7 @@ export function AttentionMeter({
         viewBox={`0 0 ${W} ${H}`}
         className={`mt-4 w-full touch-none select-none ${onOpenChange ? "cursor-ew-resize" : ""}`}
         role="img"
-        aria-label={`Bond curve: $${formatUsdc(bond)} at ${open} open submissions`}
+        aria-label={`Bond curve: ${fmt(bond)} at ${open} open submissions`}
         onPointerDown={(e) => {
           if (!onOpenChange) return;
           dragging.current = true;
@@ -108,7 +113,7 @@ export function AttentionMeter({
           <g key={t}>
             <line x1={PAD.l} x2={W - PAD.r} y1={y(t)} y2={y(t)} stroke="var(--line)" strokeDasharray="2 4" />
             <text x={PAD.l - 8} y={y(t) + 4} textAnchor="end" className="num fill-faint text-[11px]">
-              ${t / 1e6 >= 1 || t === 0 ? (t / 1e6).toFixed(0) : (t / 1e6).toFixed(2)}
+              {fmt(t, t >= 1 || t === 0 ? 0 : 2)}
             </text>
           </g>
         ))}
@@ -136,9 +141,9 @@ export function AttentionMeter({
   );
 }
 
-/** 1, 2 or 5 × 10^k USDC units, so axis labels are round dollars. */
+/** 1, 2 or 5 × 10^k (whole USDC or NEAR, fractions allowed), so axis labels are round. */
 function niceStep(raw: number): number {
-  const p = 10 ** Math.floor(Math.log10(Math.max(raw, 1)));
+  const p = 10 ** Math.floor(Math.log10(raw > 0 ? raw : 1));
   const f = raw / p;
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
 }

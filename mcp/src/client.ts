@@ -4,7 +4,10 @@
 // the PatchBond contract. It can't attach tokens, can't move its owner's funds, and the contract
 // enforces the daily cap. `assertSafeKey` refuses to run with anything more powerful.
 
-import { curveBond, formatUsdc } from "@patchbond/shared";
+import { curveBond, formatAmount, formatUsdc, SYMBOL, type Currency } from "@patchbond/shared";
+
+/** "2.25 USDC" / "0.78 NEAR" */
+const amount = (units: string | bigint, currency: Currency = "usdc") => `${formatAmount(units, currency)} ${SYMBOL[currency]}`;
 import { Account, JsonRpcProvider, KeyPair, type KeyPairString } from "near-api-js";
 
 export interface Settings {
@@ -137,21 +140,25 @@ export class PatchBond {
       me ? this.view<boolean>("is_exempt", { account_id: me }) : Promise.resolve(false),
     ]);
     const next = curveBond(repo.policy, repo.open + 1);
+    const currency = repo.currency ?? "usdc";
     return {
       repo: `${r.owner}/${r.name}`,
       repo_id: r.id,
       uses_patchbond: true,
       enabled: repo.policy.enabled,
-      bond_usdc: formatUsdc(quote),
+      currency,
+      bond: amount(quote, currency),
       you_are_exempt: exempt,
-      queue: { open: repo.open, capacity: repo.policy.target_open, next_bond_if_one_more_usdc: formatUsdc(next) },
+      queue: { open: repo.open, capacity: repo.policy.target_open, next_bond_if_one_more: amount(next, currency) },
       review_window_hours: repo.policy.review_window_sec / 3600,
       challenge_window_hours: repo.policy.challenge_window_sec / 3600,
       advice: !repo.policy.enabled
         ? "PatchBond is turned off here: no deposit needed."
         : exempt || quote === "0"
           ? "You're a proven contributor here: no deposit needed."
-          : `Opening a PR costs a refundable $${formatUsdc(quote)} bond. Run patchbond_preflight on your PR before paying — a forfeit costs the whole bond.`,
+          : currency === "near"
+            ? `Opening a PR costs a refundable ${amount(quote, currency)} bond. This repo takes NEAR and agent budgets hold USDC, so patchbond_deposit can't pay it: ask your operator to pay from a NEAR wallet via the link PatchBond posts on the PR. Run patchbond_preflight first.`
+            : `Opening a PR costs a refundable ${amount(quote)} bond. Run patchbond_preflight on your PR before paying — a forfeit costs the whole bond.`,
     };
   }
 
@@ -170,7 +177,13 @@ export class PatchBond {
     if (pr.state !== "open") throw new PatchBondError(`${pr.owner}/${pr.name}#${pr.number} is ${pr.state}; bonds are only for open PRs.`);
     const existing = await this.view<OnChainDeposit | null>("get_deposit", { repo_id: pr.id, number: pr.number });
     if (existing && !(typeof existing.status === "object" && "settled" in existing.status && existing.status.settled.verdict === "void")) {
-      return { already_paid: true, payer: existing.payer, bond_usdc: formatUsdc(existing.bond), status: describeStatus(existing.status) };
+      return { already_paid: true, payer: existing.payer, bond: amount(existing.bond, existing.currency), status: describeStatus(existing.status) };
+    }
+    const repo = await this.view<OnChainRepo | null>("get_repo", { repo_id: pr.id });
+    if (repo?.currency === "near") {
+      throw new PatchBondError(
+        `${pr.owner}/${pr.name} takes bonds in NEAR and agent budgets hold USDC, so this budget can't pay. Ask your operator to pay from a NEAR wallet: ${this.webUrl()}/pay/${pr.id}/${pr.number}?user=${pr.author}`,
+      );
     }
     const account = new Account(agent.accountId, this.provider!, agent.key as KeyPairString);
     const raw = (await account
@@ -192,7 +205,7 @@ export class PatchBond {
     return {
       paid: true,
       pr: `${pr.owner}/${pr.name}#${pr.number}`,
-      bond_usdc: formatUsdc(bond.bond),
+      bond: amount(bond.bond),
       tx: explorer(cfg, raw.transaction.hash),
       budget_left_today_usdc: budget.left_today_usdc,
       next: "The judge runs after the repo's CI. Check with patchbond_status. A real contribution gets the bond back into your budget.",
@@ -210,7 +223,7 @@ export class PatchBond {
     const v = sub?.verdicts?.[0];
     return {
       pr: `${r.owner}/${r.name}#${r.pr}`,
-      deposit: deposit ? { payer: deposit.payer, bond_usdc: formatUsdc(deposit.bond), status: describeStatus(deposit.status) } : null,
+      deposit: deposit ? { payer: deposit.payer, bond: amount(deposit.bond, deposit.currency), status: describeStatus(deposit.status) } : null,
       verdict: v
         ? { verdict: v.final.verdict, confidence: v.final.confidence, reasons: v.final.reasons, page: `${this.webUrl()}/v/${v.id}`, mock_judge: v.mock }
         : null,
@@ -289,6 +302,7 @@ export class PatchBond {
 
 interface OnChainRepo {
   open: number;
+  currency?: Currency;
   policy: { enabled: boolean; base_bond: string; min_bond: string; max_bond: string; target_open: number; review_window_sec: number; challenge_window_sec: number };
 }
 
@@ -297,6 +311,7 @@ type Status = "held" | { proposed: { verdict: string; deadline: number } } | { c
 interface OnChainDeposit {
   payer: string;
   bond: string;
+  currency?: Currency;
   status: Status;
 }
 

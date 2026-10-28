@@ -1,4 +1,4 @@
-import { formatUsdc, verifyRecord, type Check, type VerdictRecord } from "@patchbond/shared";
+import { verifyRecord, type Check, type VerdictRecord } from "@patchbond/shared";
 import { ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -7,7 +7,7 @@ import { Scramble } from "../components/fx";
 import { Seal, type SealState } from "../components/Seal";
 import { useParams } from "react-router";
 import { Button, Eyebrow, Hash, Notice, Panel, Spinner, VERDICT_STYLE, VerdictBadge } from "../components/kit";
-import { api, chain, explorerTx, type Deposit, type Repo } from "../lib/api";
+import { api, chain, explorerTx, money, type Deposit, type Repo } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 import { useWallet } from "../lib/wallet";
@@ -361,8 +361,8 @@ function OnChain({ r }: { r: VerdictRecord }) {
     <Panel className="p-5">
       <Eyebrow>On-chain · {cfg.network}</Eyebrow>
       <div className="mt-3 flex items-baseline justify-between">
-        <span className="num text-3xl font-semibold">${formatUsdc(deposit.bond)}</span>
-        <span className="text-sm text-muted-foreground">bond{deposit.tip !== "0" ? ` + $${formatUsdc(deposit.tip)} tip` : ""}</span>
+        <span className="num text-3xl font-semibold">{money(deposit.bond, deposit.currency)}</span>
+        <span className="text-sm text-muted-foreground">bond{deposit.tip !== "0" ? ` + ${money(deposit.tip, deposit.currency)} tip` : ""}</span>
       </div>
       <div className="mt-1 text-xs text-faint">paid by <span className="font-mono">{deposit.payer}</span></div>
       <div className="mt-4 rounded-lg border border-line bg-bg px-3 py-2.5 text-sm">
@@ -384,13 +384,22 @@ function OnChain({ r }: { r: VerdictRecord }) {
             isMaintainer={isMaintainer}
             busy={busy}
             onChallenge={() =>
-              act("Challenge", () =>
-                wallet.call(cfg.token, "ft_transfer_call", {
-                  receiver_id: cfg.contract,
-                  amount: deposit.bond,
-                  msg: JSON.stringify({ action: "challenge", repo_id: r.repo.id, number: r.number }),
-                }, { deposit: "1" }),
-              )
+              act("Challenge", () => {
+                // The stake is paid in the bond's currency; NEAR is wrapped in the same transaction.
+                const args = { receiver_id: cfg.contract, amount: deposit.bond, msg: JSON.stringify({ action: "challenge", repo_id: r.repo.id, number: r.number }) };
+                if (deposit.currency !== "near") return wallet.call(cfg.token, "ft_transfer_call", args, { deposit: "1" });
+                if (!cfg.wnear) throw new Error("This deployment has no wNEAR configured.");
+                return wallet.send([
+                  {
+                    receiverId: cfg.wnear,
+                    actions: [
+                      { methodName: "storage_deposit", args: { registration_only: true }, deposit: "1250000000000000000000", tgas: 10 },
+                      { methodName: "near_deposit", args: {}, deposit: deposit.bond, tgas: 10 },
+                      { methodName: "ft_transfer_call", args, deposit: "1", tgas: 150 },
+                    ],
+                  },
+                ]);
+              })
             }
             onFinalize={() => act("Finalize", () => wallet.call(cfg.contract, "finalize", { repo_id: r.repo.id, number: r.number }))}
           />
@@ -449,7 +458,7 @@ function ProposedActions(p: {
     <div className="space-y-2">
       {canChallenge && (
         <Button className="w-full" disabled={!!p.busy} onClick={p.onChallenge}>
-          Challenge — stake ${formatUsdc(p.deposit.bond)}
+          Challenge — stake {money(p.deposit.bond, p.deposit.currency)}
         </Button>
       )}
       {canChallenge && <p className="text-xs text-faint">A stronger model re-judges with both sides' statements. Win: stake back and the verdict flips. Lose: the stake goes to the other side.</p>}
@@ -471,7 +480,7 @@ function describe(d: Deposit): { title: string; detail: string } {
       ? { title: `Proposed: ${s.proposed.verdict}`, detail: `Stands in ${fmtDuration(left)} unless challenged.` }
       : { title: `Proposed: ${s.proposed.verdict}`, detail: "Challenge window closed — anyone can finalize it." };
   }
-  if ("challenged" in s) return { title: `Challenged by ${s.challenged.challenger}`, detail: `Stake $${formatUsdc(s.challenged.stake)}. A stronger model is re-judging.` };
+  if ("challenged" in s) return { title: `Challenged by ${s.challenged.challenger}`, detail: `Stake ${money(s.challenged.stake, d.currency)}. A stronger model is re-judging.` };
   return { title: `Settled: ${s.settled.verdict}`, detail: new Date(s.settled.at).toLocaleString() };
 }
 

@@ -27,9 +27,18 @@ const client = (agent = true) =>
 describe("client", () => {
   test("policy: price, queue and advice for a PatchBond repo", async () => {
     const p = await client().policy("https://github.com/acme/widget/pull/7");
-    expect(p).toMatchObject({ repo: "acme/widget", repo_id: 42, uses_patchbond: true, bond_usdc: "2.25", you_are_exempt: false });
-    expect(p.queue).toEqual({ open: 9, capacity: 8, next_bond_if_one_more_usdc: "2.53" });
+    expect(p).toMatchObject({ repo: "acme/widget", repo_id: 42, uses_patchbond: true, currency: "usdc", bond: "2.25 USDC", you_are_exempt: false });
+    expect(p.queue).toEqual({ open: 9, capacity: 8, next_bond_if_one_more: "2.53 USDC" });
     expect(p.advice).toContain("patchbond_preflight");
+  });
+
+  test("policy: a NEAR repo is priced in NEAR and the agent is told its USDC budget can't pay", async () => {
+    world.repos[42] = { ...(world.repos[42] as object), currency: "near", policy: { enabled: true, base_bond: String(10n ** 24n), min_bond: String(10n ** 23n), max_bond: String(25n * 10n ** 24n), target_open: 8, review_window_sec: 259200, challenge_window_sec: 259200, forfeit_threshold_bps: 8500 } };
+    world.quote = String(78n * 10n ** 22n);
+    const p = await client().policy("acme/widget");
+    expect(p).toMatchObject({ currency: "near", bond: "0.78 NEAR" });
+    expect(p.advice).toContain("operator");
+    await expect(client().deposit("https://github.com/acme/widget/pull/7")).rejects.toThrow("takes bonds in NEAR");
   });
 
   test("policy: a repo without PatchBond needs no deposit", async () => {

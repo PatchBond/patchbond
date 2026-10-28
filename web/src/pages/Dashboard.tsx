@@ -1,7 +1,7 @@
 // Maintainers: sign in with GitHub, link each repo's vault to a NEAR account (NEP-413 proof),
 // then withdraw, tune the bond policy (with a live price preview) and decide needs_human cases.
 
-import { formatUsdc, parseUsdc, type VerdictRecord } from "@patchbond/shared";
+import { DECIMALS, formatAmount, parseAmount, SYMBOL, type Currency, type VerdictRecord } from "@patchbond/shared";
 import { Link2, LogOut, Scale, Settings2, Vault } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttentionMeter } from "../components/AttentionMeter";
 import { AnimatedNumber, Reveal } from "../components/fx";
 import { Button, Eyebrow, GithubIcon, Notice, Panel, Spinner, VerdictBadge } from "../components/kit";
-import { api, chain, type Deposit, type MaintainerRepo, type Policy } from "../lib/api";
+import { api, chain, money, type Deposit, type MaintainerRepo, type Policy } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 import { useWallet } from "../lib/wallet";
@@ -162,7 +162,15 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
           </div>
         </div>
         <div className="grid grid-cols-3 gap-6 text-right">
-          <Mini label="Vault" value={<AnimatedNumber value={Number(r?.vault ?? 0) / 1e6} format={(n) => `$${n.toFixed(2)}`} />} />
+          <Mini
+            label="Vault"
+            value={
+              <AnimatedNumber
+                value={Number(r?.vault ?? 0) / 10 ** DECIMALS[r?.currency ?? "usdc"]}
+                format={(n) => (r?.currency === "near" ? `${n.toFixed(2)} NEAR` : `$${n.toFixed(2)}`)}
+              />
+            }
+          />
           <Mini label="Open" value={r?.open ?? 0} />
           <Mini label="Refund / forfeit" value={`${r?.stats.refunds ?? 0} / ${r?.stats.forfeits ?? 0}`} />
         </div>
@@ -254,6 +262,7 @@ function CrossChain({ repo }: { repo: MaintainerRepo }) {
   const cfg = useConfig();
   const wallet = useWallet();
   const vault = BigInt(repo.onchain?.vault ?? "0");
+  const currency = repo.onchain?.currency ?? "usdc";
   const [chainId, setChainId] = useState<string>("base");
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -262,9 +271,10 @@ function CrossChain({ repo }: { repo: MaintainerRepo }) {
     setBusy(true);
     setQuote(null);
     try {
-      // Quote the whole vault (or $5 when it's empty, to show what it would look like).
-      const amount = (vault > 100_000n ? vault : 5_000_000n).toString();
-      setQuote(await api.intentsQuote({ amount, chain: chainId, recipient: to.trim(), refund_to: wallet.accountId ?? "" }));
+      // Quote the whole vault (or 5 USDC / 5 NEAR when it's nearly empty, to show what it would look like).
+      const five = parseAmount("5", currency);
+      const amount = (vault >= five / 50n ? vault : five).toString();
+      setQuote(await api.intentsQuote({ amount, currency, chain: chainId, recipient: to.trim(), refund_to: wallet.accountId ?? "" }));
     } catch (e) {
       toast.error("No quote", { description: (e as Error).message });
     } finally {
@@ -277,7 +287,7 @@ function CrossChain({ repo }: { repo: MaintainerRepo }) {
       <div className="flex items-center gap-2 text-sm font-medium">
         Receive on another chain <span className="rounded-full bg-raised px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-faint">NEAR Intents</span>
       </div>
-      <p className="mt-1 text-xs text-faint">USDC lands on the chain you pick, through NEAR Intents 1Click.{cfg.network === "testnet" ? " Intents has no testnet, so this shows a live dry-run quote; nothing moves." : ""}</p>
+      <p className="mt-1 text-xs text-faint">USDC lands on the chain you pick, through NEAR Intents 1Click{currency === "near" ? " (your NEAR is swapped on the way)" : ""}.{cfg.network === "testnet" ? " Intents has no testnet, so this shows a live dry-run quote; nothing moves." : ""}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <div className="flex rounded-xl border border-line p-0.5">
           {CHAINS.map(([id, name]) => (
@@ -294,10 +304,10 @@ function CrossChain({ repo }: { repo: MaintainerRepo }) {
       {quote && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-3 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm">
           <div>
-            Send <b className="num">${formatUsdc(quote.amount_in)}</b> → receive <b className="num text-brand">${formatUsdc(quote.amount_out)}</b> USDC on {quote.chain} in about <b>{quote.seconds} s</b>
+            Send <b className="num">{money(quote.amount_in, currency)}</b> → receive <b className="num text-brand">{money(quote.amount_out)}</b> USDC on {quote.chain} in about <b>{quote.seconds} s</b>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            At least ${formatUsdc(quote.min_amount_out)} guaranteed · withdraw fee ${formatUsdc(quote.fees.withdraw, 4)} · {cfg.network === "testnet" ? "dry-run quote — nothing moved" : "live on mainnet"}
+            At least {money(quote.min_amount_out)} guaranteed · withdraw fee ${formatAmount(quote.fees.withdraw, "usdc", 4)} · {cfg.network === "testnet" ? "dry-run quote — nothing moved" : "live on mainnet"}
           </div>
         </motion.div>
       )}
@@ -342,13 +352,16 @@ function Withdraw({ repo, onDone }: { repo: MaintainerRepo; onDone: () => void }
   const cfg = useConfig();
   const wallet = useWallet();
   const vault = BigInt(repo.onchain?.vault ?? "0");
-  const [amount, setAmount] = useState(formatUsdc(vault));
+  const currency = repo.onchain?.currency ?? "usdc";
+  const near = currency === "near";
+  const [amount, setAmount] = useState(formatAmount(vault, currency));
+  const [unwrap, setUnwrap] = useState(true);
   const [busy, setBusy] = useState(false);
   let units = 0n;
   let err: string | null = null;
   try {
-    units = parseUsdc(amount);
-    if (units > vault) err = `The vault holds $${formatUsdc(vault)}.`;
+    units = parseAmount(amount, currency);
+    if (units > vault) err = `The vault holds ${money(vault, currency)}.`;
     if (units === 0n) err = "Enter an amount above zero.";
   } catch (e) {
     err = (e as Error).message;
@@ -356,9 +369,21 @@ function Withdraw({ repo, onDone }: { repo: MaintainerRepo; onDone: () => void }
   async function go() {
     setBusy(true);
     try {
-      const out = await wallet.call(cfg.contract, "withdraw", { repo_id: repo.repo_id, amount: units.toString() }, { deposit: "1", tgas: 100 });
+      const withdraw = { receiverId: cfg.contract, actions: [{ methodName: "withdraw", args: { repo_id: repo.repo_id, amount: units.toString() }, deposit: "1", tgas: 100 }] };
+      let out;
+      if (near && cfg.wnear && wallet.accountId) {
+        // wNEAR has to know you before it can pay you; then optionally unwrap to plain NEAR.
+        const registered = await chain.registered(cfg, cfg.wnear, wallet.accountId);
+        out = await wallet.send([
+          ...(registered ? [] : [{ receiverId: cfg.wnear, actions: [{ methodName: "storage_deposit", args: { registration_only: true }, deposit: "1250000000000000000000", tgas: 10 }] }]),
+          withdraw,
+          ...(unwrap ? [{ receiverId: cfg.wnear, actions: [{ methodName: "near_withdraw", args: { amount: units.toString() }, deposit: "1", tgas: 10 }] }] : []),
+        ]);
+      } else {
+        out = await wallet.send([withdraw]);
+      }
       if (out.error) toast.error("Withdrawal failed", { description: out.error });
-      else toast.success(`$${formatUsdc(units)} sent to ${wallet.accountId}`);
+      else toast.success(`${money(units, currency)} sent to ${wallet.accountId}`);
       onDone();
     } catch (e) {
       toast.error("Not sent", { description: (e as Error).message || "The wallet closed before signing." });
@@ -370,35 +395,50 @@ function Withdraw({ repo, onDone }: { repo: MaintainerRepo; onDone: () => void }
     <div className="flex flex-wrap items-end gap-4">
       <div>
         <div className="text-xs text-faint">Available</div>
-        <div className="num text-3xl font-semibold">${formatUsdc(vault)}</div>
+        <div className="num text-3xl font-semibold">{money(vault, currency)}</div>
       </div>
       <label className="text-sm">
-        <span className="text-muted-foreground">Amount (USDC)</span>
+        <span className="text-muted-foreground">Amount ({SYMBOL[currency]})</span>
         <div className="mt-1 flex gap-2">
           <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="w-32 rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-brand" />
-          <Button variant="quiet" onClick={() => setAmount(formatUsdc(vault))}>Max</Button>
+          <Button variant="quiet" onClick={() => setAmount(formatAmount(vault, currency))}>Max</Button>
         </div>
       </label>
       <Button onClick={() => void go()} disabled={busy || !!err || vault === 0n}>
         {busy ? <Spinner /> : <Vault className="size-4" />} Withdraw to {wallet.accountId}
       </Button>
+      {near && (
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input type="checkbox" checked={unwrap} onChange={(e) => setUnwrap(e.target.checked)} className="size-4 accent-[var(--brand)]" />
+          Receive plain NEAR (unwrap the wNEAR)
+        </label>
+      )}
       {err && vault > 0n && <span className="text-xs text-danger">{err}</span>}
-
     </div>
   );
 }
 
-const usdField = (units: string) => formatUsdc(units);
+/** Starting prices when a repo switches currency (the old amounts mean nothing in the new one). */
+const DEFAULT_PRICES: Record<Currency, { base: string; min: string; max: string }> = {
+  usdc: { base: "2.00", min: "0.25", max: "50.00" },
+  near: { base: "1.00", min: "0.10", max: "25.00" },
+};
 
 function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => void }) {
   const cfg = useConfig();
   const wallet = useWallet();
-  const p = repo.onchain!.policy;
+  const r = repo.onchain!;
+  const p = r.policy;
+  const current = r.currency ?? "usdc";
+  const [currency, setCurrency] = useState<Currency>(current);
+  const switching = currency !== current;
+  // The contract only lets a repo switch while nothing is held in the old currency.
+  const switchBlocked = r.open > 0 || BigInt(r.vault) > 0n ? "Withdraw the vault and let open deposits settle before switching currency." : null;
   const [f, setF] = useState({
     enabled: p.enabled,
-    base: usdField(p.base_bond),
-    min: usdField(p.min_bond),
-    max: usdField(p.max_bond),
+    base: formatAmount(p.base_bond, current),
+    min: formatAmount(p.min_bond, current),
+    max: formatAmount(p.max_bond, current),
     capacity: String(p.target_open),
     reviewH: String(p.review_window_sec / 3600),
     challengeH: String(p.challenge_window_sec / 3600),
@@ -412,9 +452,9 @@ function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => 
   try {
     next = {
       enabled: f.enabled,
-      base_bond: parseUsdc(f.base).toString(),
-      min_bond: parseUsdc(f.min).toString(),
-      max_bond: parseUsdc(f.max).toString(),
+      base_bond: parseAmount(f.base, currency).toString(),
+      min_bond: parseAmount(f.min, currency).toString(),
+      max_bond: parseAmount(f.max, currency).toString(),
       target_open: Number(f.capacity),
       review_window_sec: Math.round(Number(f.reviewH) * 3600),
       challenge_window_sec: Math.round(Number(f.challengeH) * 3600),
@@ -434,9 +474,11 @@ function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => 
     if (!next) return;
     setBusy(true);
     try {
-      const out = await wallet.call(cfg.contract, "set_policy", { repo_id: repo.repo_id, policy: next }, { tgas: 30 });
+      const out = switching
+        ? await wallet.call(cfg.contract, "set_currency", { repo_id: repo.repo_id, currency, policy: next }, { tgas: 30 })
+        : await wallet.call(cfg.contract, "set_policy", { repo_id: repo.repo_id, policy: next }, { tgas: 30 });
       if (out.error) toast.error("Policy not saved", { description: out.error });
-      else toast.success("Bond policy saved on-chain");
+      else toast.success(switching ? `Bonds are now paid in ${SYMBOL[currency]}` : "Bond policy saved on-chain");
       onSaved();
     } catch (e) {
       toast.error("Not saved", { description: (e as Error).message || "The wallet closed before signing." });
@@ -466,10 +508,35 @@ function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => 
           </span>
           <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="size-5 accent-[var(--brand)]" />
         </label>
+        <div className="rounded-xl border border-line bg-bg px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              <span className="font-medium">Contributors pay in</span>
+              <span className="block text-xs text-faint">NEAR is held as wNEAR; contributors pay plain NEAR and the wallet wraps it.</span>
+            </span>
+            <div className="flex rounded-xl border border-line p-0.5">
+              {(["usdc", "near"] as const).map((c) => (
+                <button
+                  key={c}
+                  disabled={c === "near" && !cfg.wnear}
+                  onClick={() => {
+                    setCurrency(c);
+                    // Prices carry over only within a currency.
+                    setF({ ...f, ...(c === current ? { base: formatAmount(p.base_bond, current), min: formatAmount(p.min_bond, current), max: formatAmount(p.max_bond, current) } : DEFAULT_PRICES[c]) });
+                  }}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-40 ${currency === c ? "bg-raised text-ink" : "text-muted-foreground hover:text-ink"}`}
+                >
+                  {SYMBOL[c]}
+                </button>
+              ))}
+            </div>
+          </div>
+          {switching && <p className={`mt-2 text-xs ${switchBlocked ? "text-danger" : "text-warn"}`}>{switchBlocked ?? `Saving switches this repo to ${SYMBOL[currency]}. Check the prices below — they're in ${SYMBOL[currency]} now.`}</p>}
+        </div>
         <div className="grid grid-cols-3 gap-3">
-          {field("base", "Base bond", "at capacity", "$")}
-          {field("min", "Minimum", "quiet repo", "$")}
-          {field("max", "Maximum", "flood ceiling", "$")}
+          {field("base", "Base bond", "at capacity", SYMBOL[currency])}
+          {field("min", "Minimum", "quiet repo", SYMBOL[currency])}
+          {field("max", "Maximum", "flood ceiling", SYMBOL[currency])}
         </div>
         <div className="grid grid-cols-2 gap-3">
           {field("capacity", "Review capacity", "outside PRs at once")}
@@ -478,13 +545,13 @@ function PolicyEditor({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => 
           {field("challengeH", "Challenge window", "before a verdict stands", "h")}
         </div>
         {err && <Notice tone="error">{err}</Notice>}
-        <Button onClick={() => void save()} disabled={busy || !!err}>
-          {busy ? <Spinner /> : <Settings2 className="size-4" />} Save policy on-chain
+        <Button onClick={() => void save()} disabled={busy || !!err || (switching && !!switchBlocked)}>
+          {busy ? <Spinner /> : <Settings2 className="size-4" />} {switching ? `Switch to ${SYMBOL[currency]} and save` : "Save policy on-chain"}
         </Button>
       </div>
       <div className="rounded-2xl border border-line bg-bg p-4">
         <div className="mb-2 text-xs text-faint">Live preview — drag to see what newcomers would pay</div>
-        {next && !err ? <AttentionMeter policy={next} open={preview} onOpenChange={setPreview} maxOpen={Math.max(24, next.target_open * 3)} compact /> : <div className="p-8 text-sm text-faint">Fix the fields to see the curve.</div>}
+        {next && !err ? <AttentionMeter policy={next} open={preview} onOpenChange={setPreview} maxOpen={Math.max(24, next.target_open * 3)} compact currency={currency} /> : <div className="p-8 text-sm text-faint">Fix the fields to see the curve.</div>}
       </div>
     </div>
   );
@@ -525,7 +592,7 @@ function Queue({ repo }: { repo: MaintainerRepo }) {
             #{v.number}
           </a>
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{v.final.reasons[0]}</span>
-          <span className="num text-xs text-faint">${formatUsdc(d.bond)}</span>
+          <span className="num text-xs text-faint">{money(d.bond, repo.onchain?.currency)}</span>
           <Link to={`/v/${v.id}`} className="text-xs text-faint hover:text-ink">verdict</Link>
           <Button variant="ghost" disabled={!!busy} onClick={() => void decide(v, "refund")}>
             {busy === `${v.number}:refund` ? <Spinner /> : "Refund"}

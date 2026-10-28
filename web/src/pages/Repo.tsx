@@ -1,8 +1,7 @@
-import { formatUsdc } from "@patchbond/shared";
 import { Link, useParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
 import { Eyebrow, Notice, Panel, Spinner, Stat, VerdictBadge } from "../components/kit";
-import { api, chain } from "../lib/api";
+import { api, chain, money } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 
@@ -24,14 +23,14 @@ export function RepoPage() {
       </p>
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         <Panel className="p-6">
-          <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} />
+          <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} currency={repo.currency} />
         </Panel>
         <Panel className="grid grid-cols-2 gap-6 p-6">
-          <Stat label="Vault" value={`$${formatUsdc(repo.vault)}`} sub="withdrawable by the maintainer" />
-          <Stat label="Paid by slop" value={`$${formatUsdc(repo.stats.forfeited_total)}`} />
+          <Stat label="Vault" value={money(repo.vault, repo.currency)} sub="withdrawable by the maintainer" />
+          <Stat label="Paid by slop" value={money(repo.stats.forfeited_total, repo.currency)} />
           <Stat label="Refunds" value={repo.stats.refunds} />
           <Stat label="Forfeits" value={repo.stats.forfeits} />
-          <Stat label="Tips earned" value={`$${formatUsdc(repo.stats.tips_earned)}`} sub="reviewed on time" />
+          <Stat label="Tips earned" value={money(repo.stats.tips_earned, repo.currency)} sub="reviewed on time" />
           <Stat label="Review window" value={`${Math.round(repo.policy.review_window_sec / 3600)} h`} />
         </Panel>
       </div>

@@ -1,12 +1,16 @@
 // The PatchBond server API and direct NEAR RPC views (no wallet needed to read).
 
-import type { VerdictRecord } from "@patchbond/shared";
+import { formatAmount, type Currency, type VerdictRecord } from "@patchbond/shared";
+
+export type { Currency };
 
 export interface AppConfig {
   network: "testnet" | "mainnet";
   rpc: string;
   contract: string;
   token: string;
+  /** wNEAR, when the contract takes NEAR bonds. */
+  wnear: string | null;
   oracle: string;
   judge: { model: string; mock: boolean; mock_signing_address?: string };
   github?: { app_url: string | null; sign_in: boolean };
@@ -55,7 +59,7 @@ export const api = {
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? `Appeal failed (${res.status})`);
   },
-  intentsQuote: (b: { amount: string; chain: string; recipient: string; refund_to: string }) =>
+  intentsQuote: (b: { amount: string; currency?: Currency; chain: string; recipient: string; refund_to: string }) =>
     post<{ dry: true; chain: string; amount_in: string; amount_out: string; min_amount_out: string; seconds: number; fees: { withdraw: string; refund: string } }>("/api/intents/quote", b),
   judge: async (url: string) => {
     const res = await fetch("/api/judge", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }) });
@@ -87,6 +91,7 @@ export interface Repo {
   open: number;
   linked_at: number | null;
   stats: { deposits: number; refunds: number; forfeits: number; forfeited_total: string; tips_earned: string };
+  currency: Currency;
 }
 
 export type DepositStatus =
@@ -108,6 +113,8 @@ export interface Deposit {
   status: DepositStatus;
   from_budget: boolean;
   harness: string | null;
+  /** What the bond was paid in (and what refunds and stakes use). */
+  currency: Currency;
 }
 
 export async function view<T>(cfg: AppConfig, method: string, args: object, contract = cfg.contract): Promise<T> {
@@ -143,7 +150,28 @@ export const chain = {
     view<{ refunds: number; forfeits: number; last_forfeit_at: number | null; refund_repos: number[] }>(cfg, "get_reputation", { account_id }),
   harness: (cfg: AppConfig, harness: string) => view<{ deposits: number; refunds: number; forfeits: number }>(cfg, "get_harness_stats", { harness }),
   usdcBalance: (cfg: AppConfig, account_id: string) => view<string>(cfg, "ft_balance_of", { account_id }, cfg.token),
+  /** Spendable balance in `currency`: USDC on the token, or native NEAR minus what storage locks. */
+  balance: async (cfg: AppConfig, account_id: string, currency: Currency): Promise<string> => {
+    if (currency === "usdc") return chain.usdcBalance(cfg, account_id);
+    const res = await fetch(cfg.rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: "pb", method: "query", params: { request_type: "view_account", finality: "optimistic", account_id } }),
+    });
+    const body = (await res.json()) as { result?: { amount: string; storage_usage: number }; error?: unknown };
+    if (!body.result) return "0";
+    const free = BigInt(body.result.amount) - BigInt(body.result.storage_usage) * 10n ** 19n;
+    return (free > 0n ? free : 0n).toString();
+  },
+  /** Whether `account_id` is registered with a NEP-145 token (wNEAR must know you to pay you). */
+  registered: async (cfg: AppConfig, token: string, account_id: string) =>
+    (await view<unknown>(cfg, "storage_balance_of", { account_id }, token)) !== null,
 };
+
+/** "$2.00" for USDC, "0.78 NEAR" for NEAR. */
+export function money(units: string | bigint, currency: Currency = "usdc"): string {
+  return currency === "usdc" ? `$${formatAmount(units, "usdc")}` : `${formatAmount(units, "near")} NEAR`;
+}
 
 export function explorerTx(cfg: AppConfig, hash: string) {
   return `https://${cfg.network === "testnet" ? "testnet." : ""}nearblocks.io/txns/${hash}`;

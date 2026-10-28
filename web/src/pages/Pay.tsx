@@ -1,9 +1,9 @@
-import { formatUsdc, parseUsdc } from "@patchbond/shared";
+import { parseAmount, SYMBOL } from "@patchbond/shared";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
 import { Button, Eyebrow, Notice, Panel, Spinner } from "../components/kit";
-import { chain, explorerTx } from "../lib/api";
+import { chain, explorerTx, money } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 import { useWallet } from "../lib/wallet";
@@ -23,38 +23,62 @@ export function Pay() {
   const [gasless, setGasless] = useState(true);
   const [result, setResult] = useState<{ ok: boolean; text: string; hash?: string } | null>(null);
 
-  const { data, error, loading, reload } = useAsync(
-    () =>
-      Promise.all([
-        chain.repo(cfg, repoId),
-        chain.deposit(cfg, repoId, number),
-        chain.quote(cfg, repoId, wallet.accountId),
-        wallet.accountId ? chain.usdcBalance(cfg, wallet.accountId) : Promise.resolve(null),
-      ]),
-    [cfg, repoId, number, wallet.accountId],
-  );
+  const { data, error, loading, reload } = useAsync(async () => {
+    const [repo, deposit, quote] = await Promise.all([
+      chain.repo(cfg, repoId),
+      chain.deposit(cfg, repoId, number),
+      chain.quote(cfg, repoId, wallet.accountId),
+    ]);
+    const currency = repo?.currency ?? "usdc";
+    const [balance, registered] = wallet.accountId
+      ? await Promise.all([
+          chain.balance(cfg, wallet.accountId, currency),
+          currency === "near" && cfg.wnear ? chain.registered(cfg, cfg.wnear, wallet.accountId) : Promise.resolve(true),
+        ])
+      : [null, true];
+    return [repo, deposit, quote, balance, registered] as const;
+  }, [cfg, repoId, number, wallet.accountId]);
 
   if (!Number.isInteger(repoId) || !Number.isInteger(number)) {
     return <Centered><Notice tone="error" title="This pay link is broken">Use the link from the PatchBond comment on your pull request.</Notice></Centered>;
   }
   if (loading && !data) return <Centered><Spinner /></Centered>;
   if (error) return <Centered><Notice tone="error" title="Couldn't read the contract">{error}. Try again in a moment.</Notice></Centered>;
-  const [repo, deposit, quote, balance] = data!;
+  const [repo, deposit, quote, balance, registered] = data!;
   if (!repo) {
     return <Centered><Notice tone="error" title="This repo doesn't use PatchBond">Repo {repoId} isn't registered on {cfg.network}. Check the link, or ask the maintainers to install the GitHub App.</Notice></Centered>;
   }
 
+  const currency = repo.currency ?? "usdc";
+  const near = currency === "near";
   let tip = 0n;
   let tipError: string | null = null;
   try {
-    tip = tipText ? parseUsdc(tipText) : 0n;
+    tip = tipText ? parseAmount(tipText, currency) : 0n;
   } catch (e) {
     tipError = (e as Error).message;
   }
   const bond = BigInt(quote);
   // Headroom in case the queue grows before the tx lands; the contract returns any change.
   const send = bond + tip + bond / 20n;
-  const short = balance !== null && BigInt(balance) < send;
+  // Paying in NEAR also costs gas and, the first time, wNEAR registration (0.00125 NEAR).
+  const reserve = near ? 10n ** 22n * 2n : 0n;
+  const short = balance !== null && BigInt(balance) < send + reserve;
+
+  /** One transaction to wNEAR: register if needed, wrap exactly what's sent, pay. Any change comes back as wNEAR. */
+  function payInNear(args: { receiver_id: string; amount: string; msg: string }) {
+    if (!cfg.wnear) throw new Error("This PatchBond deployment doesn't take NEAR yet.");
+    return wallet.send([
+      {
+        receiverId: cfg.wnear,
+        actions: [
+          ...(registered ? [] : [{ methodName: "storage_deposit", args: { registration_only: true }, deposit: "1250000000000000000000", tgas: 10 }]),
+          { methodName: "near_deposit", args: {}, deposit: args.amount, tgas: 10 },
+          { methodName: "ft_transfer_call", args, deposit: "1", tgas: 150 },
+        ],
+      },
+    ]);
+  }
 
   async function pay() {
     setBusy(true);
@@ -70,7 +94,11 @@ export function Pay() {
         ...(fixes ? { fixes_issue: Number(fixes) } : {}),
       };
       const args = { receiver_id: cfg.contract, amount: send.toString(), msg: JSON.stringify(msg) };
-      const out = gasless ? await wallet.callGasless(cfg.token, "ft_transfer_call", args, { deposit: "1" }) : { ...(await wallet.call(cfg.token, "ft_transfer_call", args, { deposit: "1" })), gasless: false };
+      const out = near
+        ? { ...(await payInNear(args)), gasless: false }
+        : gasless
+          ? await wallet.callGasless(cfg.token, "ft_transfer_call", args, { deposit: "1" })
+          : { ...(await wallet.call(cfg.token, "ft_transfer_call", args, { deposit: "1" })), gasless: false };
       setResult(out.error ? { ok: false, text: out.error, hash: out.hash } : { ok: true, text: out.gasless ? "Deposit held — PatchBond paid the gas." : "Deposit held.", hash: out.hash });
       reload();
     } catch (e) {
@@ -94,7 +122,7 @@ export function Pay() {
         </p>
         <ol className="mt-6 space-y-3 text-sm">
           {[
-            ["You pay", `$${formatUsdc(bond)} USDC from your NEAR wallet.`],
+            ["You pay", near ? `${money(bond, currency)} from your NEAR wallet (wrapped to wNEAR in the same transaction).` : `${money(bond)} USDC from your NEAR wallet.`],
             ["CI runs, then an AI judge reviews", "In a verified enclave on NEAR AI Cloud. The verdict is signed and public."],
             ["Real work → refunded", "Automatically, to the wallet you paid from. Disagree with a verdict? Challenge it."],
           ].map(([t, b], i) => (
@@ -108,7 +136,7 @@ export function Pay() {
           ))}
         </ol>
         <Panel className="mt-8 p-5">
-          <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} />
+          <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} currency={currency} />
         </Panel>
       </div>
 
@@ -120,7 +148,7 @@ export function Pay() {
             <div className="mx-auto grid size-14 place-items-center rounded-full bg-brand-soft text-2xl text-brand">✓</div>
             <h2 className="mt-4 text-xl font-semibold">Deposit held</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              ${formatUsdc(deposit.bond)} from <span className="font-mono">{deposit.payer}</span>. The judge runs after CI; the verdict appears on the pull request.
+              {money(deposit.bond, currency)} from <span className="font-mono">{deposit.payer}</span>. The judge runs after CI; the verdict appears on the pull request.
             </p>
             {result?.hash && (
               <a className="mt-4 inline-block text-sm text-brand underline" href={explorerTx(cfg, result.hash)} target="_blank" rel="noreferrer">
@@ -134,7 +162,7 @@ export function Pay() {
           <>
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-muted-foreground">Deposit</span>
-              <span className="num text-4xl font-semibold tracking-tight">${formatUsdc(bond + tip)}</span>
+              <span className="num text-4xl font-semibold tracking-tight">{money(bond + tip, currency)}</span>
             </div>
             {bond === 0n && wallet.accountId && (
               <div className="mt-4"><Notice tone="ok" title="You're a proven contributor">No deposit needed — 3+ refunds on 2+ repos. Just ask a maintainer to review.</Notice></div>
@@ -155,7 +183,7 @@ export function Pay() {
               <summary className="cursor-pointer px-3 py-2.5 text-sm text-muted-foreground hover:text-ink">Optional: priority tip, linked issue</summary>
               <div className="space-y-4 border-t border-line p-3">
                 <label className="block text-sm">
-                  <span className="text-muted-foreground">Review tip (USDC)</span>
+                  <span className="text-muted-foreground">Review tip ({SYMBOL[currency]})</span>
                   <input value={tipText} onChange={(e) => setTipText(e.target.value)} inputMode="decimal" placeholder="0.00" className="mt-1.5 w-full rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-brand" />
                   <span className="mt-1 block text-xs text-faint">
                     The repo earns it only if a maintainer reviews within {Math.round(repo.policy.review_window_sec / 3600)} h. Otherwise it comes back to you.
@@ -177,14 +205,15 @@ export function Pay() {
                 </Button>
               ) : (
                 <Button className="w-full py-3 text-base" onClick={() => void pay()} disabled={busy || !githubUser.trim() || !!tipError || short || bond === 0n}>
-                  {busy ? <><Spinner /> Confirm in your wallet…</> : `Pay $${formatUsdc(bond + tip)} deposit`}
+                  {busy ? <><Spinner /> Confirm in your wallet…</> : `Pay ${money(bond + tip, currency)} deposit`}
                 </Button>
               )}
             </div>
             {wallet.accountId && balance !== null && (
               <p className={`mt-2 text-center text-xs ${short ? "text-danger" : "text-faint"}`}>
-                Balance ${formatUsdc(balance)} USDC
-                {short && cfg.network === "testnet" && (
+                Balance {money(balance, currency)}{near ? "" : " USDC"}
+                {short && near && " — not enough NEAR (keep ~0.02 extra for gas)."}
+                {short && !near && cfg.network === "testnet" && (
                   <>
                     {" "}— not enough. Get test USDC at{" "}
                     <a className="underline" href="https://faucet.circle.com" target="_blank" rel="noreferrer">
@@ -193,17 +222,21 @@ export function Pay() {
                     .
                   </>
                 )}
-                {short && cfg.network === "mainnet" && " — not enough USDC on NEAR."}
+                {short && !near && cfg.network === "mainnet" && " — not enough USDC on NEAR."}
               </p>
             )}
-            <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm">
-              <span>
-                <span className="font-medium">Pay without gas</span>
-                <span className="block text-xs text-faint">You sign; PatchBond's relayer pays the NEAR fee (NEP-366). Works with Meteor, Intear and HOT.</span>
-              </span>
-              <input type="checkbox" checked={gasless} onChange={(e) => setGasless(e.target.checked)} className="size-5 accent-[var(--brand)]" />
-            </label>
-            <p className="mt-3 text-center text-xs text-faint">Up to 5% extra is sent in case the queue grows meanwhile; any excess comes straight back.</p>
+            {!near && (
+              <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm">
+                <span>
+                  <span className="font-medium">Pay without gas</span>
+                  <span className="block text-xs text-faint">You sign; PatchBond's relayer pays the NEAR fee (NEP-366). Works with Meteor, Intear and HOT.</span>
+                </span>
+                <input type="checkbox" checked={gasless} onChange={(e) => setGasless(e.target.checked)} className="size-5 accent-[var(--brand)]" />
+              </label>
+            )}
+            <p className="mt-3 text-center text-xs text-faint">
+              Up to 5% extra is sent in case the queue grows meanwhile; any excess comes straight back{near ? " (as wNEAR, which your wallet can unwrap)" : ""}.
+            </p>
             {result && !result.ok && (
               <div className="mt-4">
                 <Notice tone="error" title="Not paid">

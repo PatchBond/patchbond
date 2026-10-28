@@ -25,11 +25,11 @@ const pb = new PatchBond({
 const server = new McpServer(
   { name: "patchbond", version: "0.1.0" },
   {
-    instructions: `PatchBond: some open-source repos ask outside contributors (you included) for a small refundable USDC bond on each pull request. Real contributions get it back; slop is forfeited to the maintainers.
+    instructions: `PatchBond: some open-source repos ask outside contributors (you included) for a small refundable bond (USDC or NEAR — the repo chooses) on each pull request. Real contributions get it back; slop is forfeited to the maintainers.
 Workflow before opening or after opening a PR on a repo you don't maintain:
 1. patchbond_policy(repo) — does the repo use PatchBond, what does it cost right now?
 2. Open the PR, then patchbond_preflight(pr_url) — free; fix every warning before paying.
-3. patchbond_deposit(pr_url) — pays from your capped budget. Never pay for a PR you haven't pre-flighted.
+3. patchbond_deposit(pr_url) — pays from your capped USDC budget (repos that take NEAR need your operator to pay). Never pay for a PR you haven't pre-flighted.
 4. patchbond_status(pr_url) — verdict and next steps.
 Respect maintainers' time: one focused change per PR, real tests, no invented APIs.`,
   },
