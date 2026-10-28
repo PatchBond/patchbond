@@ -21,17 +21,21 @@ export interface MaintainerRepo {
 
 export type Me = { signed_in: false; github_ready: boolean } | { signed_in: true; github_login: string; repos: MaintainerRepo[] };
 
+/** 502–504 come from the dev proxy or a load balancer while the API restarts — say so. */
+const failure = (status: number, fallback: string) =>
+  status >= 502 && status <= 504 ? "Couldn't reach the PatchBond server (it may be restarting). Wait a few seconds and try again." : fallback;
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((body as { error?: string }).error ?? `The server answered ${res.status} for ${path}`);
+  if (!res.ok) throw new Error((body as { error?: string }).error ?? failure(res.status, `The server answered ${res.status} for ${path}`));
   return body as T;
 }
 
 async function post<T>(path: string, body: object = {}): Promise<T> {
   const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const out = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((out as { error?: string }).error ?? `The server answered ${res.status}`);
+  if (!res.ok) throw new Error((out as { error?: string }).error ?? failure(res.status, `The server answered ${res.status}`));
   return out as T;
 }
 

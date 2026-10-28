@@ -18,6 +18,16 @@ import { useWallet } from "../lib/wallet";
 
 export function Dashboard() {
   const { data: me, error, loading, reload } = useAsync(api.me, []);
+  // GitHub's Setup URL brings maintainers back here with ?installation_id=…&setup_action=install|update.
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    const action = q.get("setup_action");
+    if (!action) return;
+    history.replaceState(null, "", location.pathname);
+    toast.success(action === "install" ? "PatchBond is installed" : "Repositories updated", {
+      description: "Link each repository to your NEAR account below. Bonds stay off until you turn them on.",
+    });
+  }, []);
   if (loading && !me) return <div className="grid min-h-[50vh] place-items-center"><Spinner /></div>;
   if (error) return <div className="mx-auto max-w-lg px-4 py-24"><Notice tone="error" title="Couldn't load your repositories">{error}</Notice></div>;
   if (!me?.signed_in) return <SignedOut ready={me?.github_ready ?? false} />;
@@ -29,9 +39,12 @@ export function Dashboard() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Hi @{me.github_login}</h1>
           <p className="mt-1 text-muted-foreground">Repositories you administer that have the PatchBond App installed.</p>
         </div>
-        <Button variant="ghost" onClick={() => void api.logout().then(reload)}>
-          <LogOut className="size-4" /> Sign out
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <InstallButton label="Add repositories" />
+          <Button variant="ghost" onClick={() => void api.logout().then(reload)}>
+            <LogOut className="size-4" /> Sign out
+          </Button>
+        </div>
       </div>
       {me.repos.length === 0 ? (
         <Panel className="mt-8 p-8 text-center">
@@ -51,14 +64,15 @@ export function Dashboard() {
   );
 }
 
-function InstallButton({ className = "" }: { className?: string }) {
+function InstallButton({ className = "", label = "Install the GitHub App" }: { className?: string; label?: string }) {
   const cfg = useConfig();
   if (!cfg.github?.app_url) return null; // nothing to install until the operator creates the App
   const url = `${cfg.github.app_url}/installations/new`;
   return (
-    <a href={url} target="_blank" rel="noreferrer" className={className}>
+    // Same tab: after installing, GitHub's Setup URL returns the maintainer to this page.
+    <a href={url} className={className}>
       <Button variant="ghost">
-        <GithubIcon /> Install the GitHub App
+        <GithubIcon /> {label}
       </Button>
     </a>
   );

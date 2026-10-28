@@ -168,6 +168,9 @@ app.get("/setup", (c) => {
     // Behind a tunnel (smee.io) GitHub posts to the tunnel; otherwise straight to this server.
     hook_attributes: { url: process.env.WEBHOOK_URL || `${cfg.publicUrl}/webhook`, active: true },
     redirect_url: `${cfg.publicUrl}/setup/callback`,
+    // After installing (or changing repos), GitHub sends the maintainer back to the dashboard.
+    setup_url: `${cfg.webUrl}/dashboard`,
+    setup_on_update: true,
     callback_urls: [`${cfg.webUrl}/api/auth/github/callback`],
     public: true,
     default_permissions: {

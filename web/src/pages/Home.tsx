@@ -393,9 +393,8 @@ function Closing() {
 function InstallLink({ children }: { children: React.ReactNode }) {
   const { href, external } = installUrl(useConfig());
   return external ? (
-    <a href={href} target="_blank" rel="noreferrer">
-      {children}
-    </a>
+    // Same tab, so GitHub's Setup URL can bring the maintainer back to the dashboard.
+    <a href={href}>{children}</a>
   ) : (
     <Link to={href}>{children}</Link>
   );
