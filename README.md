@@ -105,7 +105,7 @@ cp .env.example .env          # defaults work: testnet, mock judge
 | 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
 | 5 | On testnet, with test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: open <http://localhost:5317/pay/1/1?repo=PatchBond/playground&user=YOUR_GITHUB_LOGIN> | Pay a real bond into the live contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet). The page shows the live quote from the on-chain curve. |
-| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet parent account; see [`server/e2e/testnet.ts`](server/e2e/testnet.ts)) | The full money flow on **real testnet**: 49 transactions — including a gasless bond through the relayer and an agent paying via the MCP server — then every account is deleted. Last report: [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md) — one explorer link per transaction. |
+| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet parent account; see [`server/e2e/testnet.ts`](server/e2e/testnet.ts)) | The full money flow on **real testnet**: 62 transactions — including a gasless bond through the relayer, an agent paying via the MCP server, and NEAR bonds wrapped and paid in one transaction through the real `wrap.testnet` — then every account is deleted. Last report: [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md) — one explorer link per transaction. |
 
 ### For coding agents (MCP)
 
@@ -217,7 +217,7 @@ Full threat model, key powers and known limits: **[SECURITY.md](SECURITY.md)**.
 | Server: judge facts (incl. assignment and claims-vs-diff), rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding, Intents quotes, relayer | 47 | `cd server && bun test` |
 | MCP: client, key safety, stdio protocol | 11 | `cd mcp && bun test` |
 | Shared: verification tamper tests, curve = contract values | 6 | `cd shared && bun test` |
-| **End-to-end on real NEAR testnet** | 49 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
+| **End-to-end on real NEAR testnet** | 62 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
 
 CI runs the TypeScript and contract suites on every push ([workflow](.github/workflows/ci.yml)).
 

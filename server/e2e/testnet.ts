@@ -462,6 +462,8 @@ try {
     txs.push({ step: `${step}: ${label}`, hash: o.hash });
     return o;
   };
+  // A fresh contributor: alice's forfeits above would make her pay ×4 here.
+  const dana = await sub("dana", "0.6");
   await vault.call(WNEAR, "storage_deposit", { registration_only: true }, { deposit: WNEAR_STORAGE, tgas: 30n, label: "vault registers with wrap.testnet" });
   const R4 = 1_000_004;
   const nearPolicy = policy({ base_bond: (NEAR / 20n).toString(), min_bond: (NEAR / 100n).toString(), max_bond: (NEAR / 2n).toString() });
@@ -471,25 +473,25 @@ try {
   eq((await view<{ currency: string }>(vault.id, "get_repo", { repo_id: R4 })).currency, "near", "get_repo reports currency near");
   const usdcToNear = await pay(alice!, R4, 1, 5n * USDC);
   check(!!usdcToNear.panic?.includes("takes NEAR bonds"), `USDC is refused with a reason: “${usdcToNear.panic?.slice(0, 60)}”`);
-  const nb1 = await quote(R4, alice!);
-  const nearMsg = (n: number) => JSON.stringify({ action: "bond", repo_id: R4, number: n, kind: "pr", github_user: alice!.short });
+  const nb1 = await quote(R4, dana);
+  const nearMsg = (n: number) => JSON.stringify({ action: "bond", repo_id: R4, number: n, kind: "pr", github_user: dana.short });
   const wrapPay = await batch(
-    alice!,
+    dana,
     WNEAR,
     [
       ["storage_deposit", { registration_only: true }, 10n, WNEAR_STORAGE],
       ["near_deposit", {}, 10n, nb1],
       ["ft_transfer_call", { receiver_id: vault.id, amount: nb1.toString(), msg: nearMsg(1) }, 150n, 1n],
     ],
-    `alice wraps ${Number(nb1) / 1e24} NEAR and pays R4#1 in one transaction`,
+    `dana wraps ${Number(nb1) / 1e24} NEAR and pays R4#1 in one transaction`,
   );
   check(!wrapPay.panic, `one transaction: register + wrap + pay a ${Number(nb1) / 1e24} NEAR bond`, wrapPay.panic ?? "");
   eq((await view<{ currency: string }>(vault.id, "get_deposit", { repo_id: R4, number: 1 })).currency, "near", "the deposit is recorded as NEAR");
   await settle(R4, 1, "refund");
-  eq(await wbal(alice!), nb1, "refund: the whole bond comes back as wNEAR");
-  const nb2 = await quote(R4, alice!);
-  if (nb2 > nb1) await alice!.call(WNEAR, "near_deposit", {}, { deposit: nb2 - nb1, tgas: 10n, label: "alice tops up wNEAR" });
-  await alice!.call(WNEAR, "ft_transfer_call", { receiver_id: vault.id, amount: nb2.toString(), msg: nearMsg(2) }, { deposit: 1n, label: "alice pays R4#2 from wNEAR" });
+  eq(await wbal(dana), nb1, "refund: the whole bond comes back as wNEAR");
+  const nb2 = await quote(R4, dana);
+  if (nb2 > nb1) await dana.call(WNEAR, "near_deposit", {}, { deposit: nb2 - nb1, tgas: 10n, label: "dana tops up wNEAR" });
+  await dana.call(WNEAR, "ft_transfer_call", { receiver_id: vault.id, amount: nb2.toString(), msg: nearMsg(2) }, { deposit: 1n, label: "dana pays R4#2 from wNEAR" });
   await settle(R4, 2, "forfeit");
   const nfee = nb2 / 10n;
   eq(BigInt((await repoOf(R4)).vault), nb2 - nfee, "forfeit: 90% to R4's NEAR vault");
@@ -503,7 +505,7 @@ try {
   check(!unwrap.panic && (await wbal(amaka!)) === 0n, "…and unwrapped it to plain NEAR", unwrap.panic ?? "");
   const nearHeld = BigInt((await view<{ held: string }>(vault.id, "get_totals", { currency: "near" })).held);
   eq(await wbal(vault), nearHeld + BigInt((await repoOf(R4)).vault) + nfee, "the contract's wNEAR = held + NEAR vaults + NEAR treasury");
-  await alice!.call(WNEAR, "near_withdraw", { amount: (await wbal(alice!)).toString() }, { deposit: 1n, tgas: 30n, label: "alice unwraps her refund" });
+  await dana.call(WNEAR, "near_withdraw", { amount: (await wbal(dana)).toString() }, { deposit: 1n, tgas: 30n, label: "dana unwraps her refund" });
 
   section("13. Conservation: every USDC unit is accounted for");
   const contractBal = await bal(vault);
