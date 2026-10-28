@@ -8,12 +8,15 @@ pub use near_workspaces::{Account, Contract, Worker};
 pub use serde_json::{json, Value};
 
 pub const USDC: u128 = 1_000_000;
+pub const NEAR: u128 = 1_000_000_000_000_000_000_000_000;
 pub const REPO: u64 = 101;
 pub const ZERO_HASH: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 pub struct Env {
     pub worker: Worker<Sandbox>,
     pub ft: Contract,
+    /// A second NEP-141 playing wNEAR (wrapping itself is wrap.near's job, not ours).
+    pub wnear: Contract,
     pub pb: Contract,
     pub oracle: Account,
     pub owner: Account,
@@ -39,6 +42,10 @@ pub async fn setup() -> anyhow::Result<Env> {
         .dev_deploy(&near_workspaces::compile_project("../mock-ft").await?)
         .await?;
     ft.call("new").transact().await?.into_result()?;
+    let wnear = worker
+        .dev_deploy(&near_workspaces::compile_project("../mock-ft").await?)
+        .await?;
+    wnear.call("new").transact().await?.into_result()?;
     let pb = worker
         .dev_deploy(&near_workspaces::compile_project("./").await?)
         .await?;
@@ -53,7 +60,7 @@ pub async fn setup() -> anyhow::Result<Env> {
     pb.call("new")
         .args_json(json!({
             "owner": owner.id(), "oracle": oracle.id(),
-            "treasury": treasury.id(), "token": ft.id(),
+            "treasury": treasury.id(), "token": ft.id(), "wnear": wnear.id(),
         }))
         .transact()
         .await?
@@ -70,8 +77,15 @@ pub async fn setup() -> anyhow::Result<Env> {
             .transact()
             .await?
             .into_result()?;
+        let near_amount = if amount > 0 { 100 * NEAR } else { 0 };
+        wnear
+            .call("mint")
+            .args_json(json!({ "account_id": who, "amount": near_amount.to_string() }))
+            .transact()
+            .await?
+            .into_result()?;
     }
-    let env = Env { worker, ft, pb, oracle, owner, treasury, alice, amaka, bob };
+    let env = Env { worker, ft, wnear, pb, oracle, owner, treasury, alice, amaka, bob };
     env.register(REPO, Some(instant_policy())).await?;
     Ok(env)
 }
@@ -97,8 +111,31 @@ impl Env {
         Ok(v.parse()?)
     }
 
+    pub async fn near_balance(&self, who: &Account) -> anyhow::Result<u128> {
+        let v: String = self
+            .wnear
+            .view("ft_balance_of")
+            .args_json(json!({ "account_id": who.id() }))
+            .await?
+            .json()?;
+        Ok(v.parse()?)
+    }
+
     pub async fn pay(
         &self,
+        payer: &Account,
+        repo: u64,
+        number: u64,
+        amount: u128,
+        extra: Value,
+    ) -> anyhow::Result<ExecutionFinalResult> {
+        self.pay_with(&self.ft, payer, repo, number, amount, extra).await
+    }
+
+    /// Pay a bond with any token contract (USDC mock, wNEAR mock, …).
+    pub async fn pay_with(
+        &self,
+        token: &Contract,
         payer: &Account,
         repo: u64,
         number: u64,
@@ -113,7 +150,7 @@ impl Env {
             msg[k] = v.clone();
         }
         Ok(payer
-            .call(self.ft.id(), "ft_transfer_call")
+            .call(token.id(), "ft_transfer_call")
             .args_json(json!({
                 "receiver_id": self.pb.id(), "amount": amount.to_string(), "msg": msg.to_string(),
             }))
@@ -173,5 +210,14 @@ pub fn instant_policy() -> Value {
         "enabled": true, "base_bond": "2000000", "min_bond": "250000", "max_bond": "50000000",
         "target_open": 8, "review_window_sec": 259200, "challenge_window_sec": 0,
         "forfeit_threshold_bps": 8500,
+    })
+}
+
+/// `instant_policy` priced in NEAR: base 1, min 0.1, max 25.
+pub fn near_policy() -> Value {
+    json!({
+        "enabled": true, "base_bond": NEAR.to_string(), "min_bond": (NEAR / 10).to_string(),
+        "max_bond": (25 * NEAR).to_string(), "target_open": 8, "review_window_sec": 259200,
+        "challenge_window_sec": 0, "forfeit_threshold_bps": 8500,
     })
 }

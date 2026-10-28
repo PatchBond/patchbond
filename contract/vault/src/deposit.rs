@@ -1,4 +1,5 @@
-//! Paying a bond: USDC `ft_transfer_call(receiver_id = patchbond, msg = TransferMsg)`.
+//! Paying a bond: `ft_transfer_call(receiver_id = patchbond, msg = TransferMsg)` on the repo's
+//! token — USDC, or wNEAR for repos that take NEAR.
 //! Anything paid above what's due is handed back to the payer by the token (the unused
 //! amount we return). A panic here refunds the whole transfer.
 
@@ -18,10 +19,13 @@ impl FungibleTokenReceiver for PatchBond {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        require!(
-            env::predecessor_account_id() == self.token,
-            format!("PatchBond only accepts {}; this token was refunded", self.token)
-        );
+        let paid_in = self.currency_of_token(&env::predecessor_account_id()).unwrap_or_else(|| {
+            env::panic_str(&format!(
+                "PatchBond only accepts USDC ({}){}; this token was refunded",
+                self.token,
+                self.wnear.as_ref().map_or(String::new(), |w| format!(" or wNEAR ({w})"))
+            ))
+        });
         require!(
             !self.paused,
             "PatchBond is paused for new deposits while an incident is handled; your transfer was refunded. Existing bonds are safe and refunds still work"
@@ -33,25 +37,31 @@ impl FungibleTokenReceiver for PatchBond {
         });
         let unused = match msg {
             TransferMsg::Bond { repo_id, number, kind, github_user, tip, fixes_issue } => {
+                self.assert_paid_in(repo_id, paid_in);
                 let tip = tip.map_or(0, |t| t.0);
                 let bond = self.price_for(&sender_id, repo_id, number, &github_user, fixes_issue);
                 let due = bond + tip;
                 require!(
                     amount.0 >= due,
                     format!(
-                        "The bond is now {} USDC{} but {} was sent; the transfer was refunded. Ask for a fresh quote and try again",
-                        fmt_usdc(bond),
-                        if tip > 0 { format!(" + {} tip", fmt_usdc(tip)) } else { String::new() },
-                        fmt_usdc(amount.0)
+                        "The bond is now {}{} but {} was sent; the transfer was refunded. Ask for a fresh quote and try again",
+                        paid_in.fmt(bond),
+                        if tip > 0 { format!(" + {} tip", paid_in.fmt(tip)) } else { String::new() },
+                        paid_in.fmt(amount.0)
                     )
                 );
                 self.insert_deposit(sender_id, repo_id, number, kind, github_user, bond, tip, fixes_issue, None);
                 amount.0 - due
             }
             TransferMsg::Challenge { repo_id, number } => {
+                require!(
+                    self.deposit_currency_of(repo_id, number) == paid_in,
+                    "A challenge stake is paid in the same currency as the bond; your transfer was refunded"
+                );
                 self.take_challenge(sender_id, amount.0, repo_id, number)
             }
             TransferMsg::FundBudget { agent, daily_cap } => {
+                require!(paid_in == Currency::Usdc, "Agent budgets hold USDC; your transfer was refunded");
                 self.fund_budget(sender_id, agent, amount.0, daily_cap);
                 0
             }
@@ -61,6 +71,18 @@ impl FungibleTokenReceiver for PatchBond {
 }
 
 impl PatchBond {
+    fn assert_paid_in(&self, repo_id: RepoId, paid_in: Currency) {
+        let wants = self.currency_of(repo_id);
+        require!(
+            wants == paid_in,
+            format!(
+                "Repo {repo_id} takes {} bonds; this {} transfer was refunded",
+                wants.symbol(),
+                paid_in.symbol()
+            )
+        );
+    }
+
     /// Validates a new submission and returns the bond `payer` owes for it right now.
     pub(crate) fn price_for(
         &self,
@@ -113,6 +135,13 @@ impl PatchBond {
         fixes_issue: Option<Number>,
         harness: Option<String>,
     ) {
+        let currency = self.currency_of(repo_id);
+        if currency != Currency::Usdc {
+            self.deposit_currency.insert((repo_id, number), currency);
+        } else {
+            // A voided deposit's slot may be reused, possibly after the repo switched currency.
+            self.deposit_currency.remove(&(repo_id, number));
+        }
         let repo = self.repo_mut(repo_id);
         repo.open += 1;
         repo.stats.deposits += 1;
@@ -134,9 +163,10 @@ impl PatchBond {
                 harness,
             },
         );
-        self.totals.held = U128(self.totals.held.0 + bond + tip);
-        self.totals.deposits += 1;
-        events::deposit(repo_id, number, kind, &payer, &github_user, bond, tip, open);
+        let totals = self.totals_mut(currency);
+        totals.held = U128(totals.held.0 + bond + tip);
+        totals.deposits += 1;
+        events::deposit(repo_id, number, kind, &payer, &github_user, bond, tip, open, currency);
     }
 }
 

@@ -5,7 +5,7 @@ use near_sdk::json_types::U128;
 use near_sdk::serde_json::{json, Value};
 use near_sdk::{env, AccountId};
 
-use crate::types::{Kind, Number, Passport, RepoId, TimestampMs, Verdict};
+use crate::types::{Currency, Kind, Number, Passport, RepoId, TimestampMs, Verdict};
 
 fn emit(event: &str, data: Value) {
     let log = json!({
@@ -29,6 +29,10 @@ pub fn policy(repo_id: RepoId) {
     emit("policy", json!({ "repo_id": repo_id }));
 }
 
+pub fn currency(repo_id: RepoId, currency: Currency) {
+    emit("currency", json!({ "repo_id": repo_id, "currency": currency }));
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn deposit(
     repo_id: RepoId,
@@ -39,12 +43,14 @@ pub fn deposit(
     bond: u128,
     tip: u128,
     open: u32,
+    currency: Currency,
 ) {
     emit(
         "deposit",
         json!({
             "repo_id": repo_id, "number": number, "kind": kind, "payer": payer,
             "github_user": github_user, "bond": U128(bond), "tip": U128(tip), "open": open,
+            "currency": currency,
         }),
     );
 }
@@ -66,13 +72,14 @@ pub fn settle(
     to_vault: u128,
     to_bounty: u128,
     to_treasury: u128,
+    currency: Currency,
 ) {
     emit(
         "settle",
         json!({
             "repo_id": repo_id, "number": number, "verdict": verdict, "verdict_hash": verdict_hash,
             "to_payer": U128(to_payer), "to_vault": U128(to_vault),
-            "to_bounty": U128(to_bounty), "to_treasury": U128(to_treasury),
+            "to_bounty": U128(to_bounty), "to_treasury": U128(to_treasury), "currency": currency,
         }),
     );
 }
@@ -84,10 +91,10 @@ pub fn bounty_paid(repo_id: RepoId, issue: Number, recipient: &AccountId, amount
     );
 }
 
-pub fn withdraw(repo_id: RepoId, to: &AccountId, amount: u128) {
+pub fn withdraw(repo_id: RepoId, to: &AccountId, amount: u128, currency: Currency) {
     emit(
         "withdraw",
-        json!({ "repo_id": repo_id, "to": to, "amount": U128(amount) }),
+        json!({ "repo_id": repo_id, "to": to, "amount": U128(amount), "currency": currency }),
     );
 }
 

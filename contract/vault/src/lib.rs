@@ -1,6 +1,6 @@
 //! PatchBond vault: refundable bonds on unsolicited open-source work.
 //!
-//! - A stranger pays a bond (USDC, via `ft_transfer_call`) on a PR or issue.
+//! - A stranger pays a bond (USDC or NEAR — the repo chooses — via `ft_transfer_call`) on a PR or issue.
 //! - The bond's price follows an on-chain attention curve over the repo's open queue (`curve`).
 //! - The oracle (our judge server) settles it with a verifiable AI verdict: refund, or forfeit
 //!   (90% to the repo's vault or the linked issue's bounty, 10% to the treasury).
@@ -35,6 +35,10 @@ enum StorageKey {
     Budgets,
     Passports,
     AgentStats,
+    Currencies,
+    DepositCurrency,
+    ClaimableNear,
+    BountyHeld,
 }
 
 #[near(contract_state)]
@@ -45,8 +49,14 @@ pub struct PatchBond {
     /// Our judge/GitHub server: registers and links repos, settles deposits.
     oracle: AccountId,
     treasury: AccountId,
-    /// The only token accepted (USDC).
+    /// USDC.
     token: AccountId,
+    /// wNEAR (`wrap.near` / `wrap.testnet`), for repos that take NEAR. Set by the owner.
+    wnear: Option<AccountId>,
+    /// Repos whose currency isn't USDC.
+    currencies: LookupMap<RepoId, Currency>,
+    /// Deposits paid in something other than USDC — so a refund always goes back in what was paid.
+    deposit_currency: LookupMap<(RepoId, Number), Currency>,
     repos: LookupMap<RepoId, Repo>,
     deposits: LookupMap<(RepoId, Number), Deposit>,
     reputation: LookupMap<AccountId, Reputation>,
@@ -54,21 +64,26 @@ pub struct PatchBond {
     bounties: LookupMap<(RepoId, Number), U128>,
     /// Payouts whose transfer failed (e.g. receiver not registered with the token); claim later.
     claimable: LookupMap<AccountId, U128>,
+    claimable_near: LookupMap<AccountId, U128>,
+    /// Unpaid bounties per repo, so a repo can't switch currency under them.
+    bounty_held: LookupMap<RepoId, U128>,
     /// Capped agent wallets, keyed by the agent's account.
     budgets: LookupMap<AccountId, Budget>,
     passports: LookupMap<AccountId, Passport>,
     /// Refund/forfeit record per agent account and per harness ("#claude-code").
     agent_stats: LookupMap<String, AgentStats>,
     treasury_balance: u128,
+    treasury_near: u128,
     totals: Totals,
+    totals_near: Totals,
     /// Emergency brake on *new* money (bonds, challenges, budgets). Never blocks refunds,
     /// settlements, withdrawals or claims.
     paused: bool,
 }
 
-/// State layout before `paused` existed (v0.1 on testnet); read once by `migrate`.
+/// State layout before currencies existed (v0.2, live on testnet); read once by `migrate`.
 #[near(serializers = [borsh])]
-struct PatchBondV1 {
+struct PatchBondV2 {
     owner: AccountId,
     oracle: AccountId,
     treasury: AccountId,
@@ -83,57 +98,79 @@ struct PatchBondV1 {
     agent_stats: LookupMap<String, AgentStats>,
     treasury_balance: u128,
     totals: Totals,
+    paused: bool,
 }
 
 #[near]
 impl PatchBond {
-    /// One-time upgrade of v0.1 state (adds `paused`). Only the contract account itself can call it,
-    /// i.e. right after a redeploy by whoever holds the contract's key.
+    /// One-time upgrade of v0.2 state (adds currencies). Only the contract account itself can call
+    /// it, i.e. right after a redeploy by whoever holds the contract's key. Existing repos and
+    /// deposits stay USDC.
     #[private]
     #[init(ignore_state)]
-    pub fn migrate() -> Self {
-        let old: PatchBondV1 = env::state_read().unwrap_or_else(|| env::panic_str("No v0.1 state to migrate"));
+    pub fn migrate(wnear: Option<AccountId>) -> Self {
+        let old: PatchBondV2 = env::state_read().unwrap_or_else(|| env::panic_str("No v0.2 state to migrate"));
         Self {
             owner: old.owner,
             oracle: old.oracle,
             treasury: old.treasury,
             token: old.token,
+            wnear,
+            currencies: LookupMap::new(StorageKey::Currencies),
+            deposit_currency: LookupMap::new(StorageKey::DepositCurrency),
             repos: old.repos,
             deposits: old.deposits,
             reputation: old.reputation,
             bounties: old.bounties,
             claimable: old.claimable,
+            claimable_near: LookupMap::new(StorageKey::ClaimableNear),
+            bounty_held: LookupMap::new(StorageKey::BountyHeld),
             budgets: old.budgets,
             passports: old.passports,
             agent_stats: old.agent_stats,
             treasury_balance: old.treasury_balance,
+            treasury_near: 0,
             totals: old.totals,
-            paused: false,
+            totals_near: Totals::default(),
+            paused: old.paused,
         }
     }
 
     #[init]
-    pub fn new(owner: AccountId, oracle: AccountId, treasury: AccountId, token: AccountId) -> Self {
+    pub fn new(owner: AccountId, oracle: AccountId, treasury: AccountId, token: AccountId, wnear: Option<AccountId>) -> Self {
         Self {
             owner,
             oracle,
             treasury,
             token,
+            wnear,
+            currencies: LookupMap::new(StorageKey::Currencies),
+            deposit_currency: LookupMap::new(StorageKey::DepositCurrency),
             repos: LookupMap::new(StorageKey::Repos),
             deposits: LookupMap::new(StorageKey::Deposits),
             reputation: LookupMap::new(StorageKey::Reputation),
             bounties: LookupMap::new(StorageKey::Bounties),
             claimable: LookupMap::new(StorageKey::Claimable),
+            claimable_near: LookupMap::new(StorageKey::ClaimableNear),
+            bounty_held: LookupMap::new(StorageKey::BountyHeld),
             budgets: LookupMap::new(StorageKey::Budgets),
             passports: LookupMap::new(StorageKey::Passports),
             agent_stats: LookupMap::new(StorageKey::AgentStats),
             treasury_balance: 0,
+            treasury_near: 0,
             totals: Totals::default(),
+            totals_near: Totals::default(),
             paused: false,
         }
     }
 
     // ---------- owner ----------
+
+    /// Owner: the wNEAR contract to accept for NEAR-denominated repos.
+    pub fn set_wnear(&mut self, wnear: AccountId) {
+        self.assert_owner();
+        self.wnear = Some(wnear);
+    }
 
     pub fn set_oracle(&mut self, oracle: AccountId) {
         self.assert_owner();
@@ -230,10 +267,33 @@ impl PatchBond {
         events::policy(repo_id);
     }
 
+    /// Switch what the repo's bonds are paid in, with a policy priced in the new currency (the old
+    /// amounts would mean nothing in it). Same permission as `set_policy`. Only while nothing is
+    /// held in the old currency: no open deposits, an empty vault and no unpaid bounties.
+    pub fn set_currency(&mut self, repo_id: RepoId, currency: Currency, policy: Policy) {
+        require!(
+            currency == Currency::Usdc || self.wnear.is_some(),
+            "NEAR bonds aren't enabled on this contract yet (no wNEAR token configured)"
+        );
+        let unpaid_bounties = self.bounty_held.get(&repo_id).map_or(0, |b| b.0);
+        let repo = self.repo(repo_id);
+        require!(
+            repo.open == 0 && repo.vault.0 == 0 && unpaid_bounties == 0,
+            "Withdraw the vault and settle every open deposit and bounty before switching currency"
+        );
+        self.set_policy(repo_id, policy);
+        match currency {
+            Currency::Usdc => self.currencies.remove(&repo_id),
+            _ => self.currencies.insert(repo_id, currency),
+        };
+        events::currency(repo_id, currency);
+    }
+
     // ---------- views ----------
 
-    pub fn get_repo(&self, repo_id: RepoId) -> Option<Repo> {
-        self.repos.get(&repo_id).cloned()
+    pub fn get_repo(&self, repo_id: RepoId) -> Option<RepoView> {
+        let repo = self.repos.get(&repo_id).cloned()?;
+        Some(RepoView { repo, currency: self.currency_of(repo_id) })
     }
 
     pub fn get_deposit(&self, repo_id: RepoId, number: Number) -> Option<Deposit> {
@@ -261,19 +321,24 @@ impl PatchBond {
         self.bounties.get(&(repo_id, issue)).copied().unwrap_or(U128(0))
     }
 
-    pub fn get_claimable(&self, account_id: AccountId) -> U128 {
-        self.claimable.get(&account_id).copied().unwrap_or(U128(0))
+    pub fn get_claimable(&self, account_id: AccountId, currency: Option<Currency>) -> U128 {
+        self.claimable_map(currency.unwrap_or_default()).get(&account_id).copied().unwrap_or(U128(0))
     }
 
-    pub fn get_totals(&self) -> Totals {
-        self.totals.clone()
+    /// Global counters per currency (USDC when `currency` is omitted).
+    pub fn get_totals(&self, currency: Option<Currency>) -> Totals {
+        match currency.unwrap_or_default() {
+            Currency::Usdc => self.totals.clone(),
+            Currency::Near => self.totals_near.clone(),
+        }
     }
 
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
         near_sdk::serde_json::json!({
             "paused": self.paused,
             "owner": self.owner, "oracle": self.oracle, "treasury": self.treasury,
-            "token": self.token, "treasury_balance": U128(self.treasury_balance),
+            "token": self.token, "wnear": self.wnear, "treasury_balance": U128(self.treasury_balance),
+            "treasury_near": U128(self.treasury_near),
             "treasury_fee_bps": TREASURY_FEE_BPS,
         })
     }
@@ -293,6 +358,53 @@ impl PatchBond {
             env::predecessor_account_id() == self.oracle,
             "Only the PatchBond oracle can do this"
         );
+    }
+
+    pub(crate) fn currency_of(&self, repo_id: RepoId) -> Currency {
+        self.currencies.get(&repo_id).copied().unwrap_or_default()
+    }
+
+    pub(crate) fn deposit_currency_of(&self, repo_id: RepoId, number: Number) -> Currency {
+        self.deposit_currency.get(&(repo_id, number)).copied().unwrap_or_default()
+    }
+
+    /// Which currency a token contract is, if we accept it.
+    pub(crate) fn currency_of_token(&self, token: &AccountId) -> Option<Currency> {
+        if token == &self.token {
+            Some(Currency::Usdc)
+        } else if self.wnear.as_ref() == Some(token) {
+            Some(Currency::Near)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn token_of(&self, currency: Currency) -> AccountId {
+        match currency {
+            Currency::Usdc => self.token.clone(),
+            Currency::Near => self.wnear.clone().unwrap_or_else(|| env::panic_str("No wNEAR token configured")),
+        }
+    }
+
+    pub(crate) fn claimable_map(&self, currency: Currency) -> &LookupMap<AccountId, U128> {
+        match currency {
+            Currency::Usdc => &self.claimable,
+            Currency::Near => &self.claimable_near,
+        }
+    }
+
+    pub(crate) fn claimable_map_mut(&mut self, currency: Currency) -> &mut LookupMap<AccountId, U128> {
+        match currency {
+            Currency::Usdc => &mut self.claimable,
+            Currency::Near => &mut self.claimable_near,
+        }
+    }
+
+    pub(crate) fn totals_mut(&mut self, currency: Currency) -> &mut Totals {
+        match currency {
+            Currency::Usdc => &mut self.totals,
+            Currency::Near => &mut self.totals_near,
+        }
     }
 
     fn repo(&self, repo_id: RepoId) -> &Repo {

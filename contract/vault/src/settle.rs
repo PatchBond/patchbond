@@ -111,8 +111,12 @@ impl PatchBond {
         self.assert_oracle();
         let amount = self.bounties.remove(&(repo_id, issue)).map_or(0, |b| b.0);
         require!(amount > 0, format!("Issue #{issue} on repo {repo_id} has no bounty"));
+        let held = self.bounty_held.get(&repo_id).map_or(0, |b| b.0);
+        self.bounty_held.insert(repo_id, U128(held.saturating_sub(amount)));
         events::bounty_paid(repo_id, issue, &recipient, amount);
-        self.send(recipient, amount, Fallback::Claimable)
+        // Bounties are in the repo's currency: it can't switch while one is unpaid.
+        let currency = self.currency_of(repo_id);
+        self.send(recipient, amount, currency, Fallback::Claimable)
     }
 }
 
@@ -140,16 +144,18 @@ impl PatchBond {
             Verdict::Void => env::panic_str("A void verdict can't be challenged; your stake was refunded"),
         }
         let stake = d.bond.0;
+        d.status = DepositStatus::Challenged { verdict, challenger: challenger.clone(), stake: U128(stake) };
+        let currency = self.deposit_currency_of(repo_id, number);
         require!(
             amount >= stake,
             format!(
-                "A challenge stakes the bond ({} USDC) but {} was sent; your stake was refunded",
-                crate::deposit::fmt_usdc(stake),
-                crate::deposit::fmt_usdc(amount)
+                "A challenge stakes the bond ({}) but {} was sent; your stake was refunded",
+                currency.fmt(stake),
+                currency.fmt(amount)
             )
         );
-        d.status = DepositStatus::Challenged { verdict, challenger: challenger.clone(), stake: U128(stake) };
-        self.totals.held = U128(self.totals.held.0 + stake);
+        let totals = self.totals_mut(currency);
+        totals.held = U128(totals.held.0 + stake);
         events::challenged(repo_id, number, &challenger, stake);
         amount - stake
     }
@@ -161,16 +167,19 @@ impl PatchBond {
         }
         if let DepositStatus::Challenged { verdict: proposed, challenger, stake } = from {
             let overturned = verdict != proposed;
-            self.totals.held = U128(self.totals.held.0 - stake.0);
+            let currency = self.deposit_currency_of(repo_id, number);
+            let totals = self.totals_mut(currency);
+            totals.held = U128(totals.held.0 - stake.0);
             if overturned {
                 // The challenger was right: stake back.
-                self.pay_out(challenger.clone(), stake.0, false);
+                self.pay_out(challenger.clone(), stake.0, false, currency);
             } else if self.is_repo_payout(repo_id, &challenger) {
                 // The maintainer challenged a refund and lost: the contributor gets the stake.
                 let d = self.deposits.get(&(repo_id, number)).unwrap().clone();
-                self.pay_out(d.payer, stake.0, d.from_budget);
+                self.pay_out(d.payer, stake.0, d.from_budget, currency);
             } else {
-                // The contributor challenged a forfeit and lost: the stake goes to the repo.
+                // The contributor challenged a forfeit and lost: the stake goes to the repo
+                // (a deposit is open, so the repo still has the deposit's currency).
                 let repo = self.repo_mut(repo_id);
                 repo.vault = U128(repo.vault.0 + stake.0);
             }
@@ -187,6 +196,7 @@ impl PatchBond {
         d.status = DepositStatus::Settled { verdict, at: now };
         d.verdict_hash = Some(verdict_hash.clone());
         let d = d.clone();
+        let currency = self.deposit_currency_of(repo_id, number);
 
         let (bond, tip) = (d.bond.0, d.tip.0);
         let tip_earned =
@@ -211,30 +221,37 @@ impl PatchBond {
         if let Some(issue) = d.fixes_issue.filter(|_| to_bounty > 0) {
             let b = self.bounties.get(&(repo_id, issue)).map_or(0, |b| b.0);
             self.bounties.insert((repo_id, issue), U128(b + to_bounty));
+            let held = self.bounty_held.get(&repo_id).map_or(0, |b| b.0);
+            self.bounty_held.insert(repo_id, U128(held + to_bounty));
         }
-        self.treasury_balance += to_treasury;
-        self.totals.held = U128(self.totals.held.0 - bond - tip);
+        match currency {
+            Currency::Usdc => self.treasury_balance += to_treasury,
+            Currency::Near => self.treasury_near += to_treasury,
+        }
+        let totals = self.totals_mut(currency);
+        totals.held = U128(totals.held.0 - bond - tip);
         match verdict {
-            Verdict::Forfeit => self.totals.forfeited = U128(self.totals.forfeited.0 + bond),
-            _ => self.totals.refunded = U128(self.totals.refunded.0 + to_payer),
+            Verdict::Forfeit => totals.forfeited = U128(totals.forfeited.0 + bond),
+            _ => totals.refunded = U128(totals.refunded.0 + to_payer),
         }
         self.record_reputation(&d.payer, repo_id, verdict, now);
         self.record_agent(&d.payer, d.harness.as_deref(), verdict);
 
-        events::settle(repo_id, number, verdict, &verdict_hash, to_payer, to_vault, to_bounty, to_treasury);
-        self.pay_out(d.payer, to_payer, d.from_budget);
+        events::settle(repo_id, number, verdict, &verdict_hash, to_payer, to_vault, to_bounty, to_treasury, currency);
+        self.pay_out(d.payer, to_payer, d.from_budget, currency);
     }
 
     /// Money owed to a payer: back into the agent's budget, or a token transfer.
-    fn pay_out(&mut self, to: AccountId, amount: u128, from_budget: bool) {
+    fn pay_out(&mut self, to: AccountId, amount: u128, from_budget: bool, currency: Currency) {
         if amount == 0 {
             return;
         }
+        // Budgets hold USDC only, so a budget-paid deposit is always USDC.
         if from_budget {
             self.credit_budget(&to, amount);
         } else {
             // Detached: settlement stands even if the transfer fails (it then becomes claimable).
-            let _ = self.send(to, amount, Fallback::Claimable);
+            let _ = self.send(to, amount, currency, Fallback::Claimable);
         }
     }
 

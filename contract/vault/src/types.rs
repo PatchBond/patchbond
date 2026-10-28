@@ -10,6 +10,37 @@ pub type TimestampMs = u64;
 
 /// USDC has 6 decimals: 1_000_000 = $1.
 pub const USDC: u128 = 1_000_000;
+/// NEAR (and wNEAR) has 24 decimals.
+pub const NEAR: u128 = 1_000_000_000_000_000_000_000_000;
+
+/// What a repo's bonds are paid in. NEAR travels as wNEAR (NEP-141), so every money path is the
+/// same `ft_transfer_call` → `ft_on_transfer` flow; the wallet wraps NEAR in the same transaction.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum Currency {
+    #[default]
+    Usdc,
+    Near,
+}
+
+impl Currency {
+    pub fn symbol(self) -> &'static str {
+        match self {
+            Currency::Usdc => "USDC",
+            Currency::Near => "NEAR",
+        }
+    }
+
+    /// 2_500_000 → "2.50 USDC"; 1.5e24 → "1.50 NEAR"
+    pub fn fmt(self, units: u128) -> String {
+        let one = match self {
+            Currency::Usdc => USDC,
+            Currency::Near => NEAR,
+        };
+        format!("{}.{:02} {}", units / one, (units % one) / (one / 100), self.symbol())
+    }
+}
 /// Share of every forfeit that goes to the PatchBond treasury (inference + gas), in basis points.
 pub const TREASURY_FEE_BPS: u128 = 1_000;
 pub const BPS: u128 = 10_000;
@@ -85,12 +116,20 @@ pub struct Repo {
     /// forfeits wait in the vault meanwhile.
     pub payout: Option<AccountId>,
     pub policy: Policy,
-    /// Withdrawable balance, in USDC units.
+    /// Withdrawable balance, in units of the repo's currency.
     pub vault: U128,
     /// Unsettled deposits — the queue that drives the bond curve.
     pub open: u32,
     pub linked_at: Option<TimestampMs>,
     pub stats: RepoStats,
+}
+
+/// `get_repo`'s answer: the repo plus the currency its bonds and vault are in.
+#[near(serializers = [json])]
+pub struct RepoView {
+    #[serde(flatten)]
+    pub repo: Repo,
+    pub currency: Currency,
 }
 
 #[near(serializers = [borsh, json])]

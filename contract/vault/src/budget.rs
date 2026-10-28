@@ -30,6 +30,10 @@ impl PatchBond {
             !passport.harness.is_empty() && passport.harness.len() <= 32 && passport.model.len() <= 64,
             "passport.harness must be 1–32 characters and passport.model at most 64"
         );
+        require!(
+            self.currency_of(repo_id) == Currency::Usdc,
+            format!("Repo {repo_id} takes NEAR bonds and agent budgets hold USDC: pay this bond directly")
+        );
         let bond = self.price_for(&agent, repo_id, number, &github_user, fixes_issue);
         let today = env::block_timestamp_ms() / DAY_MS;
         let mut b = self.budgets.get(&agent).cloned().unwrap_or_else(|| {
@@ -92,7 +96,7 @@ impl PatchBond {
         );
         b.balance = U128(b.balance.0 - amount.0);
         let owner = b.owner.clone();
-        self.send(owner, amount.0, Fallback::Budget(agent))
+        self.send(owner, amount.0, Currency::Usdc, Fallback::Budget(agent))
     }
 
     pub fn get_budget(&self, agent: AccountId) -> Option<Budget> {

@@ -1,4 +1,4 @@
-//! Every outgoing USDC transfer goes through `send`, which books the money back if the
+//! Every outgoing transfer (USDC or wNEAR) goes through `send`, which books the money back if the
 //! transfer fails — to the vault, the treasury, or the receiver's claimable balance.
 
 use near_contract_standards::fungible_token::core::ext_ft_core;
@@ -37,38 +37,39 @@ impl PatchBond {
             "Only the repo's linked payout account can withdraw its vault"
         );
         require!(amount.0 > 0, "Withdraw amount must be above zero");
+        let vault = repo.vault.0;
+        let currency = self.currency_of(repo_id);
         require!(
-            amount.0 <= repo.vault.0,
-            format!(
-                "The vault holds {} USDC; you asked for {}",
-                crate::deposit::fmt_usdc(repo.vault.0),
-                crate::deposit::fmt_usdc(amount.0)
-            )
+            amount.0 <= vault,
+            format!("The vault holds {}; you asked for {}", currency.fmt(vault), currency.fmt(amount.0))
         );
+        let repo = self.repo_mut(repo_id);
         repo.vault = U128(repo.vault.0 - amount.0);
-        events::withdraw(repo_id, &caller, amount.0);
-        self.send(caller, amount.0, Fallback::Vault(repo_id))
+        events::withdraw(repo_id, &caller, amount.0, currency);
+        self.send(caller, amount.0, currency, Fallback::Vault(repo_id))
     }
 
-    /// Owner sends accumulated fees to the treasury account.
+    /// Owner sends accumulated fees, in every currency that has some, to the treasury account.
     #[payable]
     pub fn withdraw_treasury(&mut self) -> Promise {
         assert_one_yocto();
         self.assert_owner();
-        let amount = self.treasury_balance;
-        require!(amount > 0, "The treasury balance is zero");
-        self.treasury_balance = 0;
-        self.send(self.treasury.clone(), amount, Fallback::Treasury)
+        let usdc = std::mem::take(&mut self.treasury_balance);
+        let near = std::mem::take(&mut self.treasury_near);
+        let to = self.treasury.clone();
+        self.send_each(&to, [(Currency::Usdc, usdc), (Currency::Near, near)], Fallback::Treasury)
+            .unwrap_or_else(|| env::panic_str("The treasury balance is zero"))
     }
 
-    /// Retry a payout that failed earlier (register with the USDC contract first).
+    /// Retry payouts that failed earlier, in every currency (register with the token contract first).
     #[payable]
     pub fn claim(&mut self) -> Promise {
         assert_one_yocto();
         let caller = env::predecessor_account_id();
-        let amount = self.claimable.remove(&caller).map_or(0, |c| c.0);
-        require!(amount > 0, "Nothing to claim for this account");
-        self.send(caller, amount, Fallback::Claimable)
+        let usdc = self.claimable.remove(&caller).map_or(0, |c| c.0);
+        let near = self.claimable_near.remove(&caller).map_or(0, |c| c.0);
+        self.send_each(&caller, [(Currency::Usdc, usdc), (Currency::Near, near)], Fallback::Claimable)
+            .unwrap_or_else(|| env::panic_str("Nothing to claim for this account"))
     }
 
     #[private]
@@ -76,40 +77,57 @@ impl PatchBond {
         &mut self,
         to: AccountId,
         amount: U128,
+        currency: Option<Currency>,
         fallback: Fallback,
         #[callback_result] result: Result<(), PromiseError>,
     ) -> bool {
         if result.is_ok() {
             return true;
         }
+        let currency = currency.unwrap_or_default();
         events::payout_failed(&to, amount.0);
         match fallback {
-            Fallback::Vault(repo_id) => {
-                if let Some(repo) = self.repos.get_mut(&repo_id) {
-                    repo.vault = U128(repo.vault.0 + amount.0);
-                }
+            // The vault only takes it back in its own currency (it may have switched since).
+            Fallback::Vault(repo_id) if self.repos.contains_key(&repo_id) && self.currency_of(repo_id) == currency => {
+                let repo = self.repo_mut(repo_id);
+                repo.vault = U128(repo.vault.0 + amount.0);
             }
-            Fallback::Treasury => self.treasury_balance += amount.0,
-            Fallback::Claimable => {
-                let c = self.claimable.get(&to).map_or(0, |c| c.0);
-                self.claimable.insert(to, U128(c + amount.0));
-            }
-            Fallback::Budget(agent) => self.credit_budget(&agent, amount.0),
+            Fallback::Treasury => match currency {
+                Currency::Usdc => self.treasury_balance += amount.0,
+                Currency::Near => self.treasury_near += amount.0,
+            },
+            Fallback::Budget(agent) if currency == Currency::Usdc => self.credit_budget(&agent, amount.0),
+            _ => self.credit_claimable(&to, amount.0, currency),
         }
         false
     }
 }
 
 impl PatchBond {
-    pub(crate) fn send(&mut self, to: AccountId, amount: u128, fallback: Fallback) -> Promise {
-        ext_ft_core::ext(self.token.clone())
+    pub(crate) fn send(&mut self, to: AccountId, amount: u128, currency: Currency, fallback: Fallback) -> Promise {
+        ext_ft_core::ext(self.token_of(currency))
             .with_attached_deposit(NearToken::from_yoctonear(1))
             .with_static_gas(GAS_FT_TRANSFER)
             .ft_transfer(to.clone(), U128(amount), Some("PatchBond".into()))
             .then(
                 Self::ext(env::current_account_id())
                     .with_static_gas(GAS_ON_SEND)
-                    .on_send(to, U128(amount), fallback),
+                    .on_send(to, U128(amount), Some(currency), fallback),
             )
+    }
+
+    /// One transfer per non-zero amount, joined; `None` if every amount is zero.
+    fn send_each(&mut self, to: &AccountId, amounts: [(Currency, u128); 2], fallback: Fallback) -> Option<Promise> {
+        amounts
+            .into_iter()
+            .filter(|&(_, amount)| amount > 0)
+            .map(|(currency, amount)| self.send(to.clone(), amount, currency, fallback.clone()))
+            .reduce(Promise::and)
+    }
+
+    pub(crate) fn credit_claimable(&mut self, to: &AccountId, amount: u128, currency: Currency) {
+        let map = self.claimable_map_mut(currency);
+        let c = map.get(to).map_or(0, |c| c.0);
+        map.insert(to.clone(), U128(c + amount));
     }
 }
