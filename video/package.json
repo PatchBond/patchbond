@@ -5,7 +5,10 @@
   "scripts": {
     "record": "bun record.ts",
     "studio": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts PatchBond out/patchbond.mp4"
+    "render": "remotion render src/index.ts PatchBond out/patchbond.mp4",
+    "audio": "bun gen-audio.ts",
+    "render:narrated": "remotion render src/index.ts PatchBondNarrated out/patchbond-narrated.mp4",
+    "vo": "bun gen-vo.ts"
   },
   "dependencies": {
     "@remotion/cli": "4.0.539",

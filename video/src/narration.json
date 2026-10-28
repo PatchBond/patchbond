@@ -1,0 +1,87 @@
+[
+  {
+    "scene": "hook",
+    "at": 0.6,
+    "text": "I maintain an open source project with over a hundred contributors."
+  },
+  {
+    "scene": "hook",
+    "at": 4.5,
+    "text": "Lately: tens of pull requests for issues nobody assigned. And claims the code doesn't back up."
+  },
+  {
+    "scene": "numbers",
+    "at": 0.5,
+    "text": "Around a quarter of incoming pull requests are now low quality A.I. output. Maintainers are drowning."
+  },
+  {
+    "scene": "idea",
+    "at": 0.6,
+    "text": "PatchBond is a market for maintainer attention, built on NEAR."
+  },
+  {
+    "scene": "hero",
+    "at": 0.5,
+    "text": "Strangers attach a small refundable bond to their pull request. Real work gets every cent back."
+  },
+  {
+    "scene": "spam",
+    "at": 0.5,
+    "text": "The price follows the queue, so a flood of spam prices itself out."
+  },
+  {
+    "scene": "judge-paste",
+    "at": 0.6,
+    "text": "Paste any pull request."
+  },
+  {
+    "scene": "judge-facts",
+    "at": 0.2,
+    "text": "The judge checks C.I., invented code, and claims against the diff."
+  },
+  {
+    "scene": "judge-verify",
+    "at": 0.4,
+    "text": "Every verdict is signed in a secure enclave, and anyone can verify it, right in the browser."
+  },
+  {
+    "scene": "tx-gasless",
+    "at": 0.5,
+    "text": "Contributors don't even need gas. Our relayer pays it."
+  },
+  {
+    "scene": "tx-forfeit",
+    "at": 0.4,
+    "text": "Slop is forfeited. Ninety percent goes to the maintainer."
+  },
+  {
+    "scene": "tx-agent",
+    "at": 0.4,
+    "text": "And coding agents pay through M.C.P., with a key that can only pay bonds."
+  },
+  {
+    "scene": "pay",
+    "at": 0.8,
+    "text": "One tap to pay. No gas."
+  },
+  {
+    "scene": "agents",
+    "at": 0.8,
+    "text": "Agents get wallets that can't hurt you."
+  },
+  {
+    "scene": "maintainers",
+    "at": 0.4,
+    "text": "Maintainers get paid, on any chain."
+  },
+  {
+    "scene": "near",
+    "at": 0.6,
+    "text": "Every piece is a NEAR primitive."
+  },
+  {
+    "scene": "close",
+    "at": 0.8,
+    "text": "Real work gets its bond back. Slop pays the maintainer. This is PatchBond."
+  }
+]

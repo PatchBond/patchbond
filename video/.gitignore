@@ -1,3 +1,5 @@
 node_modules/
 out/
 public/clips/
+public/vo/
+public/music*.wav

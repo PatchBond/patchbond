@@ -4,8 +4,10 @@
 import { loadFont } from "@remotion/google-fonts/Inter";
 import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
 import type { ReactNode } from "react";
-import { AbsoluteFill, Img, interpolate, OffthreadVideo, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import txData from "../public/txs.json";
+import narration from "./narration.json";
+import timeline from "./timeline.json";
 
 const { fontFamily } = loadFont();
 const { fontFamily: mono } = loadMono();
@@ -220,32 +222,51 @@ function Close() {
 // ---------- timeline ----------
 
 const tx = (id: string) => txData.txs.find((t) => t.id === id)!;
+/** Scene length from the shared timeline (the soundtrack is cut to the same file). */
+const sec = (id: string) => s(timeline.scenes.find((x) => x.id === id)!.sec);
 
 const SCENES: { d: number; el: (d: number) => ReactNode }[] = [
-  { d: s(11), el: () => <Hook /> },
-  { d: s(9), el: () => <Numbers /> },
-  { d: s(6), el: () => <Idea /> },
-  { d: s(8), el: (d) => <Clip src="hero" from={s(1.5)} durationInFrames={d} eyebrow="How it works" title={<>Strangers attach a refundable bond. <span style={{ color: C.brand }}>Real work gets it back.</span></>} /> },
-  { d: s(8), el: (d) => <Clip src="spam" from={s(3.4)} durationInFrames={d} eyebrow="Attention pricing · EIP-1559 for open source" title={<>Tens of PRs at once? <span style={{ color: C.brand }}>Each one costs 12.5% more.</span></>} /> },
-  { d: s(5.5), el: (d) => <Clip src="judge" from={s(1.4)} durationInFrames={d} eyebrow="The judge" title={<>Paste any pull request.</>} /> },
-  { d: s(5), el: (d) => <Clip src="judge" from={s(17.6)} durationInFrames={d} eyebrow="Facts first, then a verifiable model" title={<>CI, invented code, claims vs diff, <span style={{ color: C.brand }}>who was assigned.</span></>} /> },
-  { d: s(7), el: (d) => <Clip src="judge" from={s(24.6)} durationInFrames={d} eyebrow="Don't trust us — verify" title={<>Every verdict is signed. <span style={{ color: C.brand }}>Check it in your browser.</span></>} /> },
-  { d: s(5.5), el: () => <Receipt tx={tx("gasless")} caption="The contributor signed; our relayer paid the fee. The bond landed — 0 NEAR spent by the contributor." /> },
-  { d: s(5), el: () => <Receipt tx={tx("forfeit")} caption="Slop forfeited: 90% to the repo's vault, 10% to run PatchBond." /> },
-  { d: s(5.5), el: () => <Receipt tx={tx("agent")} caption="A coding agent paid through our MCP server — with a key that can only pay bonds." /> },
-  { d: s(6), el: (d) => <Clip src="pay" from={s(0.8)} durationInFrames={d} eyebrow="For contributors" title={<>One tap to pay. <span style={{ color: C.brand }}>No gas needed.</span></>} /> },
-  { d: s(6.5), el: (d) => <Clip src="agents" from={s(0.6)} durationInFrames={d} eyebrow="Know your agent" title={<>Agents get wallets that <span style={{ color: C.brand }}>can't hurt you.</span></>} /> },
-  { d: s(4), el: (d) => <Clip src="maintainers" from={s(0.5)} durationInFrames={d} eyebrow="For maintainers" title={<>Link a wallet. <span style={{ color: C.brand }}>Get paid on any chain.</span></>} /> },
-  { d: s(7), el: () => <Near /> },
-  { d: s(8), el: () => <Close /> },
+  { d: sec("hook"), el: () => <Hook /> },
+  { d: sec("numbers"), el: () => <Numbers /> },
+  { d: sec("idea"), el: () => <Idea /> },
+  { d: sec("hero"), el: (d) => <Clip src="hero" from={s(1.5)} durationInFrames={d} eyebrow="How it works" title={<>Strangers attach a refundable bond. <span style={{ color: C.brand }}>Real work gets it back.</span></>} /> },
+  { d: sec("spam"), el: (d) => <Clip src="spam" from={s(3.4)} durationInFrames={d} eyebrow="Attention pricing · EIP-1559 for open source" title={<>Tens of PRs at once? <span style={{ color: C.brand }}>Each one costs 12.5% more.</span></>} /> },
+  { d: sec("judge-paste"), el: (d) => <Clip src="judge" from={s(1.4)} durationInFrames={d} eyebrow="The judge" title={<>Paste any pull request.</>} /> },
+  { d: sec("judge-facts"), el: (d) => <Clip src="judge" from={s(17.6)} durationInFrames={d} eyebrow="Facts first, then a verifiable model" title={<>CI, invented code, claims vs diff, <span style={{ color: C.brand }}>who was assigned.</span></>} /> },
+  { d: sec("judge-verify"), el: (d) => <Clip src="judge" from={s(24.6)} durationInFrames={d} eyebrow="Don't trust us — verify" title={<>Every verdict is signed. <span style={{ color: C.brand }}>Check it in your browser.</span></>} /> },
+  { d: sec("tx-gasless"), el: () => <Receipt tx={tx("gasless")} caption="The contributor signed; our relayer paid the fee. The bond landed — 0 NEAR spent by the contributor." /> },
+  { d: sec("tx-forfeit"), el: () => <Receipt tx={tx("forfeit")} caption="Slop forfeited: 90% to the repo's vault, 10% to run PatchBond." /> },
+  { d: sec("tx-agent"), el: () => <Receipt tx={tx("agent")} caption="A coding agent paid through our MCP server — with a key that can only pay bonds." /> },
+  { d: sec("pay"), el: (d) => <Clip src="pay" from={s(0.8)} durationInFrames={d} eyebrow="For contributors" title={<>One tap to pay. <span style={{ color: C.brand }}>No gas needed.</span></>} /> },
+  { d: sec("agents"), el: (d) => <Clip src="agents" from={s(0.6)} durationInFrames={d} eyebrow="Know your agent" title={<>Agents get wallets that <span style={{ color: C.brand }}>can't hurt you.</span></>} /> },
+  { d: sec("maintainers"), el: (d) => <Clip src="maintainers" from={s(0.5)} durationInFrames={d} eyebrow="For maintainers" title={<>Link a wallet. <span style={{ color: C.brand }}>Get paid on any chain.</span></>} /> },
+  { d: sec("near"), el: () => <Near /> },
+  { d: sec("close"), el: () => <Close /> },
 ];
 
 export const TOTAL = SCENES.reduce((t, x) => t + x.d, 0);
 
-export function PatchBond() {
+const sceneStart = (id: string) => {
+  let t = 0;
+  for (const x of timeline.scenes) {
+    if (x.id === id) return t;
+    t += x.sec;
+  }
+  throw new Error(`no scene ${id}`);
+};
+
+/** `narrated`: adds the voiceover and ducks the music under it (gen-audio.ts makes both mixes). */
+export function PatchBond({ narrated = false }: { narrated?: boolean }) {
   let at = 0;
   return (
     <AbsoluteFill style={{ background: C.bg }}>
+      <Audio src={staticFile(narrated ? "music-ducked.wav" : "music.wav")} />
+      {narrated &&
+        narration.map((line, i) => (
+          <Sequence key={`vo${i}`} from={s(sceneStart(line.scene) + line.at)}>
+            <Audio src={staticFile(`vo/${String(i).padStart(2, "0")}.wav`)} volume={0.95} />
+          </Sequence>
+        ))}
       {SCENES.map((sc, i) => {
         const from = at;
         at += sc.d;

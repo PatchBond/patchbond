@@ -1,0 +1,21 @@
+{
+  "fps": 30,
+  "scenes": [
+    { "id": "hook", "sec": 11 },
+    { "id": "numbers", "sec": 9 },
+    { "id": "idea", "sec": 6 },
+    { "id": "hero", "sec": 8 },
+    { "id": "spam", "sec": 8 },
+    { "id": "judge-paste", "sec": 5.5 },
+    { "id": "judge-facts", "sec": 5 },
+    { "id": "judge-verify", "sec": 7 },
+    { "id": "tx-gasless", "sec": 5.5 },
+    { "id": "tx-forfeit", "sec": 5 },
+    { "id": "tx-agent", "sec": 5.5 },
+    { "id": "pay", "sec": 6 },
+    { "id": "agents", "sec": 6.5 },
+    { "id": "maintainers", "sec": 4 },
+    { "id": "near", "sec": 7 },
+    { "id": "close", "sec": 8 }
+  ]
+}
