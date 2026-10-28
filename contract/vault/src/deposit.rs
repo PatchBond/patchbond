@@ -1,6 +1,6 @@
 //! Paying a bond: USDC `ft_transfer_call(receiver_id = patchbond, msg = TransferMsg)`.
-//! Anything paid above the quoted bond + tip is handed back to the payer by the token
-//! (the unused amount we return). A panic here refunds the whole transfer.
+//! Anything paid above what's due is handed back to the payer by the token (the unused
+//! amount we return). A panic here refunds the whole transfer.
 
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::json_types::U128;
@@ -27,30 +27,43 @@ impl FungibleTokenReceiver for PatchBond {
                 "Couldn't read the transfer msg ({e}); expected e.g. {{\"action\":\"bond\",\"repo_id\":1,\"number\":2,\"kind\":\"pr\",\"github_user\":\"octocat\"}}"
             ))
         });
-        match msg {
+        let unused = match msg {
             TransferMsg::Bond { repo_id, number, kind, github_user, tip, fixes_issue } => {
-                let unused = self.take_bond(
-                    sender_id, amount.0, repo_id, number, kind, github_user,
-                    tip.map_or(0, |t| t.0), fixes_issue,
+                let tip = tip.map_or(0, |t| t.0);
+                let bond = self.price_for(&sender_id, repo_id, number, &github_user, fixes_issue);
+                let due = bond + tip;
+                require!(
+                    amount.0 >= due,
+                    format!(
+                        "The bond is now {} USDC{} but {} was sent; the transfer was refunded. Ask for a fresh quote and try again",
+                        fmt_usdc(bond),
+                        if tip > 0 { format!(" + {} tip", fmt_usdc(tip)) } else { String::new() },
+                        fmt_usdc(amount.0)
+                    )
                 );
-                PromiseOrValue::Value(U128(unused))
+                self.insert_deposit(sender_id, repo_id, number, kind, github_user, bond, tip, fixes_issue, None);
+                amount.0 - due
             }
-        }
+            TransferMsg::Challenge { repo_id, number } => {
+                self.take_challenge(sender_id, amount.0, repo_id, number)
+            }
+            TransferMsg::FundBudget { agent, daily_cap } => {
+                self.fund_budget(sender_id, agent, amount.0, daily_cap);
+                0
+            }
+        };
+        PromiseOrValue::Value(U128(unused))
     }
 }
 
 impl PatchBond {
-    /// Records the deposit and returns the unused part of `amount`.
-    #[allow(clippy::too_many_arguments)]
-    fn take_bond(
-        &mut self,
-        payer: AccountId,
-        amount: u128,
+    /// Validates a new submission and returns the bond `payer` owes for it right now.
+    pub(crate) fn price_for(
+        &self,
+        payer: &AccountId,
         repo_id: RepoId,
         number: Number,
-        kind: Kind,
-        github_user: String,
-        tip: u128,
+        github_user: &str,
         fixes_issue: Option<Number>,
     ) -> u128 {
         require!(
@@ -65,29 +78,33 @@ impl PatchBond {
             !self.deposits.contains_key(&(repo_id, number)),
             format!("#{number} on repo {repo_id} already has a deposit; nothing was charged")
         );
-        let now = env::block_timestamp_ms();
-        let rep = self.reputation.get(&payer).cloned().unwrap_or_default();
         let repo = self.repo(repo_id);
         require!(
             repo.policy.enabled,
             format!("PatchBond is turned off for repo {repo_id}: no deposit is needed")
         );
-        let bond = curve::quote(&repo.policy, repo.open, &rep, now);
+        let rep = self.reputation.get(payer).cloned().unwrap_or_default();
+        let bond = curve::quote(&repo.policy, repo.open, &rep, env::block_timestamp_ms());
         require!(
             bond > 0,
             "You're a proven contributor (≥3 refunds on ≥2 repos, no recent forfeits): no deposit is needed"
         );
-        let due = bond + tip;
-        require!(
-            amount >= due,
-            format!(
-                "The bond is now {} USDC{} but {} was sent; the transfer was refunded. Ask for a fresh quote and try again",
-                fmt_usdc(bond),
-                if tip > 0 { format!(" + {} tip", fmt_usdc(tip)) } else { String::new() },
-                fmt_usdc(amount)
-            )
-        );
+        bond
+    }
 
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn insert_deposit(
+        &mut self,
+        payer: AccountId,
+        repo_id: RepoId,
+        number: Number,
+        kind: Kind,
+        github_user: String,
+        bond: u128,
+        tip: u128,
+        fixes_issue: Option<Number>,
+        harness: Option<String>,
+    ) {
         let repo = self.repo_mut(repo_id);
         repo.open += 1;
         repo.stats.deposits += 1;
@@ -101,16 +118,17 @@ impl PatchBond {
                 bond: U128(bond),
                 tip: U128(tip),
                 fixes_issue,
-                created_at: now,
+                created_at: env::block_timestamp_ms(),
                 reviewed_at: None,
                 verdict_hash: None,
                 status: DepositStatus::Held,
+                from_budget: harness.is_some(),
+                harness,
             },
         );
-        self.totals.held = U128(self.totals.held.0 + due);
+        self.totals.held = U128(self.totals.held.0 + bond + tip);
         self.totals.deposits += 1;
         events::deposit(repo_id, number, kind, &payer, &github_user, bond, tip, open);
-        amount - due
     }
 }
 

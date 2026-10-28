@@ -4,9 +4,13 @@
 //! - The bond's price follows an on-chain attention curve over the repo's open queue (`curve`).
 //! - The oracle (our judge server) settles it with a verifiable AI verdict: refund, or forfeit
 //!   (90% to the repo's vault or the linked issue's bounty, 10% to the treasury).
+//! - AI verdicts are optimistic: they stand after a challenge window unless either side stakes
+//!   to challenge, and a stronger model re-judges (`settle`).
+//! - Agents spend from capped in-contract budgets with function-call keys (`budget`).
 //! - Only the repo's linked payout account can withdraw its vault. Nobody else — not the owner,
 //!   not the oracle — can move vault funds.
 
+mod budget;
 mod curve;
 mod deposit;
 mod events;
@@ -28,6 +32,9 @@ enum StorageKey {
     Reputation,
     Bounties,
     Claimable,
+    Budgets,
+    Passports,
+    AgentStats,
 }
 
 #[near(contract_state)]
@@ -47,6 +54,11 @@ pub struct PatchBond {
     bounties: LookupMap<(RepoId, Number), U128>,
     /// Payouts whose transfer failed (e.g. receiver not registered with the token); claim later.
     claimable: LookupMap<AccountId, U128>,
+    /// Capped agent wallets, keyed by the agent's account.
+    budgets: LookupMap<AccountId, Budget>,
+    passports: LookupMap<AccountId, Passport>,
+    /// Refund/forfeit record per agent account and per harness ("#claude-code").
+    agent_stats: LookupMap<String, AgentStats>,
     treasury_balance: u128,
     totals: Totals,
 }
@@ -65,6 +77,9 @@ impl PatchBond {
             reputation: LookupMap::new(StorageKey::Reputation),
             bounties: LookupMap::new(StorageKey::Bounties),
             claimable: LookupMap::new(StorageKey::Claimable),
+            budgets: LookupMap::new(StorageKey::Budgets),
+            passports: LookupMap::new(StorageKey::Passports),
+            agent_stats: LookupMap::new(StorageKey::AgentStats),
             treasury_balance: 0,
             totals: Totals::default(),
         }

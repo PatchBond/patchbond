@@ -20,6 +20,8 @@ pub enum Fallback {
     Vault(RepoId),
     Treasury,
     Claimable,
+    /// Back into an agent's budget.
+    Budget(AccountId),
 }
 
 #[near]
@@ -92,6 +94,7 @@ impl PatchBond {
                 let c = self.claimable.get(&to).map_or(0, |c| c.0);
                 self.claimable.insert(to, U128(c + amount.0));
             }
+            Fallback::Budget(agent) => self.credit_budget(&agent, amount.0),
         }
         false
     }

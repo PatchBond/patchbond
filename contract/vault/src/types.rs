@@ -32,6 +32,9 @@ pub struct Policy {
     pub target_open: u32,
     /// Priority lane: a tip is earned only if a maintainer reviews within this window.
     pub review_window_sec: u64,
+    /// Optimistic verdicts: an AI verdict stands after this window unless someone stakes to challenge it.
+    /// 0 = AI verdicts settle immediately.
+    pub challenge_window_sec: u64,
     /// Minimum AI confidence (basis points) the oracle needs before proposing a forfeit.
     pub forfeit_threshold_bps: u16,
 }
@@ -45,6 +48,7 @@ impl Default for Policy {
             max_bond: U128(50 * USDC),
             target_open: 8,
             review_window_sec: 72 * 3600,
+            challenge_window_sec: 72 * 3600,
             forfeit_threshold_bps: 8_500,
         }
     }
@@ -62,6 +66,10 @@ impl Policy {
         assert!(
             self.review_window_sec <= MAX_WINDOW_SEC,
             "Invalid policy: review_window_sec can be at most {MAX_WINDOW_SEC} (30 days)"
+        );
+        assert!(
+            self.challenge_window_sec <= MAX_WINDOW_SEC,
+            "Invalid policy: challenge_window_sec can be at most {MAX_WINDOW_SEC} (30 days)"
         );
         assert!(
             self.forfeit_threshold_bps as u128 <= BPS && self.forfeit_threshold_bps >= 5_000,
@@ -119,7 +127,12 @@ pub enum Verdict {
 #[derive(Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum DepositStatus {
+    /// Bond held, waiting for the judge.
     Held,
+    /// The AI verdict stands at `deadline` unless challenged.
+    Proposed { verdict: Verdict, deadline: TimestampMs },
+    /// Someone staked against the proposed verdict; a stronger model + the maintainer decide.
+    Challenged { verdict: Verdict, challenger: AccountId, stake: U128 },
     Settled { verdict: Verdict, at: TimestampMs },
 }
 
@@ -136,9 +149,13 @@ pub struct Deposit {
     pub fixes_issue: Option<Number>,
     pub created_at: TimestampMs,
     pub reviewed_at: Option<TimestampMs>,
-    /// Hex sha256 of the signed verdict record, so anyone can match chain ↔ verdict page.
+    /// Hex sha256 of the latest signed verdict record, so anyone can match chain ↔ verdict page.
     pub verdict_hash: Option<String>,
     pub status: DepositStatus,
+    /// Paid by an agent from its in-contract budget: refunds go back into the budget.
+    pub from_budget: bool,
+    /// The agent's declared harness (claude-code, codex, …), for per-harness records.
+    pub harness: Option<String>,
 }
 
 /// Portable reputation per NEAR account; readable by any repo or app.
@@ -167,6 +184,45 @@ pub enum TransferMsg {
         tip: Option<U128>,
         fixes_issue: Option<Number>,
     },
+    /// Stake against a proposed verdict (stake = the bond). The payer may challenge a forfeit;
+    /// the repo's payout account may challenge a refund.
+    Challenge { repo_id: RepoId, number: Number },
+    /// Fund (or top up) a capped budget that `agent` can spend on bonds with a function-call key.
+    FundBudget { agent: AccountId, daily_cap: Option<U128> },
+}
+
+/// A capped agent wallet held inside the contract. Function-call keys can't attach
+/// deposits, so the cap has to live here, enforced by the contract.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug)]
+pub struct Budget {
+    pub owner: AccountId,
+    pub balance: U128,
+    pub daily_cap: U128,
+    pub spent_today: U128,
+    /// Days since the epoch (UTC) that `spent_today` refers to.
+    pub day: u64,
+}
+
+pub const DAY_MS: u64 = 24 * 3600 * 1000;
+
+/// Know Your Agent: who runs this agent and on what. The transaction itself is signed by the
+/// agent account's function-call key, so the declaration is attributable.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Passport {
+    pub operator: AccountId,
+    pub harness: String,
+    pub model: String,
+}
+
+/// Public refund/forfeit record for one agent or one harness.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, Default)]
+pub struct AgentStats {
+    pub deposits: u32,
+    pub refunds: u32,
+    pub forfeits: u32,
 }
 
 /// Global counters for the landing page.
