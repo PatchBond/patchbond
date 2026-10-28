@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { verifyRecord, type Facts, type ModelVerdict } from "@patchbond/shared";
-import { calledSymbols, namespaceOf, ciFact, duplicateOf, injectionMarkers, linkedIssue, type Contribution } from "../src/judge/facts";
+import { assignmentFact, parseRepoRules, unbackedClaims, calledSymbols, namespaceOf, ciFact, duplicateOf, injectionMarkers, linkedIssue, type Contribution } from "../src/judge/facts";
 import { judge, type JudgeInput } from "../src/judge/judge";
 import { MockInference, MOCK_MODEL } from "../src/judge/nearai";
 import { userMessage } from "../src/judge/prompt";
@@ -41,6 +41,7 @@ function input(over: Partial<Contribution> = {}, extra: Partial<JudgeInput> = {}
 
 const facts = (f: Partial<Facts> = {}): Facts => ({
   ci: "success", ci_failed_checks: [], phantom_symbols: [], unresolved_symbols: [], duplicate_of: null, issue: null,
+  assignment: "no_issue", unbacked_claims: [],
   files_changed: 1, additions: 1, deletions: 0, injection_markers: [], author_reputation: "new", ...f,
 });
 const mv = (v: Partial<ModelVerdict> = {}): ModelVerdict => ({
@@ -153,7 +154,7 @@ describe("judge (mock inference)", () => {
     const r = await judge(clean, new MockInference(undefined, lazy));
     expect(r.model_verdict?.verdict).toBe("forfeit");
     expect(r.final.verdict).toBe("needs_human");
-    expect(r.final.rules_applied[0]).toContain("CI passed");
+    expect(r.final.rules_applied[0]).toContain("No hard fact");
   });
 
   test("a failed symbol lookup never produces a phantom accusation", async () => {
@@ -176,5 +177,67 @@ describe("pre-flight advice", () => {
   test("failing CI or a missing issue → medium, a human would look", () => {
     expect(preflight(facts({ ci: "failure", ci_failed_checks: ["test"] })).likely).toBe("needs_human");
     expect(preflight(facts({ issue: { number: 9, exists: false, open: false } })).warnings[0]).toContain("#9");
+  });
+});
+
+describe("assignment check (a fact from GitHub, opt-in per repo)", () => {
+  const required = parseRepoRules("# PatchBond rules\nassignment_required: true\nunassigned_pr: evidence\n");
+  test("parses .github/patchbond.yml", () => {
+    expect(required).toEqual({ assignmentRequired: true, unassignedEffect: "evidence" });
+    expect(parseRepoRules(undefined)).toEqual({ assignmentRequired: false, unassignedEffect: "flag" });
+  });
+  test("assigned to the author is fine; someone else or nobody only counts when the repo requires it", () => {
+    expect(assignmentFact("tunde", { exists: true, assignees: ["Tunde"] }, required)).toBe("ok");
+    expect(assignmentFact("slopbot", { exists: true, assignees: ["tunde"] }, required)).toBe("assigned_to_other");
+    expect(assignmentFact("slopbot", { exists: true, assignees: [] }, required)).toBe("unassigned");
+    expect(assignmentFact("slopbot", { exists: true, assignees: ["tunde"] }, parseRepoRules(undefined))).toBe("not_required");
+    expect(assignmentFact("slopbot", null, required)).toBe("no_issue");
+  });
+  test("taking someone else's assigned issue is forfeit evidence when the repo says so", async () => {
+    const r = await judge(
+      input({ diff: "+  return parse(s);", body: "Fixes #12" }, {
+        checkRuns: [{ name: "build", status: "completed", conclusion: "success" }],
+        issueLookup: async () => ({ exists: true, open: true, assignees: ["tunde"] }),
+        rules: required,
+      }),
+      new MockInference(),
+    );
+    expect(r.facts.assignment).toBe("assigned_to_other");
+    expect(r.final.verdict).toBe("forfeit");
+  });
+  test("with the flag effect, the same PR only goes to a human", async () => {
+    const r = await judge(
+      input({ diff: "+  return parse(s);", body: "Fixes #12" }, {
+        checkRuns: [{ name: "build", status: "completed", conclusion: "success" }],
+        issueLookup: async () => ({ exists: true, open: true, assignees: ["tunde"] }),
+        rules: { assignmentRequired: true, unassignedEffect: "flag" },
+      }),
+      new MockInference(),
+    );
+    expect(r.final.verdict).toBe("needs_human");
+  });
+});
+
+describe("claims vs diff", () => {
+  const pr = (body: string, files: string[], diff = "+  x();") => ({ ...input().contribution, body, files, diff });
+  test("claims that name files, code or tests absent from the diff are unbacked", () => {
+    const u = unbackedClaims(pr("- Updated the docs in README.md\n- Added unit tests for the parser\n- Refactored `parseConfig` for clarity", ["src/main.ts"]));
+    expect(u.map((c) => c.missing)).toEqual([["README.md"], ["tests"], ["`parseConfig`"]]);
+  });
+  test("claims the diff backs up are fine, and vague prose is never accused", () => {
+    expect(unbackedClaims(pr("Fix crash in src/config.ts when `loadConfig` gets an empty file. Added tests.", ["src/config.ts", "test/config.test.ts"], "+ export function loadConfig() {}"))).toEqual([]);
+    expect(unbackedClaims(pr("This improves robustness and performance across the codebase.", ["src/a.ts"]))).toEqual([]);
+    expect(unbackedClaims(pr("- [x] I have added tests\n- [ ] Docs updated", ["src/a.ts"]))).toEqual([]); // template checkboxes
+  });
+  test("a description that invents work is forfeited with each missing claim as evidence", async () => {
+    const r = await judge(
+      input({ diff: "+  // tweak", files: ["src/a.ts"], body: "- Rewrote the cache layer in src/cache.ts\n- Added integration tests\n- Documented it in docs/cache.md" }, {
+        checkRuns: [{ name: "build", status: "completed", conclusion: "success" }],
+      }),
+      new MockInference(),
+    );
+    expect(r.facts.unbacked_claims).toHaveLength(3);
+    expect(r.final.verdict).toBe("forfeit");
+    expect(r.final.evidence.length).toBe(3);
   });
 });

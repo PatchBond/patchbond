@@ -38,7 +38,14 @@ export interface Facts {
   /** Called names not found in the repo but possibly from a library: a hint, never grounds alone. */
   unresolved_symbols: string[];
   duplicate_of: { number: number; title: string; similarity: number } | null;
-  issue: { number: number; exists: boolean; open: boolean; title?: string } | null;
+  issue: { number: number; exists: boolean; open: boolean; title?: string; assignees?: string[] } | null;
+  /**
+   * Was the author assigned the issue the PR claims to fix? "assigned_to_other" / "unassigned"
+   * only count when the repo requires assignment (.github/patchbond.yml).
+   */
+  assignment: "ok" | "assigned_to_other" | "unassigned" | "not_required" | "no_issue";
+  /** Claims in the PR description that name files/code/tests nowhere in the diff. */
+  unbacked_claims: { claim: string; missing: string[] }[];
   files_changed: number;
   additions: number;
   deletions: number;

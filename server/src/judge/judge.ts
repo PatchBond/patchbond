@@ -3,7 +3,11 @@
 
 import { ModelVerdict, verdictHash, type Facts, type VerdictRecord } from "@patchbond/shared";
 import {
+  assignmentFact,
   ciFact,
+  DEFAULT_RULES,
+  unbackedClaims,
+  type RepoRules,
   duplicateOf,
   injectionMarkers,
   linkedIssue,
@@ -26,8 +30,10 @@ export interface JudgeInput {
   openItems: OpenItem[];
   /** Identifiers in the repo at the base commit. */
   symbolIndex: () => Promise<SymbolIndex>;
-  /** Looks up the issue the PR claims to fix. */
-  issueLookup: (n: number) => Promise<{ exists: boolean; open: boolean; title?: string }>;
+  /** Looks up the issue the PR claims to fix (with its assignees). */
+  issueLookup: (n: number) => Promise<{ exists: boolean; open: boolean; title?: string; assignees?: string[] }>;
+  /** The repo's own PatchBond rules (.github/patchbond.yml). */
+  rules?: RepoRules;
   authorReputation: Facts["author_reputation"];
   /** Repo policy forfeit_threshold_bps / 10_000. */
   threshold: number;
@@ -36,11 +42,14 @@ export interface JudgeInput {
 export async function computeFacts(i: JudgeInput): Promise<Facts> {
   const c = i.contribution;
   const issueNo = linkedIssue(`${c.title}\n${c.body}`);
+  const issue = issueNo === null ? null : { number: issueNo, ...(await i.issueLookup(issueNo).catch(() => ({ exists: false, open: false }))) };
   return {
     ...ciFact(i.checkRuns),
     ...(c.kind === "pr" ? await symbolFacts(c.diff, i.symbolIndex) : { phantom_symbols: [], unresolved_symbols: [] }),
     duplicate_of: duplicateOf(c, i.openItems),
-    issue: issueNo === null ? null : { number: issueNo, ...(await i.issueLookup(issueNo).catch(() => ({ exists: false, open: false }))) },
+    issue,
+    assignment: assignmentFact(i.author, issue, i.rules ?? DEFAULT_RULES),
+    unbacked_claims: unbackedClaims(c),
     files_changed: c.files.length,
     additions: c.additions,
     deletions: c.deletions,
@@ -56,7 +65,7 @@ export async function judge(i: JudgeInput, inference: Inference, now = new Date(
 
   const parsed = ModelVerdict.safeParse(modelContent(response_body));
   const model_verdict = parsed.success ? parsed.data : null;
-  const final = applyRules({ model: model_verdict, facts, threshold: i.threshold });
+  const final = applyRules({ model: model_verdict, facts, threshold: i.threshold, rules: i.rules });
 
   const base = {
     repo: { id: i.repo.id, full_name: i.repo.full_name },

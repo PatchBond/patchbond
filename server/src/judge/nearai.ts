@@ -126,6 +126,29 @@ function mockDecide(f: Partial<Facts>) {
       evidence: f.phantom_symbols.map((s) => ({ file: "(diff)", line: null, note: `${s}() does not exist at the base commit` })),
     };
   }
+  if (f.unbacked_claims && f.unbacked_claims.length >= 2) {
+    return {
+      verdict: "forfeit", confidence: 0.88, category: "does_not_work",
+      reasons: [`The description claims changes the diff doesn't contain (${f.unbacked_claims.length} claims).`],
+      evidence: f.unbacked_claims.map((c) => ({ file: "(description)", line: null, note: `"${c.claim.slice(0, 120)}" — not in the diff: ${c.missing.join(", ")}` })),
+    };
+  }
+  if (f.assignment === "assigned_to_other") {
+    return {
+      verdict: "forfeit", confidence: 0.86, category: "policy",
+      reasons: [`Issue #${f.issue?.number} is assigned to ${f.issue?.assignees?.join(", ")}, not the author, and this repo requires assignment.`],
+      evidence: [{ file: `(issue #${f.issue?.number})`, line: null, note: `assigned to ${f.issue?.assignees?.join(", ")}` }],
+    };
+  }
+  if (f.unbacked_claims?.length || f.assignment === "unassigned") {
+    return {
+      verdict: "needs_human", confidence: 0.6, category: f.unbacked_claims?.length ? "does_not_work" : "policy",
+      reasons: f.unbacked_claims?.length
+        ? [`The description mentions ${f.unbacked_claims[0]!.missing.join(", ")}, which the diff doesn't touch.`]
+        : [`Issue #${f.issue?.number} wasn't assigned to anyone, and this repo requires assignment first.`],
+      evidence: [],
+    };
+  }
   if (f.duplicate_of) {
     return {
       verdict: "needs_human", confidence: 0.6, category: "duplicate",

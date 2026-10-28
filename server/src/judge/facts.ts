@@ -195,3 +195,96 @@ export function duplicateOf(c: Contribution, open: OpenItem[], threshold = 0.6):
   }
   return best;
 }
+
+// ---------- Assignment: did the author take an issue that was theirs to take? ----------
+
+export interface RepoRules {
+  /** The repo asks contributors to be assigned before opening a PR for an issue. */
+  assignmentRequired: boolean;
+  /** "evidence": an unassigned PR counts as forfeit evidence; "flag": a human decides. */
+  unassignedEffect: "evidence" | "flag";
+}
+
+export const DEFAULT_RULES: RepoRules = { assignmentRequired: false, unassignedEffect: "flag" };
+
+/** Parses `.github/patchbond.yml` (flat `key: value` lines; unknown keys ignored). */
+export function parseRepoRules(text: string | undefined): RepoRules {
+  if (!text) return DEFAULT_RULES;
+  const kv = Object.fromEntries(
+    text
+      .split("\n")
+      .map((l) => l.replace(/#.*$/, "").trim())
+      .filter((l) => l.includes(":"))
+      .map((l) => [l.slice(0, l.indexOf(":")).trim(), l.slice(l.indexOf(":") + 1).trim().replace(/^["']|["']$/g, "")]),
+  );
+  return {
+    assignmentRequired: /^(true|yes|on)$/i.test(kv.assignment_required ?? ""),
+    unassignedEffect: kv.unassigned_pr === "evidence" ? "evidence" : "flag",
+  };
+}
+
+export function assignmentFact(author: string, issue: { exists: boolean; assignees?: string[] } | null, rules: RepoRules): Facts["assignment"] {
+  if (!issue || !issue.exists) return "no_issue";
+  const assignees = (issue.assignees ?? []).map((a) => a.toLowerCase());
+  if (assignees.includes(author.toLowerCase())) return "ok";
+  if (!rules.assignmentRequired) return "not_required";
+  return assignees.length ? "assigned_to_other" : "unassigned";
+}
+
+// ---------- Claims vs diff: does the PR do what its description says? ----------
+
+const FILE = /(?:^|[\s(`'"])((?:[\w.-]+\/)*[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|rs|go|c|h|cc|cpp|hpp|java|kt|rb|php|cs|swift|md|mdx|json|ya?ml|toml|sh|sql|css|scss|html|vue|svelte|txt|lock))(?=$|[\s),.:;`'"])/g;
+const TICKED = /`([A-Za-z_][\w.:-]{2,60})(?:\(\))?`/g;
+const TESTS_CLAIM = /\b(add(?:ed|s|ing)?|wr(?:ote|ite|iting)|includ(?:e|ed|es|ing)|new|cover(?:ed|s)?)\b[^.\n]{0,40}\b(unit |integration |e2e )?tests?\b/i;
+const IS_TEST_FILE = /(^|\/)(tests?|__tests__|spec)\/|[._-](test|spec)\.\w+$/i;
+
+/** A claim of work done: the sentence opens with a change verb ("Added …", "I rewrote …", "This PR fixes …"). */
+const CHANGE_VERB =
+  /^\W*(?:(?:i|we|this(?: pr| commit| patch)?|it|also|and|then)\s+)?(?:also\s+)?(?:add(?:ed|s|ing)?|updat(?:e|ed|es|ing)|fix(?:ed|es)?|implement(?:ed|s)?|refactor(?:ed|s)?|rewr(?:ote|ite|ites)|remov(?:e|ed|es)|renam(?:e|ed|es)|document(?:ed|s)?|creat(?:e|ed|es)|wrote|introduc(?:e|ed|es)|mov(?:e|ed|es)|chang(?:e|ed|es)|replac(?:e|ed|es)|extend(?:ed|s)?|delet(?:e|ed|es)|migrat(?:e|ed|es)|convert(?:ed|s)?)\b/i;
+
+/** Change-claim sentences: not template checkboxes, headings, links, code, or examples. */
+function claimLines(body: string): string[] {
+  return body
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .split("\n")
+    .map((l) => l.trim().replace(/^[-*+]\s+|^\d+[.)]\s+/, ""))
+    .filter((l) => l.length >= 8 && !/^\[[ xX]\]/.test(l) && !/^#/.test(l) && !/^(https?:\/\/\S+)$/.test(l))
+    .flatMap((l) => l.split(/(?<=[.!?])\s+(?=[A-Z])/))
+    .map((sentence) => sentence.replace(/^\*\*[^*]+\*\*:?\s*/, "").trim())
+    .filter((sentence) => CHANGE_VERB.test(sentence) && !/^(for example|e\.g\.|eg\b|such as)/i.test(sentence));
+}
+
+/**
+ * A claim is unbacked only if it names concrete things (files, `code`, "added tests") and NONE of
+ * them appear in the diff. Lenient on purpose: a description that mentions one real change and one
+ * slip is not slop.
+ */
+export function unbackedClaims(c: Contribution, max = 5): Facts["unbacked_claims"] {
+  if (c.kind !== "pr") return [];
+  const files = c.files.map((f) => f.toLowerCase());
+  const changed = c.diff.toLowerCase();
+  const touches = (path: string) => {
+    const p = path.toLowerCase();
+    return files.some((f) => f === p || f.endsWith(`/${p}`) || f.split("/").pop() === p.split("/").pop());
+  };
+  const out: Facts["unbacked_claims"] = [];
+  for (const line of claimLines(`${c.title}\n${c.body}`)) {
+    const named: { what: string; present: boolean }[] = [];
+    // A file counts if the diff touches it or the changed text mentions it (docs that reference it).
+    for (const m of line.matchAll(FILE)) named.push({ what: m[1]!, present: touches(m[1]!) || changed.includes(m[1]!.toLowerCase().split("/").pop()!) });
+    for (const m of line.matchAll(TICKED)) {
+      const id = m[1]!;
+      if (/\.\w{1,5}$/.test(id) && named.some((n) => n.what === id)) continue; // already a file
+      // Present if the name, or a meaningful part of it (`ktor-client-core` → "ktor"), is in the diff.
+      const parts = id.toLowerCase().split(/[-_.:/]+/).filter((p) => p.length >= 4);
+      named.push({ what: `\`${id}\``, present: changed.includes(id.toLowerCase()) || parts.some((p) => changed.includes(p)) || touches(id) });
+    }
+    if (TESTS_CLAIM.test(line)) named.push({ what: "tests", present: c.files.some((f) => IS_TEST_FILE.test(f)) });
+    if (named.length && named.every((n) => !n.present)) {
+      out.push({ claim: line.slice(0, 200), missing: [...new Set(named.map((n) => n.what))] });
+      if (out.length >= max) break;
+    }
+  }
+  return out;
+}

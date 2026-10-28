@@ -22,6 +22,15 @@ export function preflight(facts: Facts): Preflight {
   if (facts.phantom_symbols.length) {
     high.push(`Calls ${facts.phantom_symbols.join(", ")}, which the repository doesn't define. Check the names against the base branch.`);
   }
+  for (const c of facts.unbacked_claims) {
+    high.push(`Your description says "${c.claim.slice(0, 90)}", but the diff has no ${c.missing.join(", ")}. Make the change or fix the description.`);
+  }
+  if (facts.assignment === "assigned_to_other") {
+    high.push(`Issue #${facts.issue?.number} is assigned to ${facts.issue?.assignees?.join(", ")}. This repo requires assignment — ask a maintainer before opening a PR.`);
+  }
+  if (facts.assignment === "unassigned") {
+    medium.push(`Issue #${facts.issue?.number} isn't assigned to you, and this repo requires assignment. Ask to be assigned first.`);
+  }
   if (facts.issue && !facts.issue.exists) {
     medium.push(`References issue #${facts.issue.number}, which doesn't exist.`);
   }

@@ -119,6 +119,9 @@ Issues and bug reports follow the same loop. For bug reports the judge checks: i
 - Is it a duplicate of an open PR/issue? (Server computes similarity first.)
 - Boilerplate tells: generic descriptions, unrelated reformatting, hallucinated issue references.
 
+- **Was the author assigned the issue?** If the repo requires assignment (`.github/patchbond.yml`), a PR for an issue assigned to someone else — or to no one — is a GitHub fact the repo can treat as forfeit evidence or send to a human.
+- **Does the PR do what its description claims?** Each claim of work done (files, code, tests) is matched against the diff; claims with nothing behind them are evidence.
+
 ### 6.3 Output (strict JSON, schema-validated)
 ```json
 { "verdict": "refund | forfeit | needs_human",

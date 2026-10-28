@@ -22,14 +22,29 @@ It is a **market for maintainer attention — EIP-1559 for open source**: the bo
 
 ## Contents
 
-- [Why](#why) · [How it works](#how-it-works) · [What makes it different](#what-makes-it-different)
+- [Why this exists](#why-this-exists) · [How it works](#how-it-works) · [What makes it different](#what-makes-it-different)
 - [Try it in 5 minutes](#try-it-in-5-minutes) — for judges and reviewers, from a clean clone
 - [What's real](#whats-real) — an honest built-vs-planned table
 - [Architecture](#architecture) · [NEAR features used](#near-features-used) · [Security model](#security-model)
 - [Testing](#testing) · [Judge accuracy](#judge-accuracy) · [Running your own](#running-your-own)
 - [Libraries and AI-assisted code](#libraries-and-ai-assisted-code) · [License](#license)
 
-## Why
+## Why this exists
+
+> I maintain an open-source project that a large community contributes to. Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one of them costs a maintainer time to read, check and close — time taken from the people doing real work. AI is here to help open source, not to drown it. So I built PatchBond on NEAR.
+>
+> — the PatchBond team
+
+PatchBond answers each part of that pattern directly:
+
+| The pattern | What PatchBond does |
+|---|---|
+| Tens of PRs at once | **Attention pricing**: every extra open submission makes the next bond 12.5% more expensive — a flood prices itself out. |
+| PRs for issues assigned to someone else | **Assignment check**: a fact read from GitHub; repos that require assignment can treat it as forfeit evidence. |
+| "Claims he did what he didn't do" | **Claims vs diff**: every claim of work in the description is matched against the diff; claims with nothing behind them become evidence. |
+| Maintainers paying for it all with their time | **Slop pays the maintainer**: forfeited bonds go to the repo's vault. |
+
+### The wider problem
 
 - A Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** (31% on large projects).
 - curl moved low/medium-severity security reports to public view because AI-generated reports nearly overwhelmed its team; GitHub is adding options to limit or turn off pull requests.
@@ -85,7 +100,7 @@ cp .env.example .env          # defaults work: testnet, mock judge
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **57 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **64 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
 | 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **33 contract tests pass**: 10 unit (incl. a 50,000-case property test of the money split) + 23 on a local NEAR sandbox with real token transfers (every money path, challenges, a real function-call key, link-once, pause). |
 | 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
@@ -115,7 +130,7 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 | Part | Status |
 |---|---|
 | Vault contract: bonds, curve, refund/forfeit 90/10, void, tips, bounties, withdraw, challenges, agent budgets, reputation, NEP-297 events, link-once + hand-over, pause, state migration | ✅ Built, 33 tests, **live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), full e2e on testnet |
-| AI judge: facts (CI, phantom vs unresolved symbols, duplicates, linked issue, injection), prompt, server safety rules, record + verification | ✅ Built and tested |
+| AI judge: facts (CI, phantom vs unresolved symbols, duplicates, linked issue, **issue assignment**, **claims vs diff**, injection), prompt, server safety rules, record + verification | ✅ Built and tested; 0/15 good PRs forfeited on the labelled set |
 | NEAR AI Cloud verifiable model (`z-ai/glm-5.3-flash`) | ⚠️ Client built; **running on a clearly labelled mock judge** (dev-key signatures, every record marked `mock`) until the NEAR AI account has credits |
 | GitHub App bot: pay-link comment, check runs, deposit watch, judge after CI, settle, finalize, review → tip, merge → bounty, 14-day refund | ✅ Built, 8 scenario tests against a fake GitHub; live App being set up |
 | Web app: home, pay, verdict with in-browser verification, repo, agents, ⌘K | ✅ Built |
@@ -198,7 +213,7 @@ Full threat model, key powers and known limits: **[SECURITY.md](SECURITY.md)**.
 |---|---|---|
 | Contract unit tests (curve, exemption, forfeit tax, money-split property test) | 10 | `cd contract && cargo test -p patchbond-vault --lib` |
 | Contract sandbox tests (real NEP-141 transfers on a local NEAR node) | 23 | `cd contract && cargo test -p patchbond-vault` |
-| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding, Intents quotes, relayer | 40 | `cd server && bun test` |
+| Server: judge facts (incl. assignment and claims-vs-diff), rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding, Intents quotes, relayer | 47 | `cd server && bun test` |
 | MCP: client, key safety, stdio protocol | 11 | `cd mcp && bun test` |
 | Shared: verification tamper tests, curve = contract values | 6 | `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 49 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |

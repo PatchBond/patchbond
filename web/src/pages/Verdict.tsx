@@ -122,7 +122,21 @@ function ConfidenceBar({ value }: { value: number }) {
 
 function Facts({ r }: { r: VerdictRecord }) {
   // Older records may lack newer fact fields.
-  const f = { ...r.facts, unresolved_symbols: r.facts.unresolved_symbols ?? [], phantom_symbols: r.facts.phantom_symbols ?? [], injection_markers: r.facts.injection_markers ?? [] };
+  const f = {
+    ...r.facts,
+    unresolved_symbols: r.facts.unresolved_symbols ?? [],
+    phantom_symbols: r.facts.phantom_symbols ?? [],
+    injection_markers: r.facts.injection_markers ?? [],
+    unbacked_claims: r.facts.unbacked_claims ?? [],
+    assignment: r.facts.assignment ?? "no_issue",
+  };
+  const assignText = {
+    ok: "assigned to the author",
+    assigned_to_other: `assigned to ${f.issue?.assignees?.join(", ") ?? "someone else"}`,
+    unassigned: "not assigned (repo requires it)",
+    not_required: "not required by this repo",
+    no_issue: "no linked issue",
+  }[f.assignment];
   const items: [string, string, "ok" | "bad" | "meh"][] = [
     ["CI", f.ci === "none" ? "no CI" : f.ci, f.ci === "success" ? "ok" : f.ci === "failure" ? "bad" : "meh"],
     ["Phantom code", f.phantom_symbols.length ? f.phantom_symbols.join(", ") : "none", f.phantom_symbols.length ? "bad" : "ok"],
@@ -130,6 +144,8 @@ function Facts({ r }: { r: VerdictRecord }) {
     ["Duplicate", f.duplicate_of ? `#${f.duplicate_of.number} (${Math.round(f.duplicate_of.similarity * 100)}%)` : "none", f.duplicate_of ? "bad" : "ok"],
     ["Linked issue", f.issue ? `#${f.issue.number} ${f.issue.exists ? (f.issue.open ? "open" : "closed") : "doesn't exist"}` : "none", f.issue && !f.issue.exists ? "bad" : "meh"],
     ["Prompt injection", f.injection_markers.length ? `“${f.injection_markers[0]}”` : "none", f.injection_markers.length ? "bad" : "ok"],
+    ["Claims vs diff", f.unbacked_claims.length ? `${f.unbacked_claims.length} claim${f.unbacked_claims.length > 1 ? "s" : ""} not in the diff: ${f.unbacked_claims.flatMap((c) => c.missing).slice(0, 4).join(", ")}` : "every claim backed", f.unbacked_claims.length ? "bad" : "ok"],
+    ["Issue assignment", assignText, f.assignment === "assigned_to_other" || f.assignment === "unassigned" ? "bad" : f.assignment === "ok" ? "ok" : "meh"],
     ["Size", `${f.files_changed} files · +${f.additions} −${f.deletions}`, "meh"],
     ["Author", f.author_reputation, f.author_reputation === "has_forfeits" ? "bad" : f.author_reputation === "proven" ? "ok" : "meh"],
   ];

@@ -3,6 +3,7 @@
 import type { Octokit } from "octokit";
 import type { Facts } from "@patchbond/shared";
 import type { JudgeInput } from "../judge/judge";
+import { parseRepoRules } from "../judge/facts";
 import { symbolIndex } from "./symbols";
 
 export interface Target {
@@ -27,7 +28,7 @@ export async function gatherPr(
     gh.rest.pulls.get({ owner, repo, pull_number: number }),
     gh.rest.repos.get({ owner, repo }),
   ]);
-  const [diff, files, checks, openPrs, contributing] = await Promise.all([
+  const [diff, files, checks, openPrs, contributing, rulesFile] = await Promise.all([
     gh.rest.pulls
       .get({ owner, repo, pull_number: number, mediaType: { format: "diff" } })
       .then((r) => r.data as unknown as string),
@@ -38,6 +39,7 @@ export async function gatherPr(
       .catch(() => []),
     gh.rest.pulls.list({ owner, repo, state: "open", per_page: 50 }).then((r) => r.data.map((p) => ({ number: p.number, title: p.title }))),
     readFile(gh, owner, repo, "CONTRIBUTING.md", pr.base.sha),
+    readFile(gh, owner, repo, "patchbond.yml", pr.base.sha, [".github/", ""]),
   ]);
 
   return {
@@ -63,18 +65,19 @@ export async function gatherPr(
     issueLookup: async (n) => {
       try {
         const { data } = await gh.rest.issues.get({ owner, repo, issue_number: n });
-        return { exists: true, open: data.state === "open", title: data.title };
+        return { exists: true, open: data.state === "open", title: data.title, assignees: (data.assignees ?? []).map((a) => a.login) };
       } catch {
         return { exists: false, open: false };
       }
     },
     authorReputation: opts.authorReputation,
     threshold: opts.threshold,
+    rules: parseRepoRules(rulesFile),
   };
 }
 
-async function readFile(gh: Octokit, owner: string, repo: string, path: string, ref: string): Promise<string | undefined> {
-  for (const p of [path, `.github/${path}`, `docs/${path}`]) {
+async function readFile(gh: Octokit, owner: string, repo: string, path: string, ref: string, dirs = ["", ".github/", "docs/"]): Promise<string | undefined> {
+  for (const p of dirs.map((d) => `${d}${path}`)) {
     try {
       const { data } = await gh.rest.repos.getContent({ owner, repo, path: p, ref });
       if ("content" in data) return Buffer.from(data.content, "base64").toString("utf8");
