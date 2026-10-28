@@ -10,7 +10,8 @@
     "test": "bun test",
     "eval": "bun --env-file=../.env src/judge/eval.ts",
     "judge-pr": "bun --env-file=../.env src/cli/judge-pr.ts",
-    "e2e:testnet": "bun e2e/testnet.ts"
+    "e2e:testnet": "bun e2e/testnet.ts",
+    "settle": "bun --env-file=../.env src/cli/settle.ts"
   },
   "dependencies": {
     "@patchbond/shared": "workspace:*",

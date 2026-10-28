@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
-    "test": "bun run --filter '*' test"
+    "test": "bun run --filter '*' test",
+    "dev": "bun scripts/dev.ts"
   }
 }
