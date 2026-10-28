@@ -204,8 +204,9 @@ app.get("/setup/callback", async (c) => {
     `\n# GitHub App ${app.slug} (created ${new Date().toISOString()})\nGITHUB_APP_ID=${app.id}\nGITHUB_APP_SLUG=${app.slug}\nGITHUB_WEBHOOK_SECRET=${app.webhook_secret}\nGITHUB_PRIVATE_KEY="${app.pem.replace(/\n/g, "\\n")}"\nGITHUB_CLIENT_ID=${app.client_id}\nGITHUB_CLIENT_SECRET=${app.client_secret}\nSESSION_SECRET=${crypto.randomUUID()}${crypto.randomUUID()}\n`,
   );
   return c.html(`<body style="font:16px system-ui;background:#0E1013;color:#ECEAE4;padding:40px">
-<h1>✅ ${app.slug} created</h1><p>Credentials saved to <code>.env</code>. Restart the server, then
-<a style="color:#22C55E" href="${app.html_url}/installations/new">install the App on a repo →</a></p></body>`);
+<h1>✅ ${app.slug} created</h1><p>One-time operator setup done: credentials saved to <code>.env</code> (<code>bun run dev</code> restarts the API by itself).</p>
+<p>Maintainers never see this page. They install the App from <a style="color:#22C55E" href="${app.html_url}">${app.html_url}</a>.</p>
+<p><a style="color:#22C55E" href="${app.html_url}/installations/new">Install it on a repo now →</a></p></body>`);
 });
 
 if (bot) {
