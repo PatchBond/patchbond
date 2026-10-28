@@ -156,10 +156,12 @@ app.post("/webhook", async (c) => {
 });
 
 // ---- One-click GitHub App creation (GitHub's manifest flow) ----
-const ORG = process.env.GITHUB_ORG || "PatchBond";
-
 app.get("/setup", (c) => {
-  if (bot) return c.html(`<p>The GitHub App is already configured. Install it on a repo from the App's page.</p>`);
+  if (bot) {
+    const appUrl = `https://github.com/apps/${process.env.GITHUB_APP_SLUG || "patchbond"}`;
+    return c.html(`<body style="font:16px system-ui;background:#0E1013;color:#ECEAE4;padding:40px">
+<h1>✅ The GitHub App is set up</h1><p><a style="color:#22C55E" href="${appUrl}/installations/new">Install it on a repo →</a></p></body>`);
+  }
   const manifest = {
     name: process.env.GITHUB_APP_NAME || "PatchBond",
     url: cfg.webUrl,
@@ -179,13 +181,10 @@ app.get("/setup", (c) => {
 <h1 style="font-size:22px">Create the PatchBond GitHub App</h1>
 <p>GitHub fills in every setting PatchBond needs. You only pick a name and confirm. Then GitHub sends you back here, and the server saves the credentials to <code>.env</code> and restarts.</p>
 <p>Webhooks will go to <code>${process.env.WEBHOOK_URL || `${cfg.publicUrl}/webhook`}</code>.</p>
-${[
-    ["https://github.com/settings/apps/new", "Create on my GitHub account →", "Works for whoever is signed in to GitHub. The App can still be installed on any repo or org."],
-    [`https://github.com/organizations/${ORG}/settings/apps/new`, `Create in the ${ORG} org →`, `Only works if you're signed in as an owner of ${ORG}; otherwise GitHub shows a 404.`],
-  ].map(([action, label, note], i) => `<form method="post" action="${action}" style="margin:18px 0">
+<form method="post" action="https://github.com/settings/apps/new" style="margin:18px 0">
 <input type="hidden" name="manifest" value='${JSON.stringify(manifest).replace(/'/g, "&#39;")}'>
-<button style="background:${i ? "transparent" : "#22C55E"};color:${i ? "#ECEAE4" : "#0E1013"};border:${i ? "1px solid #3a3d44" : "0"};border-radius:10px;padding:12px 18px;font-weight:600;font-size:16px;cursor:pointer">${label}</button>
-<div style="font-size:13px;opacity:.65;margin-top:6px">${note}</div></form>`).join("")}
+<button style="background:#22C55E;color:#0E1013;border:0;border-radius:10px;padding:12px 18px;font-weight:600;font-size:16px;cursor:pointer">Create on my GitHub account →</button>
+<div style="font-size:13px;opacity:.65;margin-top:6px">Works for whoever is signed in to GitHub. The App can still be installed on any repo or org.</div></form>
 <p style="font-size:13px;opacity:.65">If GitHub shows an <b>empty</b> form, it lost these settings. Don't fill it in by hand: come back and click the button again.</p>
 </div></body>`);
 });
