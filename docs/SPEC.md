@@ -35,7 +35,8 @@ A repo turns on PatchBond and sets a rule, e.g. "strangers attach a $2 refundabl
 
 ### 4.1 The repo vault
 - The PatchBond contract (`patchbond.<our-account>.near`) holds a **vault per repository**, keyed by GitHub's numeric `repo_id` (not the name — names change on rename/transfer).
-- Forfeited deposits are credited to that vault in USDC (6 decimals). Money never sits in a PatchBond company wallet; it sits in the contract under the repo's key.
+- Forfeited deposits are credited to that vault in the repo's currency: USDC (6 decimals, the default) or NEAR (held as wNEAR, 24 decimals). Money never sits in a PatchBond company wallet; it sits in the contract under the repo's key.
+- **Currency per repo** (`set_currency(repo_id, currency, policy)`, same permission as `set_policy`): the policy comes with it because amounts mean nothing across currencies. Allowed only while nothing is held in the old currency — no unsettled deposit (held, proposed or challenged), an empty vault, no unpaid bounty. Each deposit also records the currency it was paid in, so refunds, stakes and claims always go back in that currency, and a vault never mixes two. Agent budgets stay USDC; an agent facing a NEAR repo is told its operator has to pay.
 - Default split of every forfeit: **90% repo vault, 10% PatchBond treasury** (pays AI inference + gas). The split is a contract constant for the hackathon; configurable later. *(Decide the number with the team.)*
 
 ### 4.2 Proving Amaka controls the repo (linking)
@@ -83,6 +84,7 @@ Issues and bug reports follow the same loop. For bug reports the judge checks: i
 
 ### 5.2 Paying the deposit
 - **NEAR wallet** (testnet first): web app calls USDC `ft_transfer_call(receiver_id=patchbond, amount, msg={"repo_id","number","kind":"pr","github_user"})`. Contract's `ft_on_transfer` records the deposit against `(repo_id, number)`.
+- **NEAR repos:** one transaction to `wrap.near` with three actions — `storage_deposit` (first time only), `near_deposit(amount)`, `ft_transfer_call` into the vault. The contributor signs once and pays plain NEAR; refunds arrive as wNEAR (unwrap any time).
 - **From another chain:** 1Click quote with destination = the contributor's NEAR account, then the web app does the `ft_transfer_call`. *(VERIFY whether 1Click can deliver straight into a contract call; if it can only do a plain transfer, use the two-step flow.)*
 - **Gas:** contributors shouldn't need NEAR for gas — use meta transactions (NEP-366) through a relayer we fund. *(VERIFY current relayer setup on testnet.)*
 - **Vouch:** a trusted contributor can sponsor a newcomer (`vouch(github_user)`); the voucher's reputation is at stake, not money.
@@ -217,6 +219,7 @@ Safety: callbacks for every `ft_transfer` (refund on failure), storage deposits 
 |---|---|
 | NEAR AI Cloud private inference + signed responses (TEE attestation) | AI judge, verdict verification |
 | NEP-141 USDC + `ft_transfer_call` | deposits, budgets, payouts |
+| wNEAR (`wrap.near`) | NEAR-denominated repos: wrap + pay in one transaction; withdraw + unwrap |
 | Function Call access keys | capped agent wallets |
 | NEAR Intents (1Click) | cross-chain deposits and payouts |
 | Meta transactions (NEP-366) | gasless contributors |

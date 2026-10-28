@@ -1,5 +1,6 @@
 // End-to-end test on real NEAR testnet: every money path of the vault, a real function-call key,
-// a real challenge window, and the judge → chain link — then everything is deleted again.
+// a real challenge window, NEAR bonds through the real wrap.testnet, and the judge → chain link —
+// then everything is deleted again.
 //
 //   cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml \
 //     && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml
@@ -30,6 +31,8 @@ const USDC = 1_000_000n;
 const TGAS = 1_000_000_000_000n;
 const NEAR = 10n ** 24n;
 const ZERO_HASH = "0".repeat(64);
+const WNEAR = "wrap.testnet";
+const WNEAR_STORAGE = 1_250_000_000_000_000_000_000n; // 0.00125 NEAR
 
 const provider = new JsonRpcProvider({ url: RPC });
 const report: string[] = [];
@@ -198,8 +201,8 @@ try {
   await ft.account.deployContract(wasm("mock_ft"));
   await ft.call(ft.id, "new", {}, { tgas: 30n });
   await vault.account.deployContract(wasm("patchbond_vault"));
-  const init = await vault.call(vault.id, "new", { owner: vault.id, oracle: oracle!.id, treasury: vault.id, token: ft.id }, { tgas: 30n });
-  check(!init.panic, `vault ${vault.id} initialised with token ${ft.id}`, init.panic ?? "");
+  const init = await vault.call(vault.id, "new", { owner: vault.id, oracle: oracle!.id, treasury: vault.id, token: ft.id, wnear: WNEAR }, { tgas: 30n });
+  check(!init.panic, `vault ${vault.id} initialised with USDC ${ft.id} and wNEAR ${WNEAR}`, init.panic ?? "");
   for (const [who, amount] of [[vault, 0n], [alice, 100n], [bob, 20n], [amaka, 20n], [mike, 20n]] as const) {
     await ft.call(ft.id, "mint", { account_id: who!.id, amount: (amount * USDC).toString() }, { tgas: 30n, label: `mint ${amount} → ${who!.short}` });
   }
@@ -395,8 +398,8 @@ try {
     }),
   );
   const viaMcp = await mcp.callTool({ name: "patchbond_deposit", arguments: { pr_url: "https://github.com/acme/widget/pull/1" } });
-  const paid = viaMcp.structuredContent as { paid?: boolean; bond_usdc?: string; tx?: string; budget_left_today_usdc?: string } | undefined;
-  check(!viaMcp.isError && paid?.paid === true, `MCP patchbond_deposit paid $${paid?.bond_usdc} on testnet with the function-call key`, JSON.stringify(viaMcp.content).slice(0, 200));
+  const paid = viaMcp.structuredContent as { paid?: boolean; bond?: string; tx?: string; budget_left_today_usdc?: string } | undefined;
+  check(!viaMcp.isError && paid?.paid === true, `MCP patchbond_deposit paid ${paid?.bond} on testnet with the function-call key`, JSON.stringify(viaMcp.content).slice(0, 200));
   if (paid?.tx) txs.push({ step: `${step}: agent pays via the MCP server`, hash: paid.tx.split("/").pop()! });
   eq(paid?.budget_left_today_usdc, "1.50", "MCP reports $1.50 left today");
   const mcpBudget = (await mcp.callTool({ name: "patchbond_budget", arguments: {} })).structuredContent as { balance_usdc: string };
@@ -446,9 +449,66 @@ try {
   const mult = BigInt(1 + Math.min(rep.forfeits, 3));
   eq(await quote(R1, alice!), curveBond(p1, (await repoOf(R1)).open) * mult, `recent forfeits → alice pays ×${mult}`);
 
-  section("12. Conservation: every USDC unit is accounted for");
+  section("12. NEAR bonds through the real wrap.testnet");
+  const wbal = async (a: Actor) => BigInt(await view<string>(WNEAR, "ft_balance_of", { account_id: a.id }));
+  /** Several function calls to one receiver in one signed transaction, as the web app sends them. */
+  const batch = async (who: Actor, receiverId: string, calls: [string, object, bigint, bigint][], label: string) => {
+    const raw = (await who.account.signAndSendTransaction({
+      receiverId,
+      actions: calls.map(([m, a, tgas, dep]) => actions.functionCall(m, a, tgas * TGAS, dep)),
+      waitUntil: "FINAL",
+    })) as unknown as Raw;
+    const o = readOutcome(raw);
+    txs.push({ step: `${step}: ${label}`, hash: o.hash });
+    return o;
+  };
+  await vault.call(WNEAR, "storage_deposit", { registration_only: true }, { deposit: WNEAR_STORAGE, tgas: 30n, label: "vault registers with wrap.testnet" });
+  const R4 = 1_000_004;
+  const nearPolicy = policy({ base_bond: (NEAR / 20n).toString(), min_bond: (NEAR / 100n).toString(), max_bond: (NEAR / 2n).toString() });
+  await oracle!.call(vault.id, "register_repo", { repo_id: R4, policy: policy({}) });
+  const sw = await oracle!.call(vault.id, "set_currency", { repo_id: R4, currency: "near", policy: nearPolicy }, { label: "oracle switches R4 to NEAR" });
+  check(!sw.panic, "R4 now takes NEAR (0.01–0.5 NEAR, base 0.05)", sw.panic ?? "");
+  eq((await view<{ currency: string }>(vault.id, "get_repo", { repo_id: R4 })).currency, "near", "get_repo reports currency near");
+  const usdcToNear = await pay(alice!, R4, 1, 5n * USDC);
+  check(!!usdcToNear.panic?.includes("takes NEAR bonds"), `USDC is refused with a reason: “${usdcToNear.panic?.slice(0, 60)}”`);
+  const nb1 = await quote(R4, alice!);
+  const nearMsg = (n: number) => JSON.stringify({ action: "bond", repo_id: R4, number: n, kind: "pr", github_user: alice!.short });
+  const wrapPay = await batch(
+    alice!,
+    WNEAR,
+    [
+      ["storage_deposit", { registration_only: true }, 10n, WNEAR_STORAGE],
+      ["near_deposit", {}, 10n, nb1],
+      ["ft_transfer_call", { receiver_id: vault.id, amount: nb1.toString(), msg: nearMsg(1) }, 150n, 1n],
+    ],
+    `alice wraps ${Number(nb1) / 1e24} NEAR and pays R4#1 in one transaction`,
+  );
+  check(!wrapPay.panic, `one transaction: register + wrap + pay a ${Number(nb1) / 1e24} NEAR bond`, wrapPay.panic ?? "");
+  eq((await view<{ currency: string }>(vault.id, "get_deposit", { repo_id: R4, number: 1 })).currency, "near", "the deposit is recorded as NEAR");
+  await settle(R4, 1, "refund");
+  eq(await wbal(alice!), nb1, "refund: the whole bond comes back as wNEAR");
+  const nb2 = await quote(R4, alice!);
+  if (nb2 > nb1) await alice!.call(WNEAR, "near_deposit", {}, { deposit: nb2 - nb1, tgas: 10n, label: "alice tops up wNEAR" });
+  await alice!.call(WNEAR, "ft_transfer_call", { receiver_id: vault.id, amount: nb2.toString(), msg: nearMsg(2) }, { deposit: 1n, label: "alice pays R4#2 from wNEAR" });
+  await settle(R4, 2, "forfeit");
+  const nfee = nb2 / 10n;
+  eq(BigInt((await repoOf(R4)).vault), nb2 - nfee, "forfeit: 90% to R4's NEAR vault");
+  const cfgN = await view<{ treasury_near: string; treasury_balance: string }>(vault.id, "get_config", {});
+  eq(BigInt(cfgN.treasury_near), nfee, "forfeit: 10% to the NEAR treasury, USDC treasury untouched");
+  await oracle!.call(vault.id, "link_repo", { repo_id: R4, payout: amaka!.id }, { label: "oracle links R4 → amaka" });
+  await amaka!.call(WNEAR, "storage_deposit", { registration_only: true }, { deposit: WNEAR_STORAGE, tgas: 30n, label: "amaka registers with wrap.testnet" });
+  await amaka!.call(vault.id, "withdraw", { repo_id: R4, amount: (nb2 - nfee).toString() }, { deposit: 1n, tgas: 100n, label: "amaka withdraws the NEAR vault" });
+  eq(await wbal(amaka!), nb2 - nfee, "amaka received the vault as wNEAR");
+  const unwrap = await amaka!.call(WNEAR, "near_withdraw", { amount: (nb2 - nfee).toString() }, { deposit: 1n, tgas: 30n, label: "amaka unwraps to plain NEAR" });
+  check(!unwrap.panic && (await wbal(amaka!)) === 0n, "…and unwrapped it to plain NEAR", unwrap.panic ?? "");
+  const nearHeld = BigInt((await view<{ held: string }>(vault.id, "get_totals", { currency: "near" })).held);
+  eq(await wbal(vault), nearHeld + BigInt((await repoOf(R4)).vault) + nfee, "the contract's wNEAR = held + NEAR vaults + NEAR treasury");
+  await alice!.call(WNEAR, "near_withdraw", { amount: (await wbal(alice!)).toString() }, { deposit: 1n, tgas: 30n, label: "alice unwraps her refund" });
+
+  section("13. Conservation: every USDC unit is accounted for");
   const contractBal = await bal(vault);
   const totals = await view<{ held: string }>(vault.id, "get_totals", {});
+  // R4 is a NEAR repo: its vault is wNEAR, checked in section 12.
   const inVaults = (await Promise.all([R1, R2, R3].map(repoOf))).reduce((s, r) => s + BigInt(r.vault), 0n);
   const treasury = BigInt((await view<{ treasury_balance: string }>(vault.id, "get_config", {})).treasury_balance);
   const budgets = BigInt((await view<{ balance: string }>(vault.id, "get_budget", { agent: agent!.id })).balance);

@@ -14,7 +14,7 @@
 
 ---
 
-PatchBond puts a small **refundable bond** on unsolicited pull requests. A stranger opens a PR; PatchBond asks for a deposit in USDC on NEAR. An **AI judge running in a TEE on NEAR AI Cloud** reviews it, using facts we compute (CI, functions that don't exist, duplicates, prompt injection). A real contribution gets **every cent back**. Slop is **forfeited to the repo's vault** in our NEAR contract. Every verdict is public, signed, and checkable in your browser.
+PatchBond puts a small **refundable bond** on unsolicited pull requests. A stranger opens a PR; PatchBond asks for a deposit in USDC or NEAR — each repo chooses. An **AI judge running in a TEE on NEAR AI Cloud** reviews it, using facts we compute (CI, functions that don't exist, duplicates, prompt injection). A real contribution gets **every cent back**. Slop is **forfeited to the repo's vault** in our NEAR contract. Every verdict is public, signed, and checkable in your browser.
 
 It is a **market for maintainer attention — EIP-1559 for open source**: the bond follows an on-chain price curve over the repo's queue, so a spam wave prices itself out while a quiet repo costs a newcomer a few cents.
 
@@ -56,7 +56,7 @@ PatchBond answers each part of that pattern directly:
  Stranger opens PR ──► PatchBond comment: "refundable $2.25 deposit" (price follows the queue)
         │
         ▼
- Pays with a NEAR wallet (USDC ft_transfer_call) ──► bond held by the contract, not a company
+ Pays with a NEAR wallet (USDC, or NEAR wrapped in the same tx) ──► bond held by the contract, not a company
         │
         ▼
  Repo's CI finishes ──► facts computed ──► verifiable model in a TEE ──► signed verdict
@@ -100,8 +100,8 @@ cp .env.example .env          # defaults work: testnet, mock judge
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **64 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
-| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **33 contract tests pass**: 10 unit (incl. a 50,000-case property test of the money split) + 23 on a local NEAR sandbox with real token transfers (every money path, challenges, a real function-call key, link-once, pause). |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **68 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
+| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **40 contract tests pass**: 10 unit (incl. a 50,000-case property test of the money split) + 30 on a local NEAR sandbox with real token transfers (every money path in USDC and in NEAR, challenges, a real function-call key, link-once, pause, currency switching). Two more upgrade tests replay live state from older builds (see [`tests/migrate.rs`](contract/vault/tests/migrate.rs)). |
 | 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
 | 5 | On testnet, with test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: open <http://localhost:5317/pay/1/1?repo=PatchBond/playground&user=YOUR_GITHUB_LOGIN> | Pay a real bond into the live contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet). The page shows the live quote from the on-chain curve. |
@@ -129,7 +129,7 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 
 | Part | Status |
 |---|---|
-| Vault contract: bonds, curve, refund/forfeit 90/10, void, tips, bounties, withdraw, challenges, agent budgets, reputation, NEP-297 events, link-once + hand-over, pause, state migration | ✅ Built, 33 tests, **live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), full e2e on testnet |
+| Vault contract: bonds **in USDC or NEAR (per repo)**, curve, refund/forfeit 90/10, void, tips, bounties, withdraw, challenges, agent budgets, reputation, NEP-297 events, link-once + hand-over, pause, state migration | ✅ Built, 42 tests, **live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), full e2e on testnet |
 | AI judge: facts (CI, phantom vs unresolved symbols, duplicates, linked issue, **issue assignment**, **claims vs diff**, injection), prompt, server safety rules, record + verification | ✅ Built and tested; 0/15 good PRs forfeited on the labelled set |
 | NEAR AI Cloud verifiable model (`z-ai/glm-5.3-flash`) | ⚠️ Client built; **running on a clearly labelled mock judge** (dev-key signatures, every record marked `mock`) until the NEAR AI account has credits |
 | GitHub App bot: pay-link comment, check runs, deposit watch, judge after CI, settle, finalize, review → tip, merge → bounty, 14-day refund | ✅ Built, 8 scenario tests against a fake GitHub; live App being set up |
@@ -184,6 +184,7 @@ The trust boundary is stated plainly: the contract trusts our **oracle** account
 |---|---|
 | Rust smart contract (near-sdk 5), NEP-297 events | [`contract/vault/src/lib.rs`](contract/vault/src/lib.rs), [`events.rs`](contract/vault/src/events.rs) |
 | NEP-141 USDC + `ft_transfer_call` / `ft_on_transfer` (bonds, challenges, budgets) | [`deposit.rs`](contract/vault/src/deposit.rs), [`web/src/pages/Pay.tsx`](web/src/pages/Pay.tsx) |
+| **NEAR bonds via wNEAR** — a repo can price bonds in NEAR; the contributor's wallet registers, wraps and pays in **one transaction** (three actions to `wrap.near`); maintainers withdraw and unwrap | [`deposit.rs`](contract/vault/src/deposit.rs), [`lib.rs` `set_currency`](contract/vault/src/lib.rs), [`Pay.tsx`](web/src/pages/Pay.tsx), [`Dashboard.tsx`](web/src/pages/Dashboard.tsx) |
 | Cross-contract calls with callbacks (every payout books money back on failure) | [`payout.rs`](contract/vault/src/payout.rs) |
 | **Function Call access keys** as capped agent wallets (method-limited; can't attach deposits) | [`budget.rs`](contract/vault/src/budget.rs), [`mcp/src/client.ts`](mcp/src/client.ts) |
 | **NEAR AI Cloud** verifiable inference + TEE signatures | [`server/src/judge/nearai.ts`](server/src/judge/nearai.ts), [`shared/src/verify.ts`](shared/src/verify.ts) |
@@ -233,7 +234,7 @@ The target is **zero good PRs forfeited**; a high `needs_human` rate is acceptab
 
 ## Running your own
 
-1. Deploy: `cd contract/vault && cargo near deploy build-non-reproducible-wasm <account> with-init-call new json-args '{"owner":"…","oracle":"…","treasury":"…","token":"<USDC>"}' …`, then register the contract with USDC (`storage_deposit`). Write the accounts to `deploy/<network>.json`.
+1. Deploy: `cd contract/vault && cargo near deploy build-non-reproducible-wasm <account> with-init-call new json-args '{"owner":"…","oracle":"…","treasury":"…","token":"<USDC>","wnear":"wrap.near"}' …`, then register the contract with USDC and with wNEAR (`storage_deposit` on each). Write the accounts to `deploy/<network>.json`.
 2. `cp .env.example .env`; set `NEAR_NETWORK`, `JUDGE_MODE=nearai` + `NEARAI_API_KEY`, and the oracle key (or keep it in near-cli's keychain).
 3. `bun run dev`, open <http://localhost:8787/setup> and click **Create on GitHub** — the App is created from a manifest with the right permissions and its credentials are saved to `.env`. For local webhooks set `WEBHOOK_URL` to a [smee.io](https://smee.io/new) channel; `bun run dev` starts the tunnel.
 4. Install the App on a repository. Outside PRs now get a deposit request.
