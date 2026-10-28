@@ -369,3 +369,25 @@ async fn policy_belongs_to_the_maintainer_once_linked() -> anyhow::Result<()> {
     assert_eq!(e.balance(&e.alice).await?, 100 * USDC);
     Ok(())
 }
+
+#[tokio::test]
+async fn a_voided_deposit_frees_the_slot_for_the_real_author() -> anyhow::Result<()> {
+    let e = setup().await?;
+    let bond = e.quote(REPO, None).await?;
+    // Alice pays for a PR that isn't hers; the oracle voids it and she gets everything back.
+    e.pay(&e.alice, REPO, 1, bond, json!({ "github_user": "someone-else" })).await?.into_result()?;
+    e.settle(REPO, 1, "void").await?.into_result()?;
+    assert_eq!(e.balance(&e.alice).await?, 100 * USDC);
+    assert_eq!(e.view("get_reputation", json!({ "account_id": e.alice.id() })).await?["refunds"], 0);
+
+    e.ft.call("mint")
+        .args_json(json!({ "account_id": e.bob.id(), "amount": (10 * USDC).to_string() }))
+        .transact()
+        .await?
+        .into_result()?;
+    e.pay(&e.bob, REPO, 1, bond, json!({})).await?.into_result()?;
+    let d = e.view("get_deposit", json!({ "repo_id": REPO, "number": 1 })).await?;
+    assert_eq!(d["github_user"], "bob");
+    assert_eq!(d["status"], json!("held"));
+    Ok(())
+}

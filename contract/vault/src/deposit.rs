@@ -74,8 +74,12 @@ impl PatchBond {
             fixes_issue != Some(number),
             "fixes_issue can't be the submission's own number"
         );
+        // A voided deposit (paid by the wrong person) frees the slot for the real author.
+        let taken = self.deposits.get(&(repo_id, number)).is_some_and(|d| {
+            !matches!(d.status, DepositStatus::Settled { verdict: Verdict::Void, .. })
+        });
         require!(
-            !self.deposits.contains_key(&(repo_id, number)),
+            !taken,
             format!("#{number} on repo {repo_id} already has a deposit; nothing was charged")
         );
         let repo = self.repo(repo_id);
