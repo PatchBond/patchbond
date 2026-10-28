@@ -7,6 +7,19 @@ pub use near_workspaces::types::{Gas, NearToken};
 pub use near_workspaces::{Account, Contract, Worker};
 pub use serde_json::{json, Value};
 
+/// Each wasm is compiled once per test binary: parallel tests compiling at the same time fight
+/// over cargo's lock and fail now and then.
+static VAULT_WASM: tokio::sync::OnceCell<Vec<u8>> = tokio::sync::OnceCell::const_new();
+static FT_WASM: tokio::sync::OnceCell<Vec<u8>> = tokio::sync::OnceCell::const_new();
+
+pub async fn vault_wasm() -> anyhow::Result<&'static [u8]> {
+    Ok(VAULT_WASM.get_or_try_init(|| near_workspaces::compile_project("./")).await?)
+}
+
+pub async fn ft_wasm() -> anyhow::Result<&'static [u8]> {
+    Ok(FT_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-ft")).await?)
+}
+
 pub const USDC: u128 = 1_000_000;
 pub const NEAR: u128 = 1_000_000_000_000_000_000_000_000;
 pub const REPO: u64 = 101;
@@ -39,15 +52,15 @@ pub async fn account(worker: &Worker<Sandbox>, name: &str) -> anyhow::Result<Acc
 pub async fn setup() -> anyhow::Result<Env> {
     let worker = near_workspaces::sandbox().await?;
     let ft = worker
-        .dev_deploy(&near_workspaces::compile_project("../mock-ft").await?)
+        .dev_deploy(ft_wasm().await?)
         .await?;
     ft.call("new").transact().await?.into_result()?;
     let wnear = worker
-        .dev_deploy(&near_workspaces::compile_project("../mock-ft").await?)
+        .dev_deploy(ft_wasm().await?)
         .await?;
     wnear.call("new").transact().await?.into_result()?;
     let pb = worker
-        .dev_deploy(&near_workspaces::compile_project("./").await?)
+        .dev_deploy(vault_wasm().await?)
         .await?;
 
     let owner = account(&worker, "owner").await?;

@@ -1,26 +1,41 @@
-//! Upgrading live v0.2 state (USDC only) to currencies keeps every repo, deposit and balance.
-//! Needs the v0.2 wasm: build commit 52d3fae with `cargo near build` and point
-//! `PATCHBOND_V2_WASM` at it. Skipped when unset.
-//! Run: `PATCHBOND_V2_WASM=… cargo test -p patchbond-vault --test migrate`
+//! Upgrading older state to the current layout keeps every repo, deposit and balance.
+//! Needs the old wasm builds: commit 52d3fae (v0.2, USDC only) as `PATCHBOND_V2_WASM` and commit
+//! 88ff441 (v0.3-pre, before `unsettled`) as `PATCHBOND_V3PRE_WASM`. Each case is skipped when unset.
+//! Run: `PATCHBOND_V2_WASM=… PATCHBOND_V3PRE_WASM=… cargo test -p patchbond-vault --test migrate`
 
 mod common;
 use common::*;
 
 #[tokio::test]
 async fn v2_state_survives_the_upgrade() -> anyhow::Result<()> {
-    let Ok(path) = std::env::var("PATCHBOND_V2_WASM") else {
-        eprintln!("PATCHBOND_V2_WASM not set; skipping the migration test");
+    upgrade_from("PATCHBOND_V2_WASM", json!({})).await
+}
+
+#[tokio::test]
+async fn v3_pre_state_survives_the_upgrade() -> anyhow::Result<()> {
+    upgrade_from("PATCHBOND_V3PRE_WASM", json!({ "wnear": null })).await
+}
+
+/// Deploy the old wasm, make a forfeit and a held deposit, upgrade, check nothing moved.
+/// `extra_init` = whatever the old `new` needs beyond owner/oracle/treasury/token.
+async fn upgrade_from(var: &str, extra_init: Value) -> anyhow::Result<()> {
+    let Ok(path) = std::env::var(var) else {
+        eprintln!("{var} not set; skipping");
         return Ok(());
     };
     let worker = near_workspaces::sandbox().await?;
-    let ft = worker.dev_deploy(&near_workspaces::compile_project("../mock-ft").await?).await?;
+    let ft = worker.dev_deploy(ft_wasm().await?).await?;
     ft.call("new").transact().await?.into_result()?;
-    let wnear = worker.dev_deploy(&near_workspaces::compile_project("../mock-ft").await?).await?;
+    let wnear = worker.dev_deploy(ft_wasm().await?).await?;
     let pb = worker.dev_deploy(&std::fs::read(path)?).await?;
     let oracle = account(&worker, "oracle").await?;
     let alice = account(&worker, "alice").await?;
+    let mut init = json!({ "owner": pb.id(), "oracle": oracle.id(), "treasury": pb.id(), "token": ft.id() });
+    for (k, v) in extra_init.as_object().unwrap() {
+        init[k] = v.clone();
+    }
     pb.call("new")
-        .args_json(json!({ "owner": pb.id(), "oracle": oracle.id(), "treasury": pb.id(), "token": ft.id() }))
+        .args_json(init)
         .transact()
         .await?
         .into_result()?;
@@ -61,8 +76,7 @@ async fn v2_state_survives_the_upgrade() -> anyhow::Result<()> {
     let before: Value = pb.view("get_repo").args_json(json!({ "repo_id": REPO })).await?.json()?;
 
     // Upgrade in place.
-    let new_wasm = near_workspaces::compile_project("./").await?;
-    pb.as_account().deploy(&new_wasm).await?.into_result()?;
+    pb.as_account().deploy(vault_wasm().await?).await?.into_result()?;
     pb.call("migrate").args_json(json!({ "wnear": wnear.id() })).transact().await?.into_result()?;
 
     let after: Value = pb.view("get_repo").args_json(json!({ "repo_id": REPO })).await?.json()?;

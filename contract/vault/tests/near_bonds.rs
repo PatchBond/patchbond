@@ -248,3 +248,24 @@ async fn a_failed_near_refund_becomes_claimable_in_near() -> anyhow::Result<()> 
     assert_eq!(u(&claim("near").await?), 0);
     Ok(())
 }
+
+#[tokio::test]
+async fn a_verdict_in_its_challenge_window_pins_the_currency() -> anyhow::Result<()> {
+    let e = setup().await?;
+    let mut usdc = instant_policy();
+    usdc["challenge_window_sec"] = json!(3600);
+    e.oracle
+        .call(e.pb.id(), "set_policy")
+        .args_json(json!({ "repo_id": REPO, "policy": usdc }))
+        .transact()
+        .await?
+        .into_result()?;
+    let bond = e.quote(REPO, None).await?;
+    e.pay(&e.alice, REPO, 1, bond, json!({})).await?.into_result()?;
+    // Proposed: the deposit has left the review queue (open = 0) but isn't settled.
+    e.settle(REPO, 1, "forfeit").await?.into_result()?;
+    assert_eq!(e.view("get_repo", json!({ "repo_id": REPO })).await?["open"], 0);
+    let r = switch(&e, &e.oracle, REPO, "near", near_policy()).await?;
+    assert!(failure_text(&r).contains("before switching currency"), "{}", failure_text(&r));
+    Ok(())
+}

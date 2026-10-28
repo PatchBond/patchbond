@@ -178,10 +178,8 @@ impl PatchBond {
                 let d = self.deposits.get(&(repo_id, number)).unwrap().clone();
                 self.pay_out(d.payer, stake.0, d.from_budget, currency);
             } else {
-                // The contributor challenged a forfeit and lost: the stake goes to the repo
-                // (a deposit is open, so the repo still has the deposit's currency).
-                let repo = self.repo_mut(repo_id);
-                repo.vault = U128(repo.vault.0 + stake.0);
+                // The contributor challenged a forfeit and lost: the stake goes to the repo.
+                self.credit_vault(repo_id, stake.0, currency);
             }
             events::resolved(repo_id, number, verdict, overturned, &challenger, stake.0);
         }
@@ -197,6 +195,10 @@ impl PatchBond {
         d.verdict_hash = Some(verdict_hash.clone());
         let d = d.clone();
         let currency = self.deposit_currency_of(repo_id, number);
+        if let Some(n) = self.unsettled.get(&repo_id).copied() {
+            // Deposits from before v0.3 were never counted.
+            self.unsettled.insert(repo_id, n.saturating_sub(1));
+        }
 
         let (bond, tip) = (d.bond.0, d.tip.0);
         let tip_earned =
@@ -205,8 +207,9 @@ impl PatchBond {
             split(bond, tip, verdict, tip_earned, d.fixes_issue.is_some());
 
         // Book-keeping before any transfer, so a failed transfer can never double-pay.
+        self.credit_vault(repo_id, to_vault, currency);
+        let same_currency = self.currency_of(repo_id) == currency;
         let repo = self.repo_mut(repo_id);
-        repo.vault = U128(repo.vault.0 + to_vault);
         if tip_earned {
             repo.stats.tips_earned = U128(repo.stats.tips_earned.0 + tip);
         }
@@ -218,7 +221,10 @@ impl PatchBond {
             }
             Verdict::Void => {}
         }
-        if let Some(issue) = d.fixes_issue.filter(|_| to_bounty > 0) {
+        if !same_currency && to_bounty > 0 {
+            // A bounty is in the repo's currency; this one can't join it (see `credit_vault`).
+            self.credit_vault(repo_id, to_bounty, currency);
+        } else if let Some(issue) = d.fixes_issue.filter(|_| to_bounty > 0) {
             let b = self.bounties.get(&(repo_id, issue)).map_or(0, |b| b.0);
             self.bounties.insert((repo_id, issue), U128(b + to_bounty));
             let held = self.bounty_held.get(&repo_id).map_or(0, |b| b.0);
@@ -252,6 +258,26 @@ impl PatchBond {
         } else {
             // Detached: settlement stands even if the transfer fails (it then becomes claimable).
             let _ = self.send(to, amount, currency, Fallback::Claimable);
+        }
+    }
+
+    /// Money for the repo. A vault holds one currency; if this amount is in another (only possible
+    /// for deposits made before v0.3 counted unsettled deposits), it goes to the payout account's
+    /// claimable balance in its own currency — or the treasury's if the repo isn't linked.
+    fn credit_vault(&mut self, repo_id: RepoId, amount: u128, currency: Currency) {
+        if amount == 0 {
+            return;
+        }
+        if self.currency_of(repo_id) == currency {
+            let repo = self.repo_mut(repo_id);
+            repo.vault = U128(repo.vault.0 + amount);
+        } else if let Some(payout) = self.repo(repo_id).payout.clone() {
+            self.credit_claimable(&payout, amount, currency);
+        } else {
+            match currency {
+                Currency::Usdc => self.treasury_balance += amount,
+                Currency::Near => self.treasury_near += amount,
+            }
         }
     }
 

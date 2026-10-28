@@ -142,6 +142,8 @@ impl PatchBond {
             // A voided deposit's slot may be reused, possibly after the repo switched currency.
             self.deposit_currency.remove(&(repo_id, number));
         }
+        let n = self.unsettled.get(&repo_id).copied().unwrap_or(0);
+        self.unsettled.insert(repo_id, n + 1);
         let repo = self.repo_mut(repo_id);
         repo.open += 1;
         repo.stats.deposits += 1;

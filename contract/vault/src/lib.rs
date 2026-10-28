@@ -39,6 +39,7 @@ enum StorageKey {
     DepositCurrency,
     ClaimableNear,
     BountyHeld,
+    Unsettled,
 }
 
 #[near(contract_state)]
@@ -79,6 +80,8 @@ pub struct PatchBond {
     /// Emergency brake on *new* money (bonds, challenges, budgets). Never blocks refunds,
     /// settlements, withdrawals or claims.
     paused: bool,
+    /// Deposits not yet settled per repo (held, proposed or challenged) — `open` only counts held.
+    unsettled: LookupMap<RepoId, u32>,
 }
 
 /// State layout before currencies existed (v0.2, live on testnet); read once by `migrate`.
@@ -101,15 +104,72 @@ struct PatchBondV2 {
     paused: bool,
 }
 
+/// v0.3 before `unsettled` existed (live on testnet for a few hours on 2026-10-28).
+#[near(serializers = [borsh])]
+struct PatchBondV3Pre {
+    owner: AccountId,
+    oracle: AccountId,
+    treasury: AccountId,
+    token: AccountId,
+    wnear: Option<AccountId>,
+    currencies: LookupMap<RepoId, Currency>,
+    deposit_currency: LookupMap<(RepoId, Number), Currency>,
+    repos: LookupMap<RepoId, Repo>,
+    deposits: LookupMap<(RepoId, Number), Deposit>,
+    reputation: LookupMap<AccountId, Reputation>,
+    bounties: LookupMap<(RepoId, Number), U128>,
+    claimable: LookupMap<AccountId, U128>,
+    claimable_near: LookupMap<AccountId, U128>,
+    bounty_held: LookupMap<RepoId, U128>,
+    budgets: LookupMap<AccountId, Budget>,
+    passports: LookupMap<AccountId, Passport>,
+    agent_stats: LookupMap<String, AgentStats>,
+    treasury_balance: u128,
+    treasury_near: u128,
+    totals: Totals,
+    totals_near: Totals,
+    paused: bool,
+}
+
 #[near]
 impl PatchBond {
-    /// One-time upgrade of v0.2 state (adds currencies). Only the contract account itself can call
-    /// it, i.e. right after a redeploy by whoever holds the contract's key. Existing repos and
-    /// deposits stay USDC.
+    /// One-time upgrade from v0.2 (USDC only) or v0.3-pre to the current layout. Only the contract
+    /// account itself can call it, i.e. right after a redeploy by whoever holds the contract's key.
+    /// Existing repos and deposits stay USDC. `wnear` is used when the old state has none.
     #[private]
     #[init(ignore_state)]
     pub fn migrate(wnear: Option<AccountId>) -> Self {
-        let old: PatchBondV2 = env::state_read().unwrap_or_else(|| env::panic_str("No v0.2 state to migrate"));
+        use near_sdk::borsh::BorshDeserialize;
+        let raw = env::storage_read(b"STATE").unwrap_or_else(|| env::panic_str("No state to migrate"));
+        if let Ok(old) = PatchBondV3Pre::try_from_slice(&raw) {
+            return Self {
+                owner: old.owner,
+                oracle: old.oracle,
+                treasury: old.treasury,
+                token: old.token,
+                wnear: old.wnear.or(wnear),
+                currencies: old.currencies,
+                deposit_currency: old.deposit_currency,
+                repos: old.repos,
+                deposits: old.deposits,
+                reputation: old.reputation,
+                bounties: old.bounties,
+                claimable: old.claimable,
+                claimable_near: old.claimable_near,
+                bounty_held: old.bounty_held,
+                budgets: old.budgets,
+                passports: old.passports,
+                agent_stats: old.agent_stats,
+                treasury_balance: old.treasury_balance,
+                treasury_near: old.treasury_near,
+                totals: old.totals,
+                totals_near: old.totals_near,
+                paused: old.paused,
+                unsettled: LookupMap::new(StorageKey::Unsettled),
+            };
+        }
+        let old = PatchBondV2::try_from_slice(&raw)
+            .unwrap_or_else(|_| env::panic_str("State is neither v0.2 nor v0.3-pre; nothing to migrate"));
         Self {
             owner: old.owner,
             oracle: old.oracle,
@@ -133,6 +193,7 @@ impl PatchBond {
             totals: old.totals,
             totals_near: Totals::default(),
             paused: old.paused,
+            unsettled: LookupMap::new(StorageKey::Unsettled),
         }
     }
 
@@ -161,6 +222,7 @@ impl PatchBond {
             totals: Totals::default(),
             totals_near: Totals::default(),
             paused: false,
+            unsettled: LookupMap::new(StorageKey::Unsettled),
         }
     }
 
@@ -269,16 +331,17 @@ impl PatchBond {
 
     /// Switch what the repo's bonds are paid in, with a policy priced in the new currency (the old
     /// amounts would mean nothing in it). Same permission as `set_policy`. Only while nothing is
-    /// held in the old currency: no open deposits, an empty vault and no unpaid bounties.
+    /// held in the old currency: no unsettled deposits, an empty vault and no unpaid bounties.
     pub fn set_currency(&mut self, repo_id: RepoId, currency: Currency, policy: Policy) {
         require!(
             currency == Currency::Usdc || self.wnear.is_some(),
             "NEAR bonds aren't enabled on this contract yet (no wNEAR token configured)"
         );
         let unpaid_bounties = self.bounty_held.get(&repo_id).map_or(0, |b| b.0);
+        let unsettled = self.unsettled.get(&repo_id).copied().unwrap_or(0);
         let repo = self.repo(repo_id);
         require!(
-            repo.open == 0 && repo.vault.0 == 0 && unpaid_bounties == 0,
+            repo.open == 0 && unsettled == 0 && repo.vault.0 == 0 && unpaid_bounties == 0,
             "Withdraw the vault and settle every open deposit and bounty before switching currency"
         );
         self.set_policy(repo_id, policy);
