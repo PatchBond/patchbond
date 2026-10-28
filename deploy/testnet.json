@@ -1,6 +1,6 @@
 {
   "network": "testnet",
-  "rpc": "https://rpc.testnet.near.org",
+  "rpc": "https://test.rpc.fastnear.com",
   "contract": "patchbond-dev.testnet",
   "owner": "patchbond-dev.testnet",
   "oracle": "patchbond-oracle.testnet",

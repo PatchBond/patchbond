@@ -9,7 +9,8 @@
     "typecheck": "tsc -p .",
     "test": "bun test",
     "eval": "bun --env-file=../.env src/judge/eval.ts",
-    "judge-pr": "bun --env-file=../.env src/cli/judge-pr.ts"
+    "judge-pr": "bun --env-file=../.env src/cli/judge-pr.ts",
+    "e2e:testnet": "bun e2e/testnet.ts"
   },
   "dependencies": {
     "@patchbond/shared": "workspace:*",
