@@ -8,7 +8,11 @@
     "render": "remotion render src/index.ts PatchBond out/patchbond.mp4",
     "audio": "bun gen-audio.ts",
     "render:narrated": "remotion render src/index.ts PatchBondNarrated out/patchbond-narrated.mp4",
-    "vo": "bun gen-vo.ts"
+    "vo": "bun gen-vo.ts",
+    "voice": "node gen-voice.mjs",
+    "music": "bun gen-music.ts",
+    "render:short": "remotion render src/index.ts Short out/patchbond-short.mp4",
+    "render:short-music": "remotion render src/index.ts ShortMusic out/patchbond-short-music.mp4"
   },
   "dependencies": {
     "@remotion/cli": "4.0.539",
@@ -20,6 +24,7 @@
   "devDependencies": {
     "@types/bun": "^1.4.4",
     "@types/react": "^19.3.0",
+    "kokoro-js": "1.2.1",
     "playwright": "^1.64.1",
     "typescript": "^7.0.2"
   }

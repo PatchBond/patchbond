@@ -1,0 +1,128 @@
+{
+  "bpm": 124,
+  "scenes": [
+    {
+      "id": "hook",
+      "bars": 2
+    },
+    {
+      "id": "pain",
+      "bars": 2
+    },
+    {
+      "id": "maintainer",
+      "bars": 2
+    },
+    {
+      "id": "logo",
+      "bars": 1
+    },
+    {
+      "id": "bond",
+      "bars": 2
+    },
+    {
+      "id": "spam",
+      "bars": 2
+    },
+    {
+      "id": "judge",
+      "bars": 2
+    },
+    {
+      "id": "verify",
+      "bars": 2
+    },
+    {
+      "id": "chain",
+      "bars": 2
+    },
+    {
+      "id": "grid",
+      "bars": 2
+    },
+    {
+      "id": "near",
+      "bars": 2
+    },
+    {
+      "id": "close",
+      "bars": 3
+    }
+  ],
+  "voice": "af_heart",
+  "lines": [
+    {
+      "scene": "hook",
+      "at": 0.25,
+      "text": "A.I. made sending free.",
+      "speed": 1.12
+    },
+    {
+      "scene": "pain",
+      "at": 0.15,
+      "text": "Every pull request still costs a maintainer time.",
+      "speed": 1.12
+    },
+    {
+      "scene": "maintainer",
+      "at": 0.05,
+      "text": "A hundred and twenty-two contributors. Slop daily.",
+      "speed": 1.12
+    },
+    {
+      "scene": "logo",
+      "at": 0.05,
+      "text": "So we built PatchBond.",
+      "speed": 1.12
+    },
+    {
+      "scene": "bond",
+      "at": 0.0,
+      "text": "Post a refundable bond. Real work gets it back.",
+      "speed": 1.12
+    },
+    {
+      "scene": "spam",
+      "at": 0.1,
+      "text": "Spam floods? The price climbs.",
+      "speed": 1.12
+    },
+    {
+      "scene": "judge",
+      "at": 0.1,
+      "text": "An A.I. judge checks the code, and every claim.",
+      "speed": 1.12
+    },
+    {
+      "scene": "verify",
+      "at": 0.1,
+      "text": "Then it signs the verdict. Anyone can verify it.",
+      "speed": 1.12
+    },
+    {
+      "scene": "chain",
+      "at": 0.1,
+      "text": "Slop pays the maintainer, on-chain, on NEAR.",
+      "speed": 1.12
+    },
+    {
+      "scene": "grid",
+      "at": 0.1,
+      "text": "Gasless for people. Capped wallets for agents.",
+      "speed": 1.12
+    },
+    {
+      "scene": "near",
+      "at": 0.15,
+      "text": "Every piece is built on NEAR.",
+      "speed": 1.12
+    },
+    {
+      "scene": "close",
+      "at": 0.3,
+      "text": "Real work gets its bond back. Slop pays the maintainer. PatchBond.",
+      "speed": 1.12
+    }
+  ]
+}
