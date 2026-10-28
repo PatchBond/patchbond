@@ -1,0 +1,13 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+# submission payload (personal data) — never commit
+submission*.json
+# build output
+node_modules/
+dist/
+target/
+*.wasm
+.DS_Store
