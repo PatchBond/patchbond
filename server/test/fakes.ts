@@ -1,0 +1,122 @@
+// A fake GitHub REST API (enough for the bot) and a fake vault contract, for offline bot tests.
+
+import { generateKeyPairSync } from "node:crypto";
+import type { ChainPort } from "../src/github/bot";
+import type { Deposit, Repo } from "../src/near";
+
+export interface PrFixture {
+  number: number;
+  author: string;
+  title: string;
+  body: string;
+  diff: string;
+  files: string[];
+  checks: { name: string; status: string; conclusion: string | null }[];
+}
+
+export interface Call {
+  method: string;
+  path: string;
+  body: unknown;
+}
+
+export function rsaKey(): string {
+  return generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+}
+
+export function fakeGithub(repo: { id: number; owner: string; name: string }, prs: PrFixture[]) {
+  const calls: Call[] = [];
+  let nextId = 1000;
+  const full = `${repo.owner}/${repo.name}`;
+  const server = Bun.serve({
+    port: 0,
+    async fetch(req): Promise<Response> {
+      const url = new URL(req.url);
+      const p = url.pathname;
+      const body = req.method === "GET" ? null : await req.json().catch(() => null);
+      calls.push({ method: req.method, path: p, body });
+      const json = (v: unknown, status = 200) => Response.json(v, { status });
+
+      if (p.match(/^\/app\/installations\/\d+\/access_tokens$/)) return json({ token: "ghs_fake", expires_at: new Date(Date.now() + 3600_000).toISOString() }, 201);
+      if (p === `/repos/${full}`) return json({ id: repo.id, full_name: full });
+      if (p === `/repos/${full}/pulls` && req.method === "GET") return json([]);
+      const pr = p.match(new RegExp(`^/repos/${full}/pulls/(\\d+)(/files)?$`));
+      if (pr) {
+        const f = prs.find((x) => x.number === Number(pr[1]));
+        if (!f) return json({ message: "Not Found" }, 404);
+        if (pr[2]) return json(f.files.map((filename) => ({ filename })));
+        if ((req.headers.get("accept") ?? "").includes("diff")) return new Response(f.diff, { headers: { "content-type": "text/plain" } });
+        return json({
+          number: f.number, title: f.title, body: f.body, user: { login: f.author }, state: "open",
+          additions: 3, deletions: 0, head: { sha: `head${f.number}` }, base: { sha: "base1" },
+        });
+      }
+      const checks = p.match(new RegExp(`^/repos/${full}/commits/head(\\d+)/check-runs$`));
+      if (checks) return json({ total_count: 1, check_runs: prs.find((x) => x.number === Number(checks[1]))?.checks ?? [] });
+      if (p === `/repos/${full}/check-runs` && req.method === "POST") return json({ id: nextId++ }, 201);
+      if (p.startsWith(`/repos/${full}/check-runs/`) && req.method === "PATCH") return json({ id: Number(p.split("/").pop()) });
+      if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/comments$`)) && req.method === "POST") return json({ id: nextId++ }, 201);
+      if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/labels$`))) return json([{ name: "patchbond:forfeit" }]);
+      return json({ message: "Not Found" }, 404);
+    },
+  });
+  return {
+    url: `http://localhost:${server.port}`,
+    calls,
+    stop: () => server.stop(true),
+    posted: (re: RegExp) => calls.filter((c) => c.method !== "GET" && re.test(c.path)),
+  };
+}
+
+/** In-memory vault with the same state machine the bot relies on. */
+export function fakeChain(repoId: number) {
+  const repos = new Map<number, Repo>();
+  const deposits = new Map<string, Deposit>();
+  const log: string[] = [];
+  const key = (r: number, n: number) => `${r}/${n}`;
+  const policy = { enabled: true, base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8, review_window_sec: 259200, challenge_window_sec: 259200, forfeit_threshold_bps: 8500 };
+  const chain: ChainPort & { pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[] } = {
+    repos,
+    deposits,
+    log,
+    pay(n, payer, githubUser) {
+      deposits.set(key(repoId, n), {
+        payer, github_user: githubUser, kind: "pr", bond: "2000000", tip: "0", fixes_issue: null, created_at: Date.now(),
+        reviewed_at: null, verdict_hash: null, status: "held", from_budget: false, harness: null,
+      });
+    },
+    getRepo: async (id) => repos.get(id) ?? null,
+    getDeposit: async (r, n) => deposits.get(key(r, n)) ?? null,
+    quote: async () => "2000000",
+    isExempt: async () => false,
+    getReputation: async () => ({ refunds: 0, forfeits: 0, last_forfeit_at: null, refund_repos: [] }),
+    getBounty: async () => "0",
+    registerRepo: async (id) => {
+      log.push(`register ${id}`);
+      repos.set(id, { payout: null, policy, vault: "0", open: 0, linked_at: null, stats: { deposits: 0, refunds: 0, forfeits: 0, forfeited_total: "0", tips_earned: "0" } });
+      return undefined as never;
+    },
+    settle: async (r, n, verdict, hash) => {
+      log.push(`settle ${r}#${n} ${verdict}`);
+      const d = deposits.get(key(r, n))!;
+      d.verdict_hash = hash;
+      d.status = verdict === "void" ? { settled: { verdict, at: Date.now() } } : { proposed: { verdict, deadline: Date.now() + 400 } };
+      return undefined as never;
+    },
+    markReviewed: async (r, n) => {
+      log.push(`reviewed ${r}#${n}`);
+      return undefined as never;
+    },
+    payBounty: async (r, issue, to) => {
+      log.push(`bounty ${r}#${issue} → ${to}`);
+      return undefined as never;
+    },
+    finalize: async (r, n) => {
+      log.push(`finalize ${r}#${n}`);
+      const d = deposits.get(key(r, n))!;
+      if (typeof d.status === "object" && "proposed" in d.status) d.status = { settled: { verdict: d.status.proposed.verdict, at: Date.now() } };
+      return undefined as never;
+    },
+  };
+  return chain;
+}

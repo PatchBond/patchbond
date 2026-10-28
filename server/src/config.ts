@@ -49,10 +49,16 @@ export function loadConfig() {
       privateKey: () => need("GITHUB_PRIVATE_KEY").replace(/\\n/g, "\n"),
       webhookSecret: () => need("GITHUB_WEBHOOK_SECRET"),
       configured: Boolean(process.env.GITHUB_APP_ID && process.env.GITHUB_PRIVATE_KEY),
+      /** GitHub API base (tests point this at a fake GitHub; Enterprise works too). */
+      apiUrl: process.env.GITHUB_API_URL ?? "https://api.github.com",
+      /** Octokit spaces writes ≥1 s apart (GitHub's secondary rate limits). Off only in tests. */
+      throttle: process.env.GITHUB_THROTTLE !== "off",
     },
     /** How long to wait for CI before judging anyway. */
     ciTimeoutMs: Number(process.env.CI_TIMEOUT_MIN ?? 30) * 60_000,
     pollMs: Number(process.env.POLL_SEC ?? 10) * 1000,
+    /** needs_human with no maintainer decision for this long → refunded ("when in doubt, refund"). */
+    needsHumanTimeoutMs: Number(process.env.NEEDS_HUMAN_DAYS ?? 14) * 86_400_000,
   };
 }
 

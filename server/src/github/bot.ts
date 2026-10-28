@@ -1,23 +1,29 @@
 // The PatchBond GitHub App: PR opened → deposit asked → deposit seen on-chain → judged after CI →
 // verdict settled on-chain and shown on the PR.
 
-import { App, type Octokit } from "octokit";
+import { App, Octokit } from "octokit";
 import type { Config } from "../config";
 import type { Chain } from "../near";
 import type { Store, Submission } from "../store";
 import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
 import { gatherPr } from "./gather";
-import { CHECK_NAME, checkSummary, depositComment, payLink, verdictComment } from "./text";
+import { CHECK_NAME, MARKER, checkSummary, depositComment, payLink, verdictComment } from "./text";
 
 const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+
+/** The slice of the chain the bot uses (tests pass a fake). */
+export type ChainPort = Pick<
+  Chain,
+  "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize"
+>;
 
 export class Bot {
   readonly app: App;
 
   constructor(
     private cfg: Config,
-    private chain: Chain,
+    private chain: ChainPort,
     private store: Store,
     private inference: Inference,
     private log = (msg: string, extra?: unknown) => console.log(`[bot] ${msg}`, extra ?? ""),
@@ -26,6 +32,7 @@ export class Bot {
       appId: cfg.github.appId(),
       privateKey: cfg.github.privateKey(),
       webhooks: { secret: cfg.github.webhookSecret() },
+      Octokit: Octokit.defaults({ baseUrl: cfg.github.apiUrl, ...(cfg.github.throttle ? {} : { throttle: { enabled: false } }) }),
     });
     this.routes();
   }
@@ -46,7 +53,9 @@ export class Bot {
     w.on("pull_request_review.submitted", async ({ payload }) => {
       if (!MAINTAINER.has(payload.review.author_association)) return;
       const d = await this.chain.getDeposit(payload.repository.id, payload.pull_request.number);
-      if (d && d.reviewed_at === null && d.status === "held") {
+      // Reviews usually come after the AI verdict; the contract accepts one until the deposit settles.
+      const settled = !!d && typeof d.status === "object" && "settled" in d.status;
+      if (d && d.reviewed_at === null && !settled) {
         await this.chain.markReviewed(payload.repository.id, payload.pull_request.number).catch((e) => this.log("mark_reviewed failed", String(e)));
       }
     });
@@ -105,6 +114,40 @@ export class Bot {
     }
     for (const s of this.store.submissionsIn("deposit_received")) {
       await this.maybeJudge(s).catch((e) => this.log(`judge ${s.full_name}#${s.number}`, String(e)));
+    }
+    for (const s of this.store.submissionsIn("judged")) {
+      await this.settleDue(s).catch((e) => this.log(`finalize ${s.full_name}#${s.number}`, String(e)));
+    }
+  }
+
+  /**
+   * After judging: a proposed verdict is finalized once its challenge window passes (anyone may; we
+   * do it so nobody has to), and a needs_human case nobody decided is refunded after the timeout.
+   */
+  private async settleDue(s: Submission) {
+    const d = await this.chain.getDeposit(s.repo_id, s.number);
+    if (!d) return;
+    if (typeof d.status === "object" && "settled" in d.status) {
+      this.store.setState(s.repo_id, s.number, "settled");
+      return;
+    }
+    if (typeof d.status === "object" && "proposed" in d.status && Date.now() > d.status.proposed.deadline) {
+      const verdict = d.status.proposed.verdict;
+      await this.chain.finalize(s.repo_id, s.number);
+      this.store.setState(s.repo_id, s.number, "settled");
+      this.log(`finalized ${s.full_name}#${s.number}: ${verdict}`);
+      return;
+    }
+    if (d.status === "held" && Date.now() - s.updated_at > this.cfg.needsHumanTimeoutMs) {
+      await this.chain.settle(s.repo_id, s.number, "refund", d.verdict_hash ?? "0".repeat(64));
+      this.store.setState(s.repo_id, s.number, "settled");
+      const gh = await this.app.getInstallationOctokit(s.installation_id);
+      const [owner, repo] = s.full_name.split("/") as [string, string];
+      await gh.rest.issues.createComment({
+        owner, repo, issue_number: s.number,
+        body: `${MARKER}\n### ✅ Deposit refunded\n\nNo maintainer decided within ${Math.round(this.cfg.needsHumanTimeoutMs / 86_400_000)} days, so the deposit went back to the contributor. When in doubt, PatchBond refunds.`,
+      });
+      this.log(`refunded undecided ${s.full_name}#${s.number}`);
     }
   }
 

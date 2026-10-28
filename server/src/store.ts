@@ -6,7 +6,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { VerdictRecord } from "@patchbond/shared";
 
-export type SubmissionState = "awaiting_deposit" | "deposit_received" | "judging" | "judged" | "exempt" | "closed";
+export type SubmissionState = "awaiting_deposit" | "deposit_received" | "judging" | "judged" | "settled" | "exempt" | "closed";
 
 export interface Submission {
   repo_id: number;
