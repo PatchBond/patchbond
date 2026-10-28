@@ -85,7 +85,7 @@ cp .env.example .env          # defaults work: testnet, mock judge
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **44 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, pre-flight, the MCP server over real stdio. |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **50 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
 | 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **28 contract tests pass**: 8 unit + 20 on a local NEAR sandbox with real token transfers (every money path, challenges, a real function-call key). |
 | 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
@@ -120,7 +120,7 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 | GitHub App bot: pay-link comment, check runs, deposit watch, judge after CI, settle, finalize, review → tip, merge → bounty, 14-day refund | ✅ Built, 8 scenario tests against a fake GitHub; live App being set up |
 | Web app: home, pay, verdict with in-browser verification, repo, agents, ⌘K | ✅ Built |
 | MCP server for agents (7 tools, key safety check) | ✅ Built, paid a real bond on testnet in the e2e |
-| Maintainer dashboard and GitHub-OAuth repo linking | 🔨 Next (contract side `link_repo` / `withdraw` done) |
+| Maintainer dashboard: GitHub sign-in, NEP-413 wallet proof → `link_repo`, withdraw, bond-policy editor with live price preview, needs-human queue | ✅ Built, 6 tests (forged signature, wrong account, function-call key, replay, non-admin, CSRF) |
 | Re-judging challenges with a stronger model (Kimi K3) on the server | 🔨 Next (contract side done) |
 | Payout to any chain via NEAR Intents 1Click; payout to a Sputnik DAO / Trezu treasury | 🔨 Planned |
 | Gasless contributors (NEP-366 meta transactions) | 🔨 Planned |
@@ -156,7 +156,7 @@ flowchart LR
 |---|---|---|
 | [`contract/`](contract) | The vault (+ a test-only NEP-141 token) | Rust, near-sdk 5.30, cargo-near, near-workspaces |
 | [`server/`](server) | GitHub App bot, judge, verdict API, CLI tools, testnet e2e | Bun, Hono, Octokit, near-api-js 7 |
-| [`web/`](web) | Pay, verdicts with in-browser verification, repo and agent pages | React 19, Vite, Tailwind 4, shadcn/ui, Motion, NEAR Connect |
+| [`web/`](web) | Pay, verdicts with in-browser verification, maintainer dashboard, repo and agent pages | React 19, Vite, Tailwind 4, shadcn/ui, Motion, NEAR Connect |
 | [`mcp/`](mcp) | MCP server for coding agents | `@modelcontextprotocol/sdk` |
 | [`shared/`](shared) | Verdict schema, verification, the bond curve (identical to the contract's) | TypeScript, viem, zod |
 
@@ -183,6 +183,7 @@ The trust boundary is stated plainly: the contract trusts our **oracle** account
 - **Prompt injection**: contributor text is fenced as untrusted data, our tags are neutralised, injection attempts are themselves evidence, and the output must match a strict schema.
 - **The model can't forfeit on its own**: a forfeit needs confidence ≥ the repo's threshold, at least one concrete piece of evidence, and a hard fact (failing CI, phantom code, a duplicate or injection). A failed lookup never becomes an accusation. Library calls the repo doesn't define are "unresolved", never "phantom".
 - **Webhooks are HMAC-verified**; forged deliveries are rejected ([test](server/test/bot.test.ts)). Secrets live in `.env` (git-ignored); keys never leave the machine.
+- **Repo linking** needs both a GitHub sign-in proving admin rights (checked again at the moment of linking) and a NEP-413 signature from a **full-access** key of the payout account; challenges are single-use and expire in 10 minutes; the OAuth flow is CSRF-protected ([tests](server/test/maintainers.test.ts)).
 - **Griefing**: a deposit paid for someone else's PR is voided (full refund, no reputation effect) and the real author can still pay.
 
 ## Testing
@@ -191,7 +192,7 @@ The trust boundary is stated plainly: the contract trusts our **oracle** account
 |---|---|---|
 | Contract unit tests (curve, exemption, forfeit tax) | 8 | `cd contract && cargo test -p patchbond-vault --lib` |
 | Contract sandbox tests (real NEP-141 transfers on a local NEAR node) | 20 | `cd contract && cargo test -p patchbond-vault` |
-| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub | 27 | `cd server && bun test` |
+| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub, maintainer onboarding | 33 | `cd server && bun test` |
 | MCP: client, key safety, stdio protocol | 11 | `cd mcp && bun test` |
 | Shared: verification tamper tests, curve = contract values | 6 | `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 46 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |

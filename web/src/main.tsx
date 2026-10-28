@@ -11,6 +11,7 @@ import { Pay } from "./pages/Pay";
 import { VerdictPage } from "./pages/Verdict";
 import { RepoPage } from "./pages/Repo";
 import { Agents } from "./pages/Agents";
+import { Dashboard } from "./pages/Dashboard";
 import { NotFound } from "./pages/NotFound";
 import { Notice, Spinner } from "./components/kit";
 import { ConfigContext } from "./lib/config";
@@ -44,6 +45,7 @@ function App() {
               <Route path="/v/:id" element={<VerdictPage />} />
               <Route path="/r/:repoId" element={<RepoPage />} />
               <Route path="/agents" element={<Agents />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Shell>

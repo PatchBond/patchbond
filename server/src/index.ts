@@ -14,6 +14,7 @@ import { computeFacts, judge } from "./judge/judge";
 import { preflight } from "./judge/preflight";
 import { makeInference } from "./judge/inference";
 import { MockInference } from "./judge/nearai";
+import { maintainerRoutes } from "./maintainers";
 
 const cfg = loadConfig();
 const chain = new Chain(cfg);
@@ -34,6 +35,10 @@ app.get("/api/config", (c) =>
     token: cfg.deployment.token,
     oracle: cfg.deployment.oracle,
     judge: { model: inference.model, mock: inference.mock, ...(inference instanceof MockInference ? { mock_signing_address: inference.signingAddress } : {}) },
+    github: {
+      app_url: process.env.GITHUB_APP_SLUG ? `https://github.com/apps/${process.env.GITHUB_APP_SLUG}` : null,
+      sign_in: Boolean(cfg.github.clientId),
+    },
   }),
 );
 
@@ -108,6 +113,8 @@ app.post("/api/appeals", async (c) => {
 });
 app.get("/api/appeals/:verdict", (c) => c.json(store.appeals(c.req.param("verdict"))));
 
+maintainerRoutes(app, { cfg, store, chain, provider: chain.provider });
+
 app.post("/webhook", async (c) => {
   if (!bot) return c.json({ error: "GitHub App not configured on this server (see /setup)" }, 503);
   const body = await c.req.text();
@@ -135,6 +142,7 @@ app.get("/setup", (c) => {
     // Behind a tunnel (smee.io) GitHub posts to the tunnel; otherwise straight to this server.
     hook_attributes: { url: process.env.WEBHOOK_URL || `${cfg.publicUrl}/webhook`, active: true },
     redirect_url: `${cfg.publicUrl}/setup/callback`,
+    callback_urls: [`${cfg.webUrl}/api/auth/github/callback`],
     public: true,
     default_permissions: {
       pull_requests: "write", issues: "write", checks: "write", actions: "write", contents: "read", metadata: "read",
@@ -160,10 +168,10 @@ app.get("/setup/callback", async (c) => {
     headers: { accept: "application/vnd.github+json" },
   });
   if (!res.ok) return c.text(`GitHub refused the conversion (HTTP ${res.status}). The code is single-use and expires in an hour — start again at /setup.`, 400);
-  const app = (await res.json()) as { id: number; slug: string; pem: string; webhook_secret: string; html_url: string };
+  const app = (await res.json()) as { id: number; slug: string; pem: string; webhook_secret: string; html_url: string; client_id: string; client_secret: string };
   appendFileSync(
     join(cfg.root, ".env"),
-    `\n# GitHub App ${app.slug} (created ${new Date().toISOString()})\nGITHUB_APP_ID=${app.id}\nGITHUB_WEBHOOK_SECRET=${app.webhook_secret}\nGITHUB_PRIVATE_KEY="${app.pem.replace(/\n/g, "\\n")}"\n`,
+    `\n# GitHub App ${app.slug} (created ${new Date().toISOString()})\nGITHUB_APP_ID=${app.id}\nGITHUB_APP_SLUG=${app.slug}\nGITHUB_WEBHOOK_SECRET=${app.webhook_secret}\nGITHUB_PRIVATE_KEY="${app.pem.replace(/\n/g, "\\n")}"\nGITHUB_CLIENT_ID=${app.client_id}\nGITHUB_CLIENT_SECRET=${app.client_secret}\nSESSION_SECRET=${crypto.randomUUID()}${crypto.randomUUID()}\n`,
   );
   return c.html(`<body style="font:16px system-ui;background:#0E1013;color:#ECEAE4;padding:40px">
 <h1>✅ ${app.slug} created</h1><p>Credentials saved to <code>.env</code>. Restart the server, then

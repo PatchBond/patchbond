@@ -9,7 +9,17 @@ export interface AppConfig {
   token: string;
   oracle: string;
   judge: { model: string; mock: boolean; mock_signing_address?: string };
+  github?: { app_url: string | null; sign_in: boolean };
 }
+
+export interface MaintainerRepo {
+  repo_id: number;
+  full_name: string;
+  private: boolean;
+  onchain: Repo | null;
+}
+
+export type Me = { signed_in: false; github_ready: boolean } | { signed_in: true; github_login: string; repos: MaintainerRepo[] };
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -18,7 +28,18 @@ async function get<T>(path: string): Promise<T> {
   return body as T;
 }
 
+async function post<T>(path: string, body: object = {}): Promise<T> {
+  const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((out as { error?: string }).error ?? `The server answered ${res.status}`);
+  return out as T;
+}
+
 export const api = {
+  me: () => get<Me>("/api/me"),
+  logout: () => post<{ ok: true }>("/api/auth/logout"),
+  linkChallenge: (repo_id: number, account_id: string) => post<{ message: string; recipient: string; nonce: string }>("/api/link/challenge", { repo_id, account_id }),
+  linkConfirm: (b: { nonce: string; account_id: string; public_key: string; signature: string }) => post<{ ok: true }>("/api/link/confirm", b),
   config: () => get<AppConfig>("/api/config"),
   verdict: (id: string) => get<VerdictRecord>(`/api/verdicts/${encodeURIComponent(id)}`),
   verdicts: (limit = 20, repo?: number) =>

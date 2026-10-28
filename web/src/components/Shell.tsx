@@ -47,6 +47,9 @@ export function Shell({ children }: { children: ReactNode }) {
               <NavLink to="/agents" className={({ isActive }) => `rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink ${isActive ? "text-ink" : ""}`}>
                 Agents
               </NavLink>
+              <NavLink to="/dashboard" className={({ isActive }) => `rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink ${isActive ? "text-ink" : ""}`}>
+                Maintainers
+              </NavLink>
             </nav>
             <div className="ml-auto flex items-center gap-2">
               <Tooltip>
@@ -68,7 +71,8 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1">
-          <AnimatePresence mode="wait">
+          {/* initial={false}: the first paint never waits on an animation (screenshots, slow devices). */}
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={loc.pathname}
               initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}

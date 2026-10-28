@@ -51,9 +51,15 @@ export function loadConfig() {
       configured: Boolean(process.env.GITHUB_APP_ID && process.env.GITHUB_PRIVATE_KEY),
       /** GitHub API base (tests point this at a fake GitHub; Enterprise works too). */
       apiUrl: process.env.GITHUB_API_URL || "https://api.github.com",
+      /** GitHub web host for OAuth (tests point this at a fake GitHub). */
+      webUrl: process.env.GITHUB_WEB_URL || "https://github.com",
+      clientId: process.env.GITHUB_CLIENT_ID || "",
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
       /** Octokit spaces writes ≥1 s apart (GitHub's secondary rate limits). Off only in tests. */
       throttle: process.env.GITHUB_THROTTLE !== "off",
     },
+    /** Signs session cookies. Generated per boot if unset (sessions then end on restart). */
+    sessionSecret: process.env.SESSION_SECRET || crypto.randomUUID() + crypto.randomUUID(),
     /** How long to wait for CI before judging anyway. */
     ciTimeoutMs: Number(process.env.CI_TIMEOUT_MIN || 30) * 60_000,
     pollMs: Number(process.env.POLL_SEC || 10) * 1000,

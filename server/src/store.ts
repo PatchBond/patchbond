@@ -23,6 +23,24 @@ export interface Submission {
   updated_at: number;
 }
 
+export interface Session {
+  id: string;
+  github_login: string;
+  github_id: number;
+  /** GitHub user-to-server token; stays on the server. */
+  token: string;
+  created_at: number;
+}
+
+export interface LinkChallenge {
+  nonce: string;
+  session_id: string;
+  repo_id: number;
+  account_id: string;
+  message: string;
+  expires_at: number;
+}
+
 export class Store {
   readonly db: Database;
 
@@ -44,6 +62,12 @@ export class Store {
       CREATE TABLE IF NOT EXISTS appeals (
         id INTEGER PRIMARY KEY AUTOINCREMENT, verdict_id TEXT NOT NULL, author TEXT NOT NULL,
         note TEXT NOT NULL, created_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY, github_login TEXT NOT NULL, github_id INTEGER NOT NULL,
+        token TEXT NOT NULL, created_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS link_challenges (
+        nonce TEXT PRIMARY KEY, session_id TEXT NOT NULL, repo_id INTEGER NOT NULL,
+        account_id TEXT NOT NULL, message TEXT NOT NULL, expires_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS github_accounts (
         github_user TEXT PRIMARY KEY, near_account TEXT NOT NULL, seen_at INTEGER NOT NULL);
     `);
@@ -102,6 +126,29 @@ export class Store {
     return this.db
       .query<{ author: string; note: string; created_at: number }, [string]>("SELECT author, note, created_at FROM appeals WHERE verdict_id = ? ORDER BY id")
       .all(verdictId);
+  }
+
+  createSession(s: Session) {
+    this.db.query("INSERT INTO sessions VALUES (?, ?, ?, ?, ?)").run(s.id, s.github_login, s.github_id, s.token, s.created_at);
+  }
+
+  session(id: string): Session | null {
+    return this.db.query<Session, [string]>("SELECT * FROM sessions WHERE id = ?").get(id);
+  }
+
+  deleteSession(id: string) {
+    this.db.query("DELETE FROM sessions WHERE id = ?").run(id);
+  }
+
+  saveChallenge(c: LinkChallenge) {
+    this.db.query("INSERT INTO link_challenges VALUES (?, ?, ?, ?, ?, ?)").run(c.nonce, c.session_id, c.repo_id, c.account_id, c.message, c.expires_at);
+  }
+
+  /** One-time: returns and deletes the challenge. */
+  takeChallenge(nonce: string): LinkChallenge | null {
+    const c = this.db.query<LinkChallenge, [string]>("SELECT * FROM link_challenges WHERE nonce = ?").get(nonce);
+    this.db.query("DELETE FROM link_challenges WHERE nonce = ?").run(nonce);
+    return c;
   }
 
   linkGithub(githubUser: string, nearAccount: string) {

@@ -37,6 +37,19 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
       calls.push({ method: req.method, path: p, body });
       const json = (v: unknown, status = 200) => Response.json(v, { status });
 
+      // OAuth (user-to-server) — sign-in for maintainers
+      if (p === "/login/oauth/access_token") return json((body as { code?: string })?.code === "good" ? { access_token: "ghu_user" } : { error_description: "bad code" });
+      if (p === "/user") return json({ login: "amaka", id: 77 });
+      if (p === "/user/installations") return json({ total_count: 1, installations: [{ id: 7 }] });
+      if (p === "/user/installations/7/repositories") {
+        return json({
+          total_count: 2,
+          repositories: [
+            { id: repo.id, full_name: full, private: false, permissions: { admin: true } },
+            { id: 99, full_name: `${repo.owner}/not-mine`, private: false, permissions: { admin: false } },
+          ],
+        });
+      }
       if (p.match(/^\/app\/installations\/\d+\/access_tokens$/)) return json({ token: "ghs_fake", expires_at: new Date(Date.now() + 3600_000).toISOString() }, 201);
       if (p === `/repos/${full}`) return json({ id: repo.id, full_name: full });
       if (p === `/repos/${full}/pulls` && req.method === "GET") return json([]);
@@ -75,7 +88,7 @@ export function fakeChain(repoId: number) {
   const log: string[] = [];
   const key = (r: number, n: number) => `${r}/${n}`;
   const policy = { enabled: true, base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8, review_window_sec: 259200, challenge_window_sec: 259200, forfeit_threshold_bps: 8500 };
-  const chain: ChainPort & { pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[] } = {
+  const chain: ChainPort & { linkRepo: (r: number, payout: string) => Promise<unknown>; pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[] } = {
     repos,
     deposits,
     log,
@@ -110,6 +123,12 @@ export function fakeChain(repoId: number) {
     payBounty: async (r, issue, to) => {
       log.push(`bounty ${r}#${issue} → ${to}`);
       return undefined as never;
+    },
+    linkRepo: async (r: number, payout: string) => {
+      log.push(`link ${r} → ${payout}`);
+      const repo = repos.get(r);
+      if (repo) repo.payout = payout;
+      return undefined;
     },
     finalize: async (r, n) => {
       log.push(`finalize ${r}#${n}`);

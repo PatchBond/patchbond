@@ -14,6 +14,8 @@ interface WalletState {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   call: (receiverId: string, methodName: string, args: object, opts?: { deposit?: string; tgas?: number }) => Promise<CallResult>;
+  /** NEP-413: sign an off-chain message (proves control of the account; costs nothing). */
+  signMessage: (p: { message: string; recipient: string; nonce: Uint8Array }) => Promise<{ accountId: string; publicKey: string; signature: string }>;
 }
 
 const Ctx = createContext<WalletState | null>(null);
@@ -78,7 +80,16 @@ export function WalletProvider({ cfg, children }: { cfg: AppConfig; children: Re
     [connector],
   );
 
-  return <Ctx.Provider value={{ accountId, connecting, connect, disconnect, call }}>{children}</Ctx.Provider>;
+  const signMessage = useCallback<WalletState["signMessage"]>(
+    async (p) => {
+      const wallet = await connector.wallet();
+      const s = await wallet.signMessage(p);
+      return { accountId: s.accountId, publicKey: s.publicKey, signature: s.signature };
+    },
+    [connector],
+  );
+
+  return <Ctx.Provider value={{ accountId, connecting, connect, disconnect, call, signMessage }}>{children}</Ctx.Provider>;
 }
 
 export function useWallet() {
