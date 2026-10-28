@@ -16,9 +16,20 @@ for (const [i, l] of lines.entries()) {
   Bun.spawnSync(["say", "-v", process.env.VOICE ?? "Daniel", "-r", "178", "-o", `${base}.aiff`, l.text]);
   Bun.spawnSync(["afconvert", "-f", "WAVE", "-d", "LEI16@44100", `${base}.aiff`, `${base}.wav`]);
   rmSync(`${base}.aiff`);
-  const secs = (readFileSync(`${base}.wav`).length - 44) / 2 / 44_100;
+  const secs = wavSeconds(readFileSync(`${base}.wav`));
   const next = lines.slice(i + 1).find((n) => n.scene === l.scene);
   const room = (next ? next.at : length[l.scene]!) - l.at;
-  if (secs > room - 0.2) throw new Error(`Line ${i} ("${l.text}") is ${secs.toFixed(2)} s but has ${room.toFixed(2)} s — shorten it`);
+  if (secs > room - 0.1) throw new Error(`Line ${i} ("${l.text}") is ${secs.toFixed(2)} s but has ${room.toFixed(2)} s — shorten it`);
   console.log(`✓ ${i} ${secs.toFixed(2)} s / ${room.toFixed(2)} s`);
+}
+
+/** Length of a 16-bit mono WAV from its "data" chunk (afconvert adds padding chunks before it). */
+function wavSeconds(buf: Buffer): number {
+  for (let o = 12; o + 8 <= buf.length; ) {
+    const id = buf.toString("ascii", o, o + 4);
+    const size = buf.readUInt32LE(o + 4);
+    if (id === "data") return size / 2 / buf.readUInt32LE(24);
+    o += 8 + size + (size % 2);
+  }
+  throw new Error("no data chunk");
 }
