@@ -1,0 +1,14 @@
+[package]
+name = "mock-ft"
+description = "Test-only NEP-141 token standing in for USDC in PatchBond's integration tests"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true }
+near-contract-standards = { workspace = true }
