@@ -359,8 +359,9 @@ impl PatchBond {
         Some(RepoView { repo, currency: self.currency_of(repo_id) })
     }
 
-    pub fn get_deposit(&self, repo_id: RepoId, number: Number) -> Option<Deposit> {
-        self.deposits.get(&(repo_id, number)).cloned()
+    pub fn get_deposit(&self, repo_id: RepoId, number: Number) -> Option<DepositView> {
+        let deposit = self.deposits.get(&(repo_id, number)).cloned()?;
+        Some(DepositView { deposit, currency: self.deposit_currency_of(repo_id, number) })
     }
 
     pub fn get_reputation(&self, account_id: AccountId) -> Reputation {

@@ -41,6 +41,7 @@ async fn a_near_repo_takes_near_refunds_near_and_forfeits_near() -> anyhow::Resu
     // Refund: the whole bond comes back in wNEAR.
     e.pay_with(&e.wnear, &e.alice, REPO, 1, bond, json!({})).await?.into_result()?;
     assert_eq!(e.near_balance(&e.alice).await?, 100 * NEAR - bond);
+    assert_eq!(e.view("get_deposit", json!({ "repo_id": REPO, "number": 1 })).await?["currency"], "near");
     e.settle(REPO, 1, "refund").await?.into_result()?;
     assert_eq!(e.near_balance(&e.alice).await?, 100 * NEAR);
 

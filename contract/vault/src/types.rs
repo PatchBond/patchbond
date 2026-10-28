@@ -124,6 +124,14 @@ pub struct Repo {
     pub stats: RepoStats,
 }
 
+/// `get_deposit`'s answer: the deposit plus the currency it was paid in.
+#[near(serializers = [json])]
+pub struct DepositView {
+    #[serde(flatten)]
+    pub deposit: Deposit,
+    pub currency: Currency,
+}
+
 /// `get_repo`'s answer: the repo plus the currency its bonds and vault are in.
 #[near(serializers = [json])]
 pub struct RepoView {
