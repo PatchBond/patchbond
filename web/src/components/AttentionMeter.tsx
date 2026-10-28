@@ -47,7 +47,8 @@ export function AttentionMeter({
   const ticks = Array.from({ length: Math.round(yMax / step) + 1 }, (_, i) => i * step);
   const state = open > target * 2 ? "flooded" : open > target ? "busy" : "calm";
   const stateText = {
-    calm: "Quiet repo — newcomers pay almost nothing",
+    // A quiet repo is only cheap if the policy lets the price fall below the base.
+    calm: bond < Number(policy.base_bond) / unit ? "Quiet repo — newcomers pay less than the base price" : "Quiet repo — flat price until the queue passes capacity",
     busy: "Over capacity — each new submission costs 12.5% more",
     flooded: "Flood — spam prices itself out",
   }[state];
