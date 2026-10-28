@@ -37,6 +37,11 @@ export function loadConfig() {
     dataDir: process.env.DATA_DIR || join(ROOT, "server", "data"),
     deployment,
     oracleKey: () => process.env.ORACLE_PRIVATE_KEY || legacyKey(network, deployment.oracle),
+    /** Pays gas for gasless (NEP-366) bond payments; defaults to the oracle account. */
+    relayer: {
+      account: process.env.RELAYER_ACCOUNT || deployment.oracle,
+      key: () => process.env.RELAYER_PRIVATE_KEY || process.env.ORACLE_PRIVATE_KEY || legacyKey(network, process.env.RELAYER_ACCOUNT || deployment.oracle),
+    },
     judge: {
       mode: judgeMode,
       model: process.env.JUDGE_MODEL || "z-ai/glm-5.3-flash",

@@ -85,12 +85,12 @@ cp .env.example .env          # defaults work: testnet, mock judge
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **55 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **57 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
 | 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **33 contract tests pass**: 10 unit (incl. a 50,000-case property test of the money split) + 23 on a local NEAR sandbox with real token transfers (every money path, challenges, a real function-call key, link-once, pause). |
 | 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
 | 5 | On testnet, with test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: open <http://localhost:5317/pay/1/1?repo=PatchBond/playground&user=YOUR_GITHUB_LOGIN> | Pay a real bond into the live contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet). The page shows the live quote from the on-chain curve. |
-| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet parent account; see [`server/e2e/testnet.ts`](server/e2e/testnet.ts)) | The full money flow on **real testnet**: 46 transactions, ends with every account deleted. Last report: [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md) — one explorer link per transaction. |
+| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet parent account; see [`server/e2e/testnet.ts`](server/e2e/testnet.ts)) | The full money flow on **real testnet**: 49 transactions — including a gasless bond through the relayer and an agent paying via the MCP server — then every account is deleted. Last report: [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md) — one explorer link per transaction. |
 
 ### For coding agents (MCP)
 
@@ -124,7 +124,7 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 | Re-judging challenges with a stronger model (Kimi K3) seeing both sides' statements, then `resolve_challenge` | ✅ Built and tested (runs on the mock until NEAR AI credits) |
 | Payout to another chain via NEAR Intents 1Click (Base, Arbitrum, Ethereum, Solana) | ✅ Live **dry-run quotes** from the real 1Click API in the dashboard (Intents has no testnet); the mainnet withdraw-and-bridge runs only with the team's go-ahead |
 | Payout to a Sputnik DAO / Trezu treasury | ✅ `set_payout` hands a repo to a DAO account, which then withdraws by proposal |
-| Gasless contributors (NEP-366 meta transactions) | 🔨 Planned |
+| Gasless contributors (NEP-366): the wallet signs a delegate action, our relayer pays the gas; the relayer only forwards bond/challenge payments into PatchBond | ✅ Built; on the pay page by default (Meteor, Intear, HOT); proven on testnet — the contributor spent 0 yoctoNEAR |
 | On-chain verification of the TEE signature (`ecrecover`); sealed security reports | 🧪 Stretch (feasibility proven in a throwaway test) |
 | Bank/card payouts, GitLab, a token | ❌ Out of scope. **No token, ever. Nobody is paid for submitting.** |
 
@@ -176,7 +176,7 @@ The trust boundary is stated plainly: the contract trusts our **oracle** account
 | Named accounts / sub-accounts (contract, oracle, throwaway e2e stacks) | [`deploy/testnet.json`](deploy/testnet.json), [`server/e2e/testnet.ts`](server/e2e/testnet.ts) |
 | NEAR Intents 1Click (cross-chain payout quotes) | [`server/src/intents.ts`](server/src/intents.ts), dashboard → Vault |
 | Sputnik DAO / Trezu as payout accounts (`set_payout`) | [`lib.rs`](contract/vault/src/lib.rs) |
-| Planned: NEP-366 meta transactions (gasless contributors) | see [What's real](#whats-real) |
+| **Meta transactions (NEP-366)** — gasless bonds through our relayer | [`server/src/relayer.ts`](server/src/relayer.ts), [`web/src/lib/wallet.tsx`](web/src/lib/wallet.tsx) |
 
 ## Security model
 
@@ -198,10 +198,10 @@ Full threat model, key powers and known limits: **[SECURITY.md](SECURITY.md)**.
 |---|---|---|
 | Contract unit tests (curve, exemption, forfeit tax, money-split property test) | 10 | `cd contract && cargo test -p patchbond-vault --lib` |
 | Contract sandbox tests (real NEP-141 transfers on a local NEAR node) | 23 | `cd contract && cargo test -p patchbond-vault` |
-| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding, Intents quotes | 38 | `cd server && bun test` |
+| Server: judge facts, rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding, Intents quotes, relayer | 40 | `cd server && bun test` |
 | MCP: client, key safety, stdio protocol | 11 | `cd mcp && bun test` |
 | Shared: verification tamper tests, curve = contract values | 6 | `cd shared && bun test` |
-| **End-to-end on real NEAR testnet** | 46 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
+| **End-to-end on real NEAR testnet** | 49 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
 
 CI runs the TypeScript and contract suites on every push ([workflow](.github/workflows/ci.yml)).
 

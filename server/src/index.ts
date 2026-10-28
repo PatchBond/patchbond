@@ -16,6 +16,7 @@ import { makeInference } from "./judge/inference";
 import { MockInference } from "./judge/nearai";
 import { maintainerRoutes } from "./maintainers";
 import { dryQuote, IntentsError, type PayoutQuoteRequest } from "./intents";
+import { Relayer, RelayError } from "./relayer";
 
 const cfg = loadConfig();
 const chain = new Chain(cfg);
@@ -115,6 +116,19 @@ app.post("/api/appeals", async (c) => {
 app.get("/api/appeals/:verdict", (c) => c.json(store.appeals(c.req.param("verdict"))));
 
 maintainerRoutes(app, { cfg, store, chain, provider: chain.provider });
+
+// Gasless bonds: forward a contributor's signed delegate action (NEP-366); we pay the gas.
+let relayer: Relayer | null = null;
+app.post("/api/relay", async (c) => {
+  try {
+    relayer ??= new Relayer(cfg.relayer.account, cfg.relayer.key(), chain.provider, cfg.deployment.token, cfg.deployment.contract);
+    const { signed_delegate } = await c.req.json<{ signed_delegate: string }>();
+    return c.json(await relayer.relay(signed_delegate ?? ""));
+  } catch (e) {
+    const msg = (e as Error).message;
+    return c.json({ error: e instanceof RelayError ? msg : `The relayer couldn't submit it: ${msg.slice(0, 300)}` }, 400);
+  }
+});
 
 // Payout option B: a dry NEAR Intents quote for receiving USDC on another chain.
 app.post("/api/intents/quote", async (c) => {

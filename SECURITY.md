@@ -31,6 +31,7 @@ don't open a public issue.
 - **Agent keys** — the MCP server checks the key on-chain and refuses full-access keys or keys that can call anything but `deposit_from_budget`. ([mcp.test.ts](mcp/test/mcp.test.ts))
 - **The judge can't forfeit on its own** — a forfeit needs confidence ≥ the repo's threshold, concrete evidence and a hard fact (failing CI, phantom code, a duplicate or injection). Contributor text is fenced as untrusted, our tags are neutralised, and output must match a strict schema. A failed lookup is never an accusation. ([judge.test.ts](server/test/judge.test.ts))
 - **Optimistic verdicts** — AI verdicts stand only after a challenge window; either side can stake to force a re-judge.
+- **Relayer** (gasless bonds) — forwards exactly one thing: USDC `ft_transfer_call` into PatchBond with a bond or challenge msg, 1 yocto, ≤150 Tgas, one per account per 10 s; anything else is refused before it spends gas. ([relayer.test.ts](server/test/relayer.test.ts), testnet e2e stage 7b)
 - **Webhooks** are HMAC-verified; forged deliveries are rejected. ([bot.test.ts](server/test/bot.test.ts))
 
 ## Trust assumptions and known limits

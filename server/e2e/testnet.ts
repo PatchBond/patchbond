@@ -9,7 +9,7 @@
 // keychain or E2E_PARENT_KEY. Writes docs/e2e/testnet-report.md with an explorer link per tx.
 
 import { curveBond, verifyRecord } from "@patchbond/shared";
-import { Account, JsonRpcProvider, KeyPair, type KeyPairString } from "near-api-js";
+import { Account, JsonRpcProvider, KeyPair, actions, encodeSignedDelegate, type KeyPairString } from "near-api-js";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -17,6 +17,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { judge, type JudgeInput } from "../src/judge/judge";
 import { MockInference } from "../src/judge/nearai";
+import { Relayer } from "../src/relayer";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const RPC = process.env.E2E_RPC ?? "https://test.rpc.fastnear.com";
@@ -97,6 +98,18 @@ class Actor {
 
   /** Calls and records the tx; never throws on a contract panic — returns it instead. */
   async call(contractId: string, methodName: string, args: object, opts: { deposit?: bigint; tgas?: bigint; label?: string } = {}): Promise<Outcome> {
+    // Public RPCs drop connections now and then. Retry transport errors (never contract panics);
+    // a retry after a tx that did land is harmless here because the contract rejects duplicates.
+    for (let attempt = 1; ; attempt++) {
+      const out = await this.callOnce(contractId, methodName, args, opts);
+      const transport = out.panic !== null && !out.hash && /socket connection|fetch failed|ECONNRESET|ETIMEDOUT|timed out|Too Many Requests|"code": -429|HTTP 50[234]/i.test(out.panic);
+      if (!transport || attempt === 3) return out;
+      log(`- ↻ RPC hiccup on ${methodName} (${(out.panic ?? "").slice(0, 60)}), retrying…`);
+      await Bun.sleep(1500 * attempt);
+    }
+  }
+
+  private async callOnce(contractId: string, methodName: string, args: object, opts: { deposit?: bigint; tgas?: bigint; label?: string }): Promise<Outcome> {
     try {
       const raw = (await this.account.callFunctionRaw({
         contractId,
@@ -178,7 +191,7 @@ log(`# PatchBond — end-to-end on NEAR testnet\n\nRun \`${RUN}\` · ${new Date(
 try {
   section("1. Deploy a throwaway stack");
   const ft = await sub("usdc", "1.5");
-  const vault = await sub("vault", "3.5");
+  const vault = await sub("vault", "4");
   const [oracle, alice, bob, amaka, mike, agent] = await Promise.all(
     ["oracle", "alice", "bob", "amaka", "mike", "agent"].map((p) => sub(p, "0.3")),
   );
@@ -287,6 +300,39 @@ try {
   const fake = await alice!.call(vault.id, "ft_on_transfer", { sender_id: alice!.id, amount: "50000000", msg: JSON.stringify({ action: "bond", repo_id: R1, number: 9, kind: "pr", github_user: "x" }) });
   check(!!fake.panic?.includes("only accepts"), "calling ft_on_transfer directly can't fake a deposit");
   eq(await bal(alice!), a8, "alice lost nothing on any of these");
+
+  section("7b. Gasless: a contributor with no spare NEAR pays through the relayer (NEP-366)");
+  const broke = await sub("gasless", "0.01");
+  await ft.call(ft.id, "mint", { account_id: broke.id, amount: (5n * USDC).toString() }, { tgas: 30n, label: "mint 5 → gasless" });
+  const nearBefore = BigInt((await provider.viewAccount({ accountId: broke.id })).amount);
+  const gq = await quote(R1, broke);
+  const meta = await broke.account.createSignedMetaTransaction({
+    receiverId: ft.id,
+    actions: [
+      actions.functionCall(
+        "ft_transfer_call",
+        { receiver_id: vault.id, amount: gq.toString(), msg: JSON.stringify({ action: "bond", repo_id: R1, number: 20, kind: "pr", github_user: broke.short }) },
+        150n * TGAS,
+        1n,
+      ),
+    ],
+  });
+  const relayer = new Relayer(oracle!.id, oracle!.key, provider, ft.id, vault.id);
+  const relayed = await relayer.relay(Buffer.from(encodeSignedDelegate(meta.signedDelegate)).toString("base64"));
+  txs.push({ step: `${step}: relayer submits the signed delegate`, hash: relayed.hash });
+  const gd = await view<{ payer: string } | null>(vault.id, "get_deposit", { repo_id: R1, number: 20 });
+  eq(gd?.payer, broke.id, "the bond was paid by the gasless account");
+  const nearAfter = BigInt((await provider.viewAccount({ accountId: broke.id })).amount);
+  check(nearBefore - nearAfter <= 1n, `the contributor spent ${nearBefore - nearAfter} yoctoNEAR — the relayer paid the gas`);
+  let refused = "";
+  try {
+    const bad = await broke.account.createSignedMetaTransaction({ receiverId: ft.id, actions: [actions.functionCall("ft_transfer", { receiver_id: broke.id, amount: "1" }, 30n * TGAS, 1n)] });
+    await relayer.relay(Buffer.from(encodeSignedDelegate(bad.signedDelegate)).toString("base64"));
+  } catch (e) {
+    refused = (e as Error).message;
+  }
+  check(refused.includes("Only ft_transfer_call"), "the relayer refuses to pay gas for anything but bond payments");
+  await settle(R1, 20, "refund");
 
   section("8. Optimistic verdicts: challenge and finalize, with a real 15-second window");
   await oracle!.call(vault.id, "link_repo", { repo_id: R2, payout: amaka!.id });
@@ -409,7 +455,7 @@ try {
   const claim = BigInt(await view<string>(vault.id, "get_claimable", { account_id: alice!.id }));
   eq(contractBal, BigInt(totals.held) + inVaults + treasury + budgets + claim, `contract holds exactly held + vaults + treasury + budgets ($${Number(contractBal) / 1e6})`);
   const supply = BigInt(await view<string>(ft.id, "ft_total_supply", {}));
-  const everyone = (await Promise.all([vault, alice!, bob!, amaka!, mike!, agent!].map(bal))).reduce((s, b) => s + b, 0n);
+  const everyone = (await Promise.all([vault, alice!, bob!, amaka!, mike!, agent!, broke].map(bal))).reduce((s, b) => s + b, 0n);
   eq(everyone, supply, "no USDC created or destroyed across all accounts");
 } catch (e) {
   failures++;

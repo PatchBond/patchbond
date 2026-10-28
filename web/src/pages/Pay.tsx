@@ -20,6 +20,7 @@ export function Pay() {
   const [tipText, setTipText] = useState("");
   const [fixes, setFixes] = useState(q.get("fixes") ?? "");
   const [busy, setBusy] = useState(false);
+  const [gasless, setGasless] = useState(true);
   const [result, setResult] = useState<{ ok: boolean; text: string; hash?: string } | null>(null);
 
   const { data, error, loading, reload } = useAsync(
@@ -68,8 +69,9 @@ export function Pay() {
         ...(tip > 0n ? { tip: tip.toString() } : {}),
         ...(fixes ? { fixes_issue: Number(fixes) } : {}),
       };
-      const out = await wallet.call(cfg.token, "ft_transfer_call", { receiver_id: cfg.contract, amount: send.toString(), msg: JSON.stringify(msg) }, { deposit: "1" });
-      setResult(out.error ? { ok: false, text: out.error, hash: out.hash } : { ok: true, text: "Deposit held.", hash: out.hash });
+      const args = { receiver_id: cfg.contract, amount: send.toString(), msg: JSON.stringify(msg) };
+      const out = gasless ? await wallet.callGasless(cfg.token, "ft_transfer_call", args, { deposit: "1" }) : { ...(await wallet.call(cfg.token, "ft_transfer_call", args, { deposit: "1" })), gasless: false };
+      setResult(out.error ? { ok: false, text: out.error, hash: out.hash } : { ok: true, text: out.gasless ? "Deposit held — PatchBond paid the gas." : "Deposit held.", hash: out.hash });
       reload();
     } catch (e) {
       setResult({ ok: false, text: (e as Error).message || "The wallet closed before signing. Nothing was sent." });
@@ -194,6 +196,13 @@ export function Pay() {
                 {short && cfg.network === "mainnet" && " — not enough USDC on NEAR."}
               </p>
             )}
+            <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2.5 text-sm">
+              <span>
+                <span className="font-medium">Pay without gas</span>
+                <span className="block text-xs text-faint">You sign; PatchBond's relayer pays the NEAR fee (NEP-366). Works with Meteor, Intear and HOT.</span>
+              </span>
+              <input type="checkbox" checked={gasless} onChange={(e) => setGasless(e.target.checked)} className="size-5 accent-[var(--brand)]" />
+            </label>
             <p className="mt-3 text-center text-xs text-faint">Up to 5% extra is sent in case the queue grows meanwhile; any excess comes straight back.</p>
             {result && !result.ok && (
               <div className="mt-4">

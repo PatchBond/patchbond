@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@patchbond/shared": "workspace:*",
+    "borsh": "2.0.0",
     "hono": "^4.13.14",
     "near-api-js": "^7.4.0",
     "octokit": "^5.0.5",

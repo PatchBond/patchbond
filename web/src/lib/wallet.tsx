@@ -14,6 +14,11 @@ interface WalletState {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   call: (receiverId: string, methodName: string, args: object, opts?: { deposit?: string; tgas?: number }) => Promise<CallResult>;
+  /**
+   * Gasless (NEP-366): the wallet signs a delegate action and PatchBond's relayer pays the gas.
+   * Falls back to a normal transaction if the wallet can't sign delegate actions.
+   */
+  callGasless: (receiverId: string, methodName: string, args: object, opts?: { deposit?: string; tgas?: number }) => Promise<CallResult & { gasless: boolean }>;
   /** NEP-413: sign an off-chain message (proves control of the account; costs nothing). */
   signMessage: (p: { message: string; recipient: string; nonce: Uint8Array }) => Promise<{ accountId: string; publicKey: string; signature: string }>;
 }
@@ -80,6 +85,26 @@ export function WalletProvider({ cfg, children }: { cfg: AppConfig; children: Re
     [connector],
   );
 
+  const callGasless = useCallback<WalletState["callGasless"]>(
+    async (receiverId, methodName, args, opts = {}) => {
+      const wallet = await connector.wallet();
+      const action = { type: "FunctionCall" as const, params: { methodName, args, gas: `${opts.tgas ?? 150}000000000000`, deposit: opts.deposit ?? "0" } };
+      let signed: string | undefined;
+      try {
+        signed = (await wallet.signDelegateActions({ delegateActions: [{ receiverId, actions: [action] }] })).signedDelegateActions[0];
+      } catch (e) {
+        // Wallet can't do delegate actions (or the user closed it): use a normal transaction.
+        if (/reject|cancel|closed|denied/i.test(String((e as Error).message))) throw e;
+      }
+      if (!signed) return { ...(await call(receiverId, methodName, args, opts)), gasless: false };
+      const res = await fetch("/api/relay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ signed_delegate: signed }) });
+      const body = (await res.json()) as { hash?: string; error?: string | null };
+      if (!res.ok) throw new Error(body.error ?? `The relayer answered ${res.status}`);
+      return { hash: body.hash ?? "", error: body.error ?? null, gasless: true };
+    },
+    [connector, call],
+  );
+
   const signMessage = useCallback<WalletState["signMessage"]>(
     async (p) => {
       const wallet = await connector.wallet();
@@ -89,7 +114,7 @@ export function WalletProvider({ cfg, children }: { cfg: AppConfig; children: Re
     [connector],
   );
 
-  return <Ctx.Provider value={{ accountId, connecting, connect, disconnect, call, signMessage }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ accountId, connecting, connect, disconnect, call, callGasless, signMessage }}>{children}</Ctx.Provider>;
 }
 
 export function useWallet() {
