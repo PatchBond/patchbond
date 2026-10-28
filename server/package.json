@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts",
+    "dev": "bun --env-file=../.env --watch src/index.ts",
+    "start": "bun --env-file=../.env src/index.ts",
     "typecheck": "tsc -p .",
     "test": "bun test",
-    "eval": "bun src/judge/eval.ts",
-    "judge-pr": "bun src/cli/judge-pr.ts"
+    "eval": "bun --env-file=../.env src/judge/eval.ts",
+    "judge-pr": "bun --env-file=../.env src/cli/judge-pr.ts"
   },
   "dependencies": {
     "@patchbond/shared": "workspace:*",

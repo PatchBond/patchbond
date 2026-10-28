@@ -33,7 +33,7 @@ export function loadConfig() {
     root: ROOT,
     port: Number(process.env.PORT ?? 8787),
     publicUrl: process.env.PUBLIC_URL ?? "http://localhost:8787",
-    webUrl: process.env.WEB_URL ?? "http://localhost:5173",
+    webUrl: process.env.WEB_URL ?? "http://localhost:5317",
     dataDir: process.env.DATA_DIR ?? join(ROOT, "server", "data"),
     deployment,
     oracleKey: () => process.env.ORACLE_PRIVATE_KEY ?? legacyKey(network, deployment.oracle),
