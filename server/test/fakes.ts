@@ -26,6 +26,8 @@ export function rsaKey(): string {
 
 export function fakeGithub(repo: { id: number; owner: string; name: string }, prs: PrFixture[]) {
   const calls: Call[] = [];
+  /** The repo's `.github/patchbond.yml`, if any. */
+  let rulesFile: string | null = null;
   let nextId = 1000;
   const full = `${repo.owner}/${repo.name}`;
   const server = Bun.serve({
@@ -69,7 +71,10 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
       if (p === `/repos/${full}/check-runs` && req.method === "POST") return json({ id: nextId++ }, 201);
       if (p.startsWith(`/repos/${full}/check-runs/`) && req.method === "PATCH") return json({ id: Number(p.split("/").pop()) });
       if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/comments$`)) && req.method === "POST") return json({ id: nextId++ }, 201);
-      if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/labels$`))) return json([{ name: "patchbond:forfeit" }]);
+      if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/labels(/.+)?$`))) return json([{ name: "patchbond:forfeit" }]);
+      if (decodeURIComponent(p) === `/repos/${full}/contents/.github/patchbond.yml`) {
+        return rulesFile === null ? json({ message: "Not Found" }, 404) : new Response(rulesFile, { headers: { "content-type": "text/plain" } });
+      }
       return json({ message: "Not Found" }, 404);
     },
   });
@@ -77,6 +82,7 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
     url: `http://localhost:${server.port}`,
     calls,
     stop: () => server.stop(true),
+    setRules: (text: string | null) => (rulesFile = text),
     posted: (re: RegExp) => calls.filter((c) => c.method !== "GET" && re.test(c.path)),
   };
 }

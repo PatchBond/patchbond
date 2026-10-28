@@ -6,7 +6,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { VerdictRecord } from "@patchbond/shared";
 
-export type SubmissionState = "awaiting_deposit" | "deposit_received" | "judging" | "judged" | "settled" | "exempt" | "closed";
+export type SubmissionState = "awaiting_deposit" | "deposit_received" | "judging" | "judged" | "settled" | "exempt" | "closed" | "closed_unpaid";
 
 export interface Submission {
   repo_id: number;
@@ -70,6 +70,8 @@ export class Store {
         account_id TEXT NOT NULL, message TEXT NOT NULL, expires_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS github_accounts (
         github_user TEXT PRIMARY KEY, near_account TEXT NOT NULL, seen_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS repo_maintainers (
+        repo_id INTEGER PRIMARY KEY, github_login TEXT NOT NULL, linked_at INTEGER NOT NULL);
     `);
   }
 
@@ -149,6 +151,22 @@ export class Store {
     const c = this.db.query<LinkChallenge, [string]>("SELECT * FROM link_challenges WHERE nonce = ?").get(nonce);
     this.db.query("DELETE FROM link_challenges WHERE nonce = ?").run(nonce);
     return c;
+  }
+
+  /** The GitHub login that linked the repo: who the bot @mentions (GitHub emails them for free). */
+  setRepoMaintainer(repoId: number, githubLogin: string) {
+    this.db.query("INSERT OR REPLACE INTO repo_maintainers VALUES (?, ?, ?)").run(repoId, githubLogin, Date.now());
+  }
+
+  repoMaintainer(repoId: number): string | null {
+    return this.db.query<{ github_login: string }, [number]>("SELECT github_login FROM repo_maintainers WHERE repo_id = ?").get(repoId)?.github_login ?? null;
+  }
+
+  /** Recent submissions on these repos, newest first — the dashboard's activity feed. */
+  recentSubmissions(repoIds: number[], limit = 20): Submission[] {
+    if (!repoIds.length) return [];
+    const q = `SELECT * FROM submissions WHERE repo_id IN (${repoIds.map(() => "?").join(",")}) ORDER BY updated_at DESC LIMIT ?`;
+    return this.db.query<Submission, number[]>(q).all(...repoIds, limit);
   }
 
   linkGithub(githubUser: string, nearAccount: string) {

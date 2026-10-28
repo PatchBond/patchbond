@@ -10,6 +10,7 @@ export function RepoPage() {
   const repoId = Number(useParams().repoId);
   const { data: repo, error, loading } = useAsync(() => chain.repo(cfg, repoId), [cfg, repoId]);
   const { data: verdicts } = useAsync(() => api.verdicts(30, repoId), [repoId]);
+  const { data: record } = useAsync(() => chain.maintainerRecord(cfg, repoId), [cfg, repoId]);
   if (loading) return <div className="grid min-h-[50vh] place-items-center"><Spinner /></div>;
   if (error || !repo) return <div className="mx-auto max-w-lg px-4 py-24"><Notice tone="error" title="Repo not found">{error ?? `Repo ${repoId} isn't registered with PatchBond on ${cfg.network}.`}</Notice></div>;
   const name = verdicts?.[0]?.repo.full_name ?? `Repo ${repoId}`;
@@ -32,6 +33,11 @@ export function RepoPage() {
           <Stat label="Forfeits" value={repo.stats.forfeits} />
           <Stat label="Tips earned" value={money(repo.stats.tips_earned, repo.currency)} sub="reviewed on time" />
           <Stat label="Review window" value={`${Math.round(repo.policy.review_window_sec / 3600)} h`} />
+          <Stat
+            label="Maintainer forfeits"
+            value={record?.forfeits ?? 0}
+            sub={record?.overturned ? `${record.overturned} overturned on dispute` : "each one disputable for free"}
+          />
         </Panel>
       </div>
       <Panel className="mt-6 divide-y divide-line">

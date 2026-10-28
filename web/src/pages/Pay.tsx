@@ -24,10 +24,11 @@ export function Pay() {
   const [result, setResult] = useState<{ ok: boolean; text: string; hash?: string } | null>(null);
 
   const { data, error, loading, reload } = useAsync(async () => {
-    const [repo, deposit, quote] = await Promise.all([
+    const [repo, deposit, quote, record] = await Promise.all([
       chain.repo(cfg, repoId),
       chain.deposit(cfg, repoId, number),
       chain.quote(cfg, repoId, wallet.accountId),
+      chain.maintainerRecord(cfg, repoId).catch(() => null),
     ]);
     const currency = repo?.currency ?? "usdc";
     const [balance, registered] = wallet.accountId
@@ -36,7 +37,7 @@ export function Pay() {
           currency === "near" && cfg.wnear ? chain.registered(cfg, cfg.wnear, wallet.accountId) : Promise.resolve(true),
         ])
       : [null, true];
-    return [repo, deposit, quote, balance, registered] as const;
+    return [repo, deposit, quote, balance, registered, record] as const;
   }, [cfg, repoId, number, wallet.accountId]);
 
   if (!Number.isInteger(repoId) || !Number.isInteger(number)) {
@@ -44,7 +45,7 @@ export function Pay() {
   }
   if (loading && !data) return <Centered><Spinner /></Centered>;
   if (error) return <Centered><Notice tone="error" title="Couldn't read the contract">{error}. Try again in a moment.</Notice></Centered>;
-  const [repo, deposit, quote, balance, registered] = data!;
+  const [repo, deposit, quote, balance, registered, record] = data!;
   if (!repo) {
     return <Centered><Notice tone="error" title="This repo doesn't use PatchBond">Repo {repoId} isn't registered on {cfg.network}. Check the link, or ask the maintainers to install the GitHub App.</Notice></Centered>;
   }
@@ -135,7 +136,18 @@ export function Pay() {
             </li>
           ))}
         </ol>
-        <Panel className="mt-8 p-5">
+        <div className="mt-6 rounded-xl border border-line bg-bg px-4 py-3 text-sm">
+          <div className="font-medium">Maintainers can't keep your deposit on their own</div>
+          <p className="mt-1 text-muted-foreground">
+            If a maintainer (not the AI) forfeits it, that's a 48-hour proposal you can dispute for free; a stronger model re-judges, and if it sides with you, you get your deposit back plus a penalty from their vault.
+          </p>
+          {record && (
+            <p className="num mt-2 text-xs text-faint">
+              This repo: {record.forfeits} maintainer forfeit{record.forfeits === 1 ? "" : "s"} · {record.disputed} disputed · {record.overturned} overturned
+            </p>
+          )}
+        </div>
+        <Panel className="mt-6 p-5">
           <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} currency={currency} />
         </Panel>
       </div>
@@ -235,7 +247,8 @@ export function Pay() {
               </label>
             )}
             <p className="mt-3 text-center text-xs text-faint">
-              Up to 5% extra is sent in case the queue grows meanwhile; any excess comes straight back{near ? " (as wNEAR, which your wallet can unwrap)" : ""}.
+              Your wallet will show <span className="num text-muted-foreground">{money(send, currency)}</span>: that's a 5% buffer in case the price rises before it lands. The deposit is{" "}
+              <span className="num text-muted-foreground">{money(bond + tip, currency)}</span>; the rest comes straight back{near ? " (as wNEAR, which your wallet can unwrap)" : ""}.
             </p>
             {result && !result.ok && (
               <div className="mt-4">

@@ -2,7 +2,7 @@
 // then withdraw, tune the bond policy (with a live price preview) and decide needs_human cases.
 
 import { DECIMALS, formatAmount, parseAmount, SYMBOL, type Currency, type VerdictRecord } from "@patchbond/shared";
-import { Link2, LogOut, Scale, Settings2, Vault } from "lucide-react";
+import { Bell, Link2, LogOut, Scale, Settings2, Vault } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttentionMeter } from "../components/AttentionMeter";
 import { AnimatedNumber, Reveal } from "../components/fx";
 import { Button, Eyebrow, GithubIcon, Notice, Panel, Spinner, VerdictBadge } from "../components/kit";
-import { api, chain, money, type Deposit, type MaintainerRepo, type Policy } from "../lib/api";
+import { api, chain, money, type ActivityItem, type Deposit, type MaintainerRepo, type Policy } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 import { useWallet } from "../lib/wallet";
@@ -46,6 +46,7 @@ export function Dashboard() {
           </Button>
         </div>
       </div>
+      {me.repos.length > 0 && <Activity />}
       {me.repos.length === 0 ? (
         <Panel className="mt-8 p-8 text-center">
           <p className="text-muted-foreground">No repositories yet. Install the PatchBond App on a repository you administer, then come back.</p>
@@ -62,6 +63,86 @@ export function Dashboard() {
       )}
     </div>
   );
+}
+
+const SEEN_KEY = "pb-activity-seen";
+
+const ACTIVITY: Record<ActivityItem["state"], { text: (i: ActivityItem) => string; urgent?: boolean }> = {
+  awaiting_deposit: { text: (i) => `@${i.author} opened #${i.number} — waiting for the deposit` },
+  closed_unpaid: { text: (i) => `#${i.number} closed: no deposit (reopens if paid)` },
+  deposit_received: { text: (i) => `@${i.author} paid the deposit on #${i.number} — ready for review`, urgent: true },
+  judging: { text: (i) => `The judge is reviewing #${i.number}` },
+  judged: { text: (i) => `Verdict on #${i.number}`, urgent: true },
+  settled: { text: (i) => `#${i.number} settled on-chain` },
+  exempt: { text: (i) => `#${i.number} by @${i.author}: no deposit needed` },
+  closed: { text: (i) => `#${i.number} closed` },
+};
+
+/** In-app notifications: the latest events across your repos, refreshed every 30 s; new ones glow. */
+function Activity() {
+  const [items, setItems] = useState<ActivityItem[] | null>(null);
+  const [seen] = useState(() => {
+    try {
+      return Number(localStorage.getItem(SEEN_KEY) ?? 0);
+    } catch {
+      return 0;
+    }
+  });
+  useEffect(() => {
+    let live = true;
+    const load = () => api.activity().then((r) => live && setItems(r.items)).catch(() => {});
+    void load();
+    const t = setInterval(load, 30_000);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
+  }, []);
+  useEffect(() => {
+    if (!items?.length) return;
+    try {
+      localStorage.setItem(SEEN_KEY, String(Math.max(...items.map((i) => i.at))));
+    } catch {
+      // private mode: "new" just isn't remembered
+    }
+  }, [items]);
+  if (!items) return null;
+  const fresh = items.filter((i) => i.at > seen).length;
+  return (
+    <Panel className="mt-8 p-5">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Bell className="size-4" /> Activity
+        {fresh > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-semibold text-bg">{fresh} new</span>}
+      </div>
+      {items.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">Nothing yet. When an outside PR arrives, it shows up here — and the bot @mentions you on GitHub when a deposit lands.</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-line">
+          {items.slice(0, 8).map((i) => {
+            const a = ACTIVITY[i.state];
+            const isNew = i.at > seen;
+            const body = (
+              <span className={`min-w-0 flex-1 truncate ${a.urgent ? "text-ink" : "text-muted-foreground"}`}>
+                <span className="text-faint">{i.full_name}</span> · {a.text(i)}
+              </span>
+            );
+            return (
+              <li key={`${i.repo_id}/${i.number}`} className="flex items-center gap-3 py-2 text-sm">
+                <span className={`size-2 shrink-0 rounded-full ${isNew ? "bg-brand" : "bg-line"}`} />
+                {i.verdict_id ? <Link to={`/v/${i.verdict_id}`} className="min-w-0 flex-1 hover:underline">{body}</Link> : <a href={`https://github.com/${i.full_name}/pull/${i.number}`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 hover:underline">{body}</a>}
+                <span className="num shrink-0 text-xs text-faint">{ago(i.at)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+function ago(ms: number) {
+  const m = Math.round((Date.now() - ms) / 60_000);
+  return m < 1 ? "now" : m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`;
 }
 
 function InstallButton({ className = "", label = "Install the GitHub App" }: { className?: string; label?: string }) {

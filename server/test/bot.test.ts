@@ -120,9 +120,49 @@ describe("GitHub bot", () => {
     await bot.tick();
     expect(chain.log).toContain(`settle ${REPO.id}#2 forfeit`);
     expect((gh.posted(/\/check-runs\/\d+$/).at(-1)!.body as { conclusion: string }).conclusion).toBe("failure");
-    expect(gh.posted(/\/labels$/)).toHaveLength(1);
+    // awaiting → paid → forfeit, so maintainers can filter at every stage
+    expect(gh.posted(/\/labels$/).map((c) => (c.body as { labels: string[] }).labels[0])).toEqual([
+      "patchbond: awaiting deposit", "patchbond: deposit paid", "patchbond:forfeit",
+    ]);
     expect(comments().at(-1)).toContain("forfeited");
     expect(comments().at(-1)).toContain("Challenge it");
+  });
+
+  test("a paid deposit @mentions the maintainer who linked the repo (GitHub emails them, free)", async () => {
+    store.setRepoMaintainer(REPO.id, "amaka");
+    await deliver("pull_request", prOpened(3));
+    chain.pay(3, "kenji.testnet", "kenji");
+    await bot.tick();
+    const paid = comments().find((c) => c.includes("refundable deposit on this PR"))!;
+    expect(paid).toContain("@amaka");
+    expect(paid).toContain("@kenji paid a **$2.00 USDC**");
+    expect(gh.calls.some((c) => c.method === "DELETE" && c.path.endsWith("/labels/patchbond%3A%20awaiting%20deposit"))).toBe(true);
+  });
+
+  test("opt-in: an unpaid PR is closed after the repo's grace period and reopens when paid", async () => {
+    gh.setRules("close_unpaid_after_hours: 1\n");
+    await deliver("pull_request", prOpened(3));
+    await bot.tick();
+    expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit"); // still inside the hour
+    store.db.query("UPDATE submissions SET updated_at = ? WHERE number = 3").run(Date.now() - 2 * 3_600_000);
+    await bot.tick();
+    expect(store.submission(REPO.id, 3)?.state).toBe("closed_unpaid");
+    expect(gh.posted(/\/pulls\/3$/).at(-1)?.body).toEqual({ state: "closed" });
+    expect(comments().at(-1)).toContain("reopens this PR automatically");
+
+    chain.pay(3, "kenji.testnet", "kenji");
+    await bot.tick();
+    expect(gh.posted(/\/pulls\/3$/).at(-1)?.body).toEqual({ state: "open" });
+    expect(store.submission(REPO.id, 3)?.state).toBe("deposit_received");
+    expect(comments().at(-1)).toContain("so it's reopened");
+  });
+
+  test("without the opt-in, unpaid PRs stay open", async () => {
+    await deliver("pull_request", prOpened(3));
+    store.db.query("UPDATE submissions SET updated_at = ? WHERE number = 3").run(Date.now() - 30 * 86_400_000);
+    await bot.tick();
+    expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit");
+    expect(gh.posted(/\/pulls\/3$/)).toHaveLength(0);
   });
 
   test("the judge waits for CI", async () => {

@@ -100,6 +100,18 @@ export function maintainerRoutes(app: Hono, d: MaintainerDeps) {
     }
   });
 
+  /** In-app notifications: what happened lately on the repos this maintainer administers. */
+  app.get("/api/activity", async (c) => {
+    const s = await session(c);
+    if (!s) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repos = await adminRepos(cfg, s.token).catch(() => []);
+    const items = store.recentSubmissions(repos.map((r) => r.repo_id)).map((x) => ({
+      repo_id: x.repo_id, full_name: x.full_name, number: x.number, author: x.author, state: x.state,
+      verdict_id: x.verdict_id, at: x.updated_at,
+    }));
+    return c.json({ items });
+  });
+
   app.post("/api/link/challenge", async (c) => {
     const s = await session(c);
     if (!s) return c.json({ error: "Sign in with GitHub first." }, 401);
@@ -139,6 +151,7 @@ export function maintainerRoutes(app: Hono, d: MaintainerDeps) {
     if (!(await adminRepos(cfg, s.token)).some((r) => r.repo_id === ch.repo_id)) return c.json({ error: "You're no longer an admin of that repository." }, 403);
     if (!(await d.chain.getRepo(ch.repo_id))) await d.chain.registerRepo(ch.repo_id);
     await d.chain.linkRepo(ch.repo_id, ch.account_id);
+    store.setRepoMaintainer(ch.repo_id, s.github_login);
     return c.json({ ok: true, repo_id: ch.repo_id, payout: ch.account_id });
   });
 }

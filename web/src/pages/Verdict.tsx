@@ -319,12 +319,12 @@ function OnChain({ r }: { r: VerdictRecord }) {
   const cfg = useConfig();
   const wallet = useWallet();
   const { data, reload, loading } = useAsync(
-    () => Promise.all([chain.deposit(cfg, r.repo.id, r.number), chain.repo(cfg, r.repo.id)]),
+    () => Promise.all([chain.deposit(cfg, r.repo.id, r.number), chain.repo(cfg, r.repo.id), chain.isMaintainerForfeit(cfg, r.repo.id, r.number)]),
     [cfg, r.repo.id, r.number],
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<{ tone: "ok" | "error"; text: string; hash?: string } | null>(null);
-  const [deposit, repo] = data ?? [null, null];
+  const [deposit, repo, byMaintainer] = data ?? [null, null, false];
 
   async function act(label: string, f: () => Promise<{ hash: string; error: string | null }>) {
     setBusy(label);
@@ -354,7 +354,7 @@ function OnChain({ r }: { r: VerdictRecord }) {
   const me = wallet.accountId;
   const isPayer = me === deposit.payer;
   const isMaintainer = !!repo?.payout && me === repo.payout;
-  const status = describe(deposit);
+  const status = describe(deposit, byMaintainer);
   const hashMatches = deposit.verdict_hash === r.verdict_hash;
 
   return (
@@ -382,7 +382,9 @@ function OnChain({ r }: { r: VerdictRecord }) {
             repo={repo}
             isPayer={isPayer}
             isMaintainer={isMaintainer}
+            byMaintainer={byMaintainer}
             busy={busy}
+            onDispute={() => act("Dispute", () => wallet.call(cfg.contract, "dispute", { repo_id: r.repo.id, number: r.number }, { tgas: 30 }))}
             onChallenge={() =>
               act("Challenge", () => {
                 // The stake is paid in the bond's currency; NEAR is wrapped in the same transaction.
@@ -405,13 +407,22 @@ function OnChain({ r }: { r: VerdictRecord }) {
           />
         )}
         {isMaintainer && (deposit.status === "held" || (typeof deposit.status === "object" && !("settled" in deposit.status))) && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="ghost" disabled={!!busy} onClick={() => act("Refund", () => wallet.call(cfg.contract, "settle", { repo_id: r.repo.id, number: r.number, verdict: "refund", verdict_hash: r.verdict_hash }))}>
-              Refund
-            </Button>
-            <Button variant="danger" disabled={!!busy} onClick={() => act("Forfeit", () => wallet.call(cfg.contract, "settle", { repo_id: r.repo.id, number: r.number, verdict: "forfeit", verdict_hash: r.verdict_hash }))}>
-              Forfeit
-            </Button>
+          <div className="space-y-2">
+            <div className={`grid gap-2 ${deposit.status === "held" ? "grid-cols-2" : ""}`}>
+              <Button variant="ghost" disabled={!!busy} onClick={() => act("Refund", () => wallet.call(cfg.contract, "settle", { repo_id: r.repo.id, number: r.number, verdict: "refund", verdict_hash: r.verdict_hash }))}>
+                Refund now
+              </Button>
+              {deposit.status === "held" && (
+                <Button variant="danger" disabled={!!busy} onClick={() => act("Forfeit proposed", () => wallet.call(cfg.contract, "settle", { repo_id: r.repo.id, number: r.number, verdict: "forfeit", verdict_hash: r.verdict_hash }))}>
+                  Propose forfeit
+                </Button>
+              )}
+            </div>
+            {deposit.status === "held" && (
+              <p className="text-xs text-faint">
+                A maintainer's forfeit stands after 48 h unless the contributor disputes it for free. If a re-judge overturns it, one bond from your vault goes to the contributor. Refunds are instant.
+              </p>
+            )}
           </div>
         )}
         {!me && deposit.status !== "held" && !(typeof deposit.status === "object" && "settled" in deposit.status) && (
@@ -442,8 +453,11 @@ function ProposedActions(p: {
   repo: Repo | null | undefined;
   isPayer: boolean;
   isMaintainer: boolean;
+  /** The forfeit was proposed by the maintainer, not the AI: disputing it is free. */
+  byMaintainer: boolean;
   busy: string | null;
   onChallenge: () => void;
+  onDispute: () => void;
   onFinalize: () => void;
 }) {
   const s = p.deposit.status as { proposed: { verdict: string; deadline: number } };
@@ -453,9 +467,16 @@ function ProposedActions(p: {
     return () => clearInterval(t);
   }, []);
   const left = s.proposed.deadline - now;
-  const canChallenge = left > 0 && ((s.proposed.verdict === "forfeit" && p.isPayer) || (s.proposed.verdict === "refund" && p.isMaintainer));
+  const canDispute = left > 0 && p.byMaintainer && p.isPayer;
+  const canChallenge = left > 0 && !p.byMaintainer && ((s.proposed.verdict === "forfeit" && p.isPayer) || (s.proposed.verdict === "refund" && p.isMaintainer));
   return (
     <div className="space-y-2">
+      {canDispute && (
+        <Button className="w-full" disabled={!!p.busy} onClick={p.onDispute}>
+          Dispute this forfeit — free
+        </Button>
+      )}
+      {canDispute && <p className="text-xs text-faint">The maintainer proposed it, so disputing costs nothing. A stronger model re-judges; if it sides with you, you get your bond back plus a penalty from the maintainers' vault.</p>}
       {canChallenge && (
         <Button className="w-full" disabled={!!p.busy} onClick={p.onChallenge}>
           Challenge — stake {money(p.deposit.bond, p.deposit.currency)}
@@ -471,14 +492,15 @@ function ProposedActions(p: {
   );
 }
 
-function describe(d: Deposit): { title: string; detail: string } {
+function describe(d: Deposit, byMaintainer = false): { title: string; detail: string } {
   const s = d.status;
   if (s === "held") return { title: "Bond held", detail: "Waiting for the verdict to be posted." };
   if ("proposed" in s) {
     const left = s.proposed.deadline - Date.now();
+    const who = byMaintainer ? "The maintainer proposed" : "Proposed";
     return left > 0
-      ? { title: `Proposed: ${s.proposed.verdict}`, detail: `Stands in ${fmtDuration(left)} unless challenged.` }
-      : { title: `Proposed: ${s.proposed.verdict}`, detail: "Challenge window closed — anyone can finalize it." };
+      ? { title: `${who}: ${s.proposed.verdict}`, detail: `Stands in ${fmtDuration(left)} unless ${byMaintainer ? "the contributor disputes it (free)" : "challenged"}.` }
+      : { title: `${who}: ${s.proposed.verdict}`, detail: "The window closed — anyone can finalize it." };
   }
   if ("challenged" in s) return { title: `Challenged by ${s.challenged.challenger}`, detail: `Stake ${money(s.challenged.stake, d.currency)}. A stronger model is re-judging.` };
   return { title: `Settled: ${s.settled.verdict}`, detail: new Date(s.settled.at).toLocaleString() };

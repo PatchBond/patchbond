@@ -20,6 +20,7 @@ let permission: unknown = "FullAccess";
 let gh: ReturnType<typeof fakeGithub>;
 let chain: ReturnType<typeof fakeChain>;
 let app: Hono;
+let store: Store;
 
 beforeAll(() => {
   gh = fakeGithub(REPO, []);
@@ -30,7 +31,8 @@ beforeAll(() => {
   });
   app = new Hono();
   const provider = { viewAccessKey: async () => ({ permission }) } as never;
-  maintainerRoutes(app, { cfg: loadConfig(), store: new Store(mkdtempSync(join(tmpdir(), "pb-m-"))), chain, provider });
+  store = new Store(mkdtempSync(join(tmpdir(), "pb-m-")));
+  maintainerRoutes(app, { cfg: loadConfig(), store, chain, provider });
 });
 afterAll(() => gh.stop());
 // Each test starts from an unlinked repo.
@@ -96,6 +98,17 @@ describe("maintainer onboarding", () => {
     expect(res.status).toBe(200);
     expect(chain.log).toContain(`register ${REPO.id}`);
     expect(chain.log).toContain(`link ${REPO.id} → amaka.testnet`);
+    expect(store.repoMaintainer(REPO.id)).toBe("amaka"); // the bot @mentions them when deposits land
+  });
+
+  test("activity: the dashboard's feed lists submissions on your repos only", async () => {
+    const sub = { full_name: "acme/widget", installation_id: 7, author: "tunde", head_sha: "h", check_run_id: null, comment_id: null, verdict_id: null, deposit_seen_at: null };
+    store.upsertSubmission({ ...sub, repo_id: REPO.id, number: 5, state: "deposit_received" });
+    store.upsertSubmission({ ...sub, repo_id: 99, number: 6, full_name: "acme/not-mine", state: "deposit_received" });
+    const req = await signIn();
+    const { items } = (await (await req("/api/activity")).json()) as { items: { full_name: string; number: number; state: string }[] };
+    expect(items.map((i) => `${i.full_name}#${i.number} ${i.state}`)).toEqual(["acme/widget#5 deposit_received"]);
+    expect((await app.request("/api/activity")).status).toBe(401);
   });
 
   test("a challenge can't be replayed", async () => {

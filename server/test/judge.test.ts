@@ -183,8 +183,10 @@ describe("pre-flight advice", () => {
 describe("assignment check (a fact from GitHub, opt-in per repo)", () => {
   const required = parseRepoRules("# PatchBond rules\nassignment_required: true\nunassigned_pr: evidence\n");
   test("parses .github/patchbond.yml", () => {
-    expect(required).toEqual({ assignmentRequired: true, unassignedEffect: "evidence" });
-    expect(parseRepoRules(undefined)).toEqual({ assignmentRequired: false, unassignedEffect: "flag" });
+    expect(required).toEqual({ assignmentRequired: true, unassignedEffect: "evidence", closeUnpaidAfterHours: null });
+    expect(parseRepoRules(undefined)).toEqual({ assignmentRequired: false, unassignedEffect: "flag", closeUnpaidAfterHours: null });
+    expect(parseRepoRules("close_unpaid_after_hours: 48").closeUnpaidAfterHours).toBe(48);
+    expect(parseRepoRules("close_unpaid_after_hours: 0").closeUnpaidAfterHours).toBeNull();
   });
   test("assigned to the author is fine; someone else or nobody only counts when the repo requires it", () => {
     expect(assignmentFact("tunde", { exists: true, assignees: ["Tunde"] }, required)).toBe("ok");
@@ -210,7 +212,7 @@ describe("assignment check (a fact from GitHub, opt-in per repo)", () => {
       input({ diff: "+  return parse(s);", body: "Fixes #12" }, {
         checkRuns: [{ name: "build", status: "completed", conclusion: "success" }],
         issueLookup: async () => ({ exists: true, open: true, assignees: ["tunde"] }),
-        rules: { assignmentRequired: true, unassignedEffect: "flag" },
+        rules: { assignmentRequired: true, unassignedEffect: "flag", closeUnpaidAfterHours: null },
       }),
       new MockInference(),
     );

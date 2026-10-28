@@ -23,6 +23,16 @@ export interface MaintainerRepo {
   onchain: Repo | null;
 }
 
+export interface ActivityItem {
+  repo_id: number;
+  full_name: string;
+  number: number;
+  author: string;
+  state: "awaiting_deposit" | "deposit_received" | "judging" | "judged" | "settled" | "exempt" | "closed" | "closed_unpaid";
+  verdict_id: string | null;
+  at: number;
+}
+
 export type Me = { signed_in: false; github_ready: boolean } | { signed_in: true; github_login: string; repos: MaintainerRepo[] };
 
 /** 502–504 come from the dev proxy or a load balancer while the API restarts — say so. */
@@ -59,6 +69,8 @@ export const api = {
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ?? `Appeal failed (${res.status})`);
   },
+  /** What happened lately on the signed-in maintainer's repos (in-app notifications). */
+  activity: () => get<{ items: ActivityItem[] }>("/api/activity"),
   intentsQuote: (b: { amount: string; currency?: Currency; chain: string; recipient: string; refund_to: string }) =>
     post<{ dry: true; chain: string; amount_in: string; amount_out: string; min_amount_out: string; seconds: number; fees: { withdraw: string; refund: string } }>("/api/intents/quote", b),
   judge: async (url: string) => {
@@ -163,6 +175,11 @@ export const chain = {
     const free = BigInt(body.result.amount) - BigInt(body.result.storage_usage) * 10n ** 19n;
     return (free > 0n ? free : 0n).toString();
   },
+  /** How the repo's maintainers have used their own forfeits (shown before paying). */
+  maintainerRecord: (cfg: AppConfig, repo_id: number) =>
+    view<{ forfeits: number; disputed: number; overturned: number }>(cfg, "get_maintainer_record", { repo_id }),
+  /** The pending forfeit came from the maintainer (free to dispute), not the AI. */
+  isMaintainerForfeit: (cfg: AppConfig, repo_id: number, number: number) => view<boolean>(cfg, "is_maintainer_forfeit", { repo_id, number }),
   /** Whether `account_id` is registered with a NEP-145 token (wNEAR must know you to pay you). */
   registered: async (cfg: AppConfig, token: string, account_id: string) =>
     (await view<unknown>(cfg, "storage_balance_of", { account_id }, token)) !== null,

@@ -33,6 +33,21 @@ An AI judge running in a verified enclave (NEAR AI Cloud) reviews the PR after C
 <sub>[What is PatchBond?](${o.webUrl}) · Not paying? The PR stays open; a maintainer can still review it.</sub>`;
 }
 
+export function depositPaidComment(o: { maintainer: string | null; author: string; amount: string; tip: string | null; reviewHours: number; reopened: boolean }) {
+  const who = o.maintainer ? `@${o.maintainer} — ` : "";
+  const tip = o.tip ? ` A review within ${o.reviewHours} h earns the repo the ${o.tip} priority tip.` : "";
+  return `${MARKER}
+💰 ${who}@${o.author} paid a **${o.amount}** refundable deposit on this PR${o.reopened ? ", so it's reopened" : ""}.${tip}
+
+The AI judge reviews it once CI finishes; the verdict appears here. Filter paid PRs with the \`patchbond: deposit paid\` label.`;
+}
+
+export function unpaidClosedComment(o: { hours: number; link: string }) {
+  return `${MARKER}
+Closing for now: this repository asks for a refundable deposit within ${o.hours} h, and none arrived. Nothing is lost —
+**[pay the deposit](${o.link})** and PatchBond reopens this PR automatically.`;
+}
+
 const ICON = { refund: "✅", forfeit: "⛔", needs_human: "🧑‍⚖️" } as const;
 const TITLE = {
   refund: "Deposit refunded — looks like a real contribution",

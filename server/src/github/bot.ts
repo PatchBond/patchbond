@@ -7,10 +7,14 @@ import type { Chain } from "../near";
 import type { Store, Submission } from "../store";
 import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
+import { parseRepoRules, type RepoRules } from "../judge/facts";
 import { gatherPr } from "./gather";
-import { CHECK_NAME, MARKER, checkSummary, depositComment, money, payLink, verdictComment } from "./text";
+import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, money, payLink, unpaidClosedComment, verdictComment } from "./text";
 
 const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+/** Labels maintainers can filter on: review the paid queue, ignore the rest. */
+export const LABEL = { awaiting: "patchbond: awaiting deposit", paid: "patchbond: deposit paid" } as const;
+const RULES_TTL_MS = 10 * 60_000;
 
 /** The slice of the chain the bot uses (tests pass a fake). */
 export type ChainPort = Pick<
@@ -22,6 +26,8 @@ export class Bot {
   readonly app: App;
   /** Challenges being re-judged right now (a slow tx must not start a second re-judge). */
   private rejudging = new Set<string>();
+  /** `.github/patchbond.yml` per repo, briefly cached (the tick reads it for auto-close). */
+  private rulesCache = new Map<number, { rules: RepoRules; at: number }>();
 
   constructor(
     private cfg: Config,
@@ -108,13 +114,17 @@ export class Bot {
       body: depositComment({ author, bond, currency: onChain.currency ?? "usdc", open: onChain.open, target: onChain.policy.target_open, link, webUrl: this.cfg.webUrl }),
     });
     this.store.upsertSubmission({ ...base, check_run_id: check, comment_id: comment.id, state: "awaiting_deposit" });
+    await gh.rest.issues.addLabels({ owner: repo.owner.login, repo: repo.name, issue_number: pr.number, labels: [LABEL.awaiting] }).catch(() => {});
     this.log(`asked ${author} for a deposit on ${repo.full_name}#${pr.number}`);
   }
 
   /** Called on a timer: watches the chain for deposits and CI for completion. */
   async tick() {
-    for (const s of this.store.submissionsIn("awaiting_deposit")) {
+    for (const s of this.store.submissionsIn("awaiting_deposit", "closed_unpaid")) {
       await this.checkDeposit(s).catch((e) => this.log(`deposit check ${s.full_name}#${s.number}`, String(e)));
+    }
+    for (const s of this.store.submissionsIn("awaiting_deposit")) {
+      await this.maybeCloseUnpaid(s).catch((e) => this.log(`auto-close ${s.full_name}#${s.number}`, String(e)));
     }
     for (const s of this.store.submissionsIn("deposit_received")) {
       await this.maybeJudge(s).catch((e) => this.log(`judge ${s.full_name}#${s.number}`, String(e)));
@@ -140,7 +150,7 @@ export class Bot {
       if (this.rejudging.has(key)) return;
       this.rejudging.add(key);
       try {
-        await this.rejudge(s, d.status.challenged.verdict as "refund" | "forfeit", d.status.challenged.challenger);
+        await this.rejudge(s, d.status.challenged.verdict as "refund" | "forfeit", d.status.challenged.challenger, d.status.challenged.stake === "0");
       } finally {
         this.rejudging.delete(key);
       }
@@ -177,10 +187,57 @@ export class Bot {
       return;
     }
     this.store.linkGithub(s.author, d.payer);
+    const wasClosed = s.state === "closed_unpaid";
     this.store.setState(s.repo_id, s.number, "deposit_received", { deposit_seen_at: Date.now() });
-    const currency = (await this.chain.getRepo(s.repo_id))?.currency ?? "usdc";
+    const repoOnChain = await this.chain.getRepo(s.repo_id);
+    const currency = repoOnChain?.currency ?? "usdc";
     await this.updateCheck(gh, s, "in_progress", null, checkSummary("received", `Deposit of ${money(d.bond, currency)} from ${d.payer}. The AI judge runs once CI finishes.`));
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    if (wasClosed) await gh.rest.pulls.update({ owner, repo, pull_number: s.number, state: "open" }).catch(() => {});
+    await gh.rest.issues.removeLabel({ owner, repo, issue_number: s.number, name: LABEL.awaiting }).catch(() => {});
+    await gh.rest.issues.addLabels({ owner, repo, issue_number: s.number, labels: [LABEL.paid] }).catch(() => {});
+    // An @mention makes GitHub email the maintainer — notifications at no cost to anyone.
+    await gh.rest.issues.createComment({
+      owner, repo, issue_number: s.number,
+      body: depositPaidComment({
+        maintainer: this.store.repoMaintainer(s.repo_id),
+        author: s.author,
+        amount: money(d.bond, currency),
+        tip: BigInt(d.tip) > 0n ? money(d.tip, currency) : null,
+        reviewHours: (repoOnChain?.policy.review_window_sec ?? 0) / 3600,
+        reopened: wasClosed,
+      }),
+    });
     this.log(`deposit received for ${s.full_name}#${s.number} from ${d.payer}`);
+  }
+
+  /** Repos that opted in (`close_unpaid_after_hours`) close PRs still unpaid after that long. */
+  private async maybeCloseUnpaid(s: Submission) {
+    const rules = await this.rulesOf(s);
+    if (!rules.closeUnpaidAfterHours || Date.now() - s.updated_at < rules.closeUnpaidAfterHours * 3_600_000) return;
+    const gh = await this.app.getInstallationOctokit(s.installation_id);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    await gh.rest.issues.createComment({
+      owner, repo, issue_number: s.number,
+      body: unpaidClosedComment({ hours: rules.closeUnpaidAfterHours, link: payLink(this.cfg.webUrl, s.repo_id, s.number, s.full_name, s.author) }),
+    });
+    await gh.rest.pulls.update({ owner, repo, pull_number: s.number, state: "closed" });
+    this.store.setState(s.repo_id, s.number, "closed_unpaid");
+    this.log(`closed unpaid ${s.full_name}#${s.number} after ${rules.closeUnpaidAfterHours} h`);
+  }
+
+  private async rulesOf(s: Submission): Promise<RepoRules> {
+    const hit = this.rulesCache.get(s.repo_id);
+    if (hit && Date.now() - hit.at < RULES_TTL_MS) return hit.rules;
+    const gh = await this.app.getInstallationOctokit(s.installation_id);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    const text = await gh.rest.repos
+      .getContent({ owner, repo, path: ".github/patchbond.yml", mediaType: { format: "raw" } })
+      .then((r) => String(r.data))
+      .catch(() => undefined);
+    const rules = parseRepoRules(text);
+    this.rulesCache.set(s.repo_id, { rules, at: Date.now() });
+    return rules;
   }
 
   private async maybeJudge(s: Submission) {
@@ -225,7 +282,7 @@ export class Bot {
    * Someone staked against the proposed verdict: a stronger model judges the PR afresh, seeing both
    * sides' statements as untrusted claims. needs_human resolves as refund (when in doubt, refund).
    */
-  private async rejudge(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string) {
+  private async rejudge(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string, freeDispute = false) {
     const gh = await this.app.getInstallationOctokit(s.installation_id);
     const [owner, repo] = s.full_name.split("/") as [string, string];
     const repoOnChain = await this.chain.getRepo(s.repo_id);
@@ -241,9 +298,12 @@ export class Bot {
     await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash);
     this.store.setState(s.repo_id, s.number, "settled", { verdict_id: record.id });
     const overturned = verdict !== proposed;
+    const what = freeDispute
+      ? `The contributor disputed the maintainer's forfeit (free). A stronger model (\`${record.model}\`) re-judged the PR with both sides' statements and decided **${verdict}**.${overturned ? " The deposit is returned, plus a penalty from the maintainers' vault." : " The forfeit stands."}`
+      : `The ${challenger} staked to challenge the "${proposed}" verdict. A stronger model (\`${record.model}\`) re-judged the PR with both sides' statements and decided **${verdict}**.${overturned ? " The challenger's stake is returned." : ` The stake goes to the ${challenger === "contributor" ? "repository" : "contributor"}.`}`;
     await gh.rest.issues.createComment({
       owner, repo, issue_number: s.number,
-      body: `${MARKER}\n### ${overturned ? "🔄 Challenge upheld — verdict overturned" : "⚖️ Challenge rejected — verdict stands"}\n\nThe ${challenger} staked to challenge the "${proposed}" verdict. A stronger model (\`${record.model}\`) re-judged the PR with both sides' statements and decided **${verdict}**.${overturned ? " The challenger's stake is returned." : ` The stake goes to the ${challenger === "contributor" ? "repository" : "contributor"}.`}\n\n${record.final.reasons.map((r) => `- ${r}`).join("\n")}\n\n<sub>[Signed record — verify it yourself](${this.cfg.webUrl}/v/${record.id})</sub>`,
+      body: `${MARKER}\n### ${overturned ? "🔄 Challenge upheld — verdict overturned" : "⚖️ Challenge rejected — verdict stands"}\n\n${what}\n\n${record.final.reasons.map((r) => `- ${r}`).join("\n")}\n\n<sub>[Signed record — verify it yourself](${this.cfg.webUrl}/v/${record.id})</sub>`,
     });
     this.log(`re-judged ${s.full_name}#${s.number}: ${proposed} → ${verdict}`);
   }
@@ -251,6 +311,7 @@ export class Bot {
   /** A merged PR that fixes an issue with a bounty pays its author (slop funds the fix). */
   private async onClosed(repoId: number, pr: { number: number; merged: boolean; body: string | null; title: string; user: { login: string } | null }) {
     const s = this.store.submission(repoId, pr.number);
+    // "closed_unpaid" (closed by us) keeps watching for a deposit, to reopen the PR.
     if (s && s.state === "awaiting_deposit") this.store.setState(repoId, pr.number, "closed");
     if (!pr.merged) return;
     const m = `${pr.title}\n${pr.body ?? ""}`.match(/\b(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?)\s*:?\s*#(\d+)\b/i);
