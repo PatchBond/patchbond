@@ -37,7 +37,7 @@ beforeEach(() => {
     WEB_URL: "https://patchbond.test", CI_TIMEOUT_MIN: "30", NEEDS_HUMAN_DAYS: "14", GITHUB_THROTTLE: "off",
   });
   store = new Store(mkdtempSync(join(tmpdir(), "pb-bot-")));
-  bot = new Bot(loadConfig(), chain, store, new MockInference(), process.env.BOT_DEBUG ? (m, e) => console.log(`${(performance.now() / 1000).toFixed(2)} ${m}`, e ?? "") : () => {});
+  bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, process.env.BOT_DEBUG ? (m, e) => console.log(`${(performance.now() / 1000).toFixed(2)} ${m}`, e ?? "") : () => {});
 });
 afterEach(() => gh.stop());
 
@@ -150,6 +150,29 @@ describe("GitHub bot", () => {
       pull_request: { number: 1, merged: true, title: "Fix empty config crash", body: "Fixes #9", user: { login: "tunde" } },
     });
     expect(chain.log).toContain(`bounty ${REPO.id}#9 → tunde.testnet`);
+  });
+
+  test("a challenged forfeit is re-judged by the stronger model with both sides' statements", async () => {
+    let seen = "";
+    const strong = new MockInference(undefined, () => JSON.stringify({ verdict: "refund", confidence: 0.9, category: "ok", reasons: ["The 'improve()' call is defined in src/a.ts; the first judge misread it."], evidence: [] }));
+    const realRun = strong.run.bind(strong);
+    strong.run = async (req: string) => {
+      seen = req;
+      return realRun(req);
+    };
+    bot = new Bot(loadConfig(), chain, store, new MockInference(), strong, () => {});
+    await deliver("pull_request", prOpened(2));
+    chain.pay(2, "slop.testnet", "slopbot");
+    await bot.tick(); // forfeit proposed
+    const s = store.submission(REPO.id, 2)!;
+    store.addAppeal(s.verdict_id!, "slop.testnet", "improve() exists in src/a.ts line 3; please look again.");
+    chain.deposits.get(`${REPO.id}/2`)!.status = { challenged: { verdict: "forfeit", challenger: "slop.testnet", stake: "2000000" } };
+    await bot.tick();
+    expect(chain.log).toContain(`resolve ${REPO.id}#2 refund`);
+    expect(seen).toContain('<challenge proposed=\\"forfeit\\" challenger=\\"contributor\\">');
+    expect(seen).toContain("improve() exists in src/a.ts line 3");
+    expect(comments().at(-1)).toContain("Challenge upheld");
+    expect(store.submission(REPO.id, 2)?.state).toBe("settled");
   });
 
   test("a forged webhook is rejected", async () => {

@@ -20,7 +20,7 @@ const cfg = loadConfig();
 const chain = new Chain(cfg);
 const store = new Store(cfg.dataDir);
 const inference = makeInference(cfg);
-const bot = cfg.github.configured ? new Bot(cfg, chain, store, inference) : null;
+const bot = cfg.github.configured ? new Bot(cfg, chain, store, inference, makeInference(cfg, true)) : null;
 
 const app = new Hono();
 app.use("/api/*", cors());

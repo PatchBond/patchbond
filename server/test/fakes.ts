@@ -130,6 +130,13 @@ export function fakeChain(repoId: number) {
       if (repo) repo.payout = payout;
       return undefined;
     },
+    resolveChallenge: async (r, n, verdict, hash) => {
+      log.push(`resolve ${r}#${n} ${verdict}`);
+      const d = deposits.get(key(r, n))!;
+      d.verdict_hash = hash;
+      d.status = { settled: { verdict, at: Date.now() } };
+      return undefined as never;
+    },
     finalize: async (r, n) => {
       log.push(`finalize ${r}#${n}`);
       const d = deposits.get(key(r, n))!;

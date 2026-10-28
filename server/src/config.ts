@@ -40,6 +40,8 @@ export function loadConfig() {
     judge: {
       mode: judgeMode,
       model: process.env.JUDGE_MODEL || "z-ai/glm-5.3-flash",
+      /** Re-judges challenged verdicts. */
+      strongModel: process.env.JUDGE_STRONG_MODEL || "moonshotai/kimi-k3",
       apiKey: () => need("NEARAI_API_KEY"),
       /** Optional fixed key so mock signatures keep one signing address across restarts. */
       mockKey: process.env.MOCK_SIGNER_KEY || undefined,

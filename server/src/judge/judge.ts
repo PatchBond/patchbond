@@ -14,7 +14,7 @@ import {
   type SymbolIndex,
 } from "./facts";
 import { modelContent, type Inference } from "./nearai";
-import { requestBody, type RepoContext } from "./prompt";
+import { requestBody, type ChallengeContext, type RepoContext } from "./prompt";
 import { applyRules } from "./rules";
 
 /** Everything the GitHub layer gathers for one contribution. */
@@ -49,9 +49,9 @@ export async function computeFacts(i: JudgeInput): Promise<Facts> {
   };
 }
 
-export async function judge(i: JudgeInput, inference: Inference, now = new Date()): Promise<VerdictRecord> {
+export async function judge(i: JudgeInput, inference: Inference, now = new Date(), challenge?: ChallengeContext): Promise<VerdictRecord> {
   const facts = await computeFacts(i);
-  const request_body = requestBody(inference.model, i.repo, facts, i.contribution);
+  const request_body = requestBody(inference.model, i.repo, facts, i.contribution, challenge);
   const { chat_id, response_body, signature } = await inference.run(request_body);
 
   const parsed = ModelVerdict.safeParse(modelContent(response_body));

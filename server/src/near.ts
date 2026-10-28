@@ -87,6 +87,8 @@ export class Chain {
   markReviewed = (repo_id: number, number: number) => this.call("mark_reviewed", { repo_id, number }, 30n);
   payBounty = (repo_id: number, issue: number, recipient: string) => this.call("pay_bounty", { repo_id, issue, recipient }, 100n);
   finalize = (repo_id: number, number: number) => this.call("finalize", { repo_id, number }, 150n);
+  resolveChallenge = (repo_id: number, number: number, verdict: Verdict, verdict_hash: string) =>
+    this.call("resolve_challenge", { repo_id, number, verdict, verdict_hash }, 200n);
 }
 
 /** 2_500_000 → "2.50" (USDC, 6 decimals) */

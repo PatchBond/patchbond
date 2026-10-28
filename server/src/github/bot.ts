@@ -15,17 +15,21 @@ const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 /** The slice of the chain the bot uses (tests pass a fake). */
 export type ChainPort = Pick<
   Chain,
-  "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize"
+  "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
 >;
 
 export class Bot {
   readonly app: App;
+  /** Challenges being re-judged right now (a slow tx must not start a second re-judge). */
+  private rejudging = new Set<string>();
 
   constructor(
     private cfg: Config,
     private chain: ChainPort,
     private store: Store,
     private inference: Inference,
+    /** Re-judges challenged verdicts; defaults to the same model. */
+    private strong: Inference = inference,
     private log = (msg: string, extra?: unknown) => console.log(`[bot] ${msg}`, extra ?? ""),
   ) {
     this.app = new App({
@@ -131,6 +135,17 @@ export class Bot {
       this.store.setState(s.repo_id, s.number, "settled");
       return;
     }
+    if (typeof d.status === "object" && "challenged" in d.status) {
+      const key = `${s.repo_id}/${s.number}`;
+      if (this.rejudging.has(key)) return;
+      this.rejudging.add(key);
+      try {
+        await this.rejudge(s, d.status.challenged.verdict as "refund" | "forfeit", d.status.challenged.challenger);
+      } finally {
+        this.rejudging.delete(key);
+      }
+      return;
+    }
     if (typeof d.status === "object" && "proposed" in d.status && Date.now() > d.status.proposed.deadline) {
       const verdict = d.status.proposed.verdict;
       await this.chain.finalize(s.repo_id, s.number);
@@ -203,6 +218,33 @@ export class Bot {
     }
     this.store.setState(s.repo_id, s.number, "judged", { verdict_id: record.id });
     this.log(`judged ${s.full_name}#${s.number}: ${v}`);
+  }
+
+  /**
+   * Someone staked against the proposed verdict: a stronger model judges the PR afresh, seeing both
+   * sides' statements as untrusted claims. needs_human resolves as refund (when in doubt, refund).
+   */
+  private async rejudge(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string) {
+    const gh = await this.app.getInstallationOctokit(s.installation_id);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    const repoOnChain = await this.chain.getRepo(s.repo_id);
+    const challenger = repoOnChain?.payout === challengerAccount ? "maintainer" : "contributor";
+    const input = await gatherPr(gh, { owner, repo, number: s.number }, {
+      threshold: (repoOnChain?.policy.forfeit_threshold_bps ?? 8500) / 10_000,
+      authorReputation: "new",
+    });
+    const statements = s.verdict_id ? this.store.appeals(s.verdict_id).map((a) => ({ from: a.author, note: a.note })) : [];
+    const record = await judge(input, this.strong, new Date(), { proposed, challenger, statements });
+    this.store.saveVerdict(record);
+    const verdict = record.final.verdict === "forfeit" ? "forfeit" : "refund";
+    await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash);
+    this.store.setState(s.repo_id, s.number, "settled", { verdict_id: record.id });
+    const overturned = verdict !== proposed;
+    await gh.rest.issues.createComment({
+      owner, repo, issue_number: s.number,
+      body: `${MARKER}\n### ${overturned ? "🔄 Challenge upheld — verdict overturned" : "⚖️ Challenge rejected — verdict stands"}\n\nThe ${challenger} staked to challenge the "${proposed}" verdict. A stronger model (\`${record.model}\`) re-judged the PR with both sides' statements and decided **${verdict}**.${overturned ? " The challenger's stake is returned." : ` The stake goes to the ${challenger === "contributor" ? "repository" : "contributor"}.`}\n\n${record.final.reasons.map((r) => `- ${r}`).join("\n")}\n\n<sub>[Signed record — verify it yourself](${this.cfg.webUrl}/v/${record.id})</sub>`,
+    });
+    this.log(`re-judged ${s.full_name}#${s.number}: ${proposed} → ${verdict}`);
   }
 
   /** A merged PR that fixes an issue with a bounty pays its author (slop funds the fix). */
