@@ -75,7 +75,8 @@ export function requestBody(model: string, repo: RepoContext, facts: Facts, c: C
   return JSON.stringify({
     model,
     temperature: 0,
-    max_tokens: 1_500,
+    // Reasoning models think first (~1.5k tokens here); leave room for the JSON answer after.
+    max_tokens: 4_000,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
