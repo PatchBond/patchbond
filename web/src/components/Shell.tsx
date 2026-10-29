@@ -36,13 +36,15 @@ export function Shell({ children }: { children: ReactNode }) {
               </span>
             </Link>
             <nav className="hidden items-center gap-1 text-sm text-muted-foreground sm:flex">
-              {[
-                ["/#how", "How it works"],
-                ["/#verdicts", "Verdicts"],
-              ].map(([href, label]) => (
-                <a key={href} href={href} className="rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink">
+              {(
+                [
+                  ["/how", "How it works"],
+                  ["/verdicts", "Verdicts"],
+                ] as const
+              ).map(([to, label]) => (
+                <NavLink key={to} to={to} className={({ isActive }) => `rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink ${isActive ? "text-ink" : ""}`}>
                   {label}
-                </a>
+                </NavLink>
               ))}
               <NavLink to="/agents" className={({ isActive }) => `rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink ${isActive ? "text-ink" : ""}`}>
                 Agents
@@ -71,16 +73,10 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           {/* Phones: the same links on a second row (the desktop nav and ⌘K button are hidden there). */}
           <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-2 text-sm text-muted-foreground sm:hidden">
-            {[
-              ["/#how", "How it works"],
-              ["/#verdicts", "Verdicts"],
-            ].map(([href, label]) => (
-              <a key={href} href={href} className="shrink-0 rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink">
-                {label}
-              </a>
-            ))}
             {(
               [
+                ["/how", "How it works"],
+                ["/verdicts", "Verdicts"],
                 ["/agents", "Agents"],
                 ["/dashboard", "Maintainers"],
               ] as const

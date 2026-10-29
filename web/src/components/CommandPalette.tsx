@@ -66,8 +66,11 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           <CommandItem onSelect={() => go("/agents")}>
             <Bot /> Agent passports
           </CommandItem>
-          <CommandItem onSelect={() => go("/#verdicts")}>
+          <CommandItem onSelect={() => go("/verdicts")}>
             <ScrollText /> Public verdicts
+          </CommandItem>
+          <CommandItem onSelect={() => go("/how")}>
+            <ScrollText /> How it works
           </CommandItem>
           {!wallet.accountId && (
             <CommandItem

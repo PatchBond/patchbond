@@ -128,7 +128,7 @@ const STEPS = [
   { icon: Scale, title: "Refund — or the repo is paid", body: "Real work: every cent back. Slop: 90% to the repo's vault, 10% to run PatchBond. Either side can challenge." },
 ];
 
-function HowItWorks() {
+export function HowItWorks() {
   return (
     <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-24">
       <Reveal>
@@ -159,7 +159,7 @@ function HowItWorks() {
   );
 }
 
-function Pricing() {
+export function Pricing() {
   const [open, setOpen] = useState(6);
   const [flooding, setFlooding] = useState(false);
   const stop = useRef<() => void>(() => {});
@@ -217,7 +217,7 @@ const MECHANISMS = [
   { icon: Bot, tag: "Know your agent", title: "Capped wallets and passports for coding agents", body: "Agents pay bonds with a function-call key from a budget whose daily cap the contract enforces. Each harness gets a public refund record." },
 ];
 
-function Mechanisms() {
+export function Mechanisms() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-24">
       <Reveal>
@@ -304,7 +304,7 @@ function TryTheJudge() {
 }
 
 function RecentVerdicts() {
-  const { data, loading } = useAsync(() => api.verdicts(12), []);
+  const { data, loading } = useAsync(() => api.verdicts(6), []);
   return (
     <section id="verdicts" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-24">
       <Reveal>
@@ -325,7 +325,7 @@ function RecentVerdicts() {
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{v.final.reasons[0]}</span>
                 <span className="flex items-center gap-1 text-xs text-faint">
-                  {v.mock ? "mock judge" : v.model}
+                  {v.model}
                   <ArrowRight className="size-3.5 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
                 </span>
               </Link>
@@ -333,11 +333,16 @@ function RecentVerdicts() {
           ))}
         </ul>
       </Panel>
+      <div className="mt-5 text-right">
+        <Link to="/verdicts" className="inline-flex items-center gap-1.5 text-sm text-brand hover:underline">
+          See all verdicts <ArrowRight className="size-4" />
+        </Link>
+      </div>
     </section>
   );
 }
 
-function Fairness() {
+export function Fairness() {
   const points = [
     ["Optional per repo", "Maintainers turn it on. Nobody is forced to pay to contribute anywhere."],
     ["Proven people pay $0", "Three refunds on two repos and the bond disappears — everywhere, because reputation lives on-chain."],
