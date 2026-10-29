@@ -37,12 +37,11 @@ const block = `<!-- live:start -->
 
 | | |
 |---|---|
-| Pull requests PatchBond has handled | **${stats.prs}** on ${stats.repos} repo${stats.repos === 1 ? "" : "s"} |
 | Bonds paid on-chain | **${usdc.deposits + near.deposits}** |
 | Refunded to real contributors | **${both(usdc.refunded, near.refunded)}** |
 | Forfeited to maintainers | **${both(usdc.forfeited, near.forfeited)}** |
 | Unpaid PRs closed after their 24 h notice | **${stats.by_state.closed_unpaid ?? 0}** |
-| TEE-signed verdicts | **${stats.verdicts_live}** · the contract trusts ${signers.length} NEAR AI key${signers.length === 1 ? "" : "s"} |
+| TEE-signed verdicts on the hosted service | **${stats.verdicts_live}** (PRs handled there: ${stats.prs}) · the contract trusts ${signers.length} NEAR AI key${signers.length === 1 ? "" : "s"} |
 
 <sub>${deployment.network} · contract [\`${deployment.contract}\`](https://${deployment.network === "testnet" ? "testnet." : ""}nearblocks.io/address/${deployment.contract}) · updated ${date} by [\`scripts/live-stats.ts\`](scripts/live-stats.ts) from the contract's own views and the hosted service</sub>
 <!-- live:end -->`;
