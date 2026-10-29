@@ -11,6 +11,10 @@ docker run -p 8787:8787 --env-file .env.production -v patchbond-data:/data patch
 
 ## 1. Settings
 
+**Railway shortcut:** the `patchbond` project already has its domain, volume and non-secret settings.
+Run `bash scripts/railway-secrets.sh` yourself — it copies the secrets below from your `.env` and the
+near-cli keychain into Railway (printing only their names) and deploys.
+
 Set these in the host's secret/environment settings. **Never commit them or bake them into the image.**
 `https://pb.example.com` stands for your public URL.
 
