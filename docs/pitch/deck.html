@@ -164,14 +164,14 @@
 <section class="slide" style="justify-content:center">
   <div class="glow" style="top:200px;left:600px"></div>
   <div class="eyebrow">Don't trust us — verify</div>
-  <h1 style="margin-top:24px;max-width:1500px">Every verdict is <span class="g">signed, public and checkable</span> in your browser.</h1>
+  <h1 style="margin-top:24px;max-width:1600px">Every verdict is <span class="g">signed and checkable</span> — in your browser <span class="g">and by the contract.</span></h1>
   <div class="row" style="margin-top:70px">
     <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">sha256(request) ✓</h3><p>The exact bytes sent to the model in NEAR AI Cloud's TEE.</p></div>
     <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">sha256(response) ✓</h3><p>The exact answer — nothing edited after the fact.</p></div>
     <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">signer ✓</h3><p>The enclave's key, recovered from the signature (EIP-191).</p></div>
-    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">on-chain hash ✓</h3><p>The hash settled with the money commits to all of it.</p></div>
+    <div class="card grow" style="border-color:rgba(34,197,94,.45)"><h3 class="mono g" style="font-size:28px;margin:0">contract ✓</h3><p>The contract itself recovers NEAR AI's signature (ecrecover). <b style="color:var(--ink)">No forfeit without it</b> — not even from our own server.</p></div>
   </div>
-  <div class="foot"><span>shared/src/verify.ts — same code in browser and server</span><span>8</span></div>
+  <div class="foot"><span>shared/src/verify.ts in the browser · contract/vault/src/tee.rs on-chain · keys from NEAR AI's attestation report</span><span>8</span></div>
 </section>
 
 <!-- 9. Fair to both sides -->
@@ -256,7 +256,7 @@
   <div class="eyebrow">Built on NEAR</div>
   <h2>Every piece is a NEAR primitive.</h2>
   <table style="margin-top:50px;font-size:28px">
-    <tr><td>NEAR AI Cloud</td><td>Live verifiable inference in a TEE (GLM-5.3-flash, Kimi K3); signatures checked in the browser</td></tr>
+    <tr><td>NEAR AI Cloud</td><td>Live verifiable inference in a TEE (GLM-5.3-flash, Kimi K3); signatures checked in the browser <b style="color:var(--ink)">and by the contract</b></td></tr>
     <tr><td>Rust contract + NEP-297</td><td>Bonds, curve, verdicts, challenges, vaults, budgets, reputation</td></tr>
     <tr><td>NEP-141 USDC & wNEAR</td><td>Bonds in USDC or NEAR — NEAR wrapped and paid in one signed transaction</td></tr>
     <tr><td>Function-call keys</td><td>Capped agent wallets that can only pay bonds</td></tr>
@@ -274,14 +274,14 @@
   <h2>Built, tested, and live.</h2>
   <div class="row" style="margin-top:46px">
     <div class="card grow"><div class="stat num g">62</div><p>real testnet transactions in one end-to-end run — every money path, gasless USDC, NEAR via the real wrap.testnet, an agent via MCP. All passed.</p></div>
-    <div class="card grow"><div class="stat num">140</div><p>automated tests: 47 contract (incl. a 50,000-case money property test and live-state upgrades), 93 TypeScript.</p></div>
+    <div class="card grow"><div class="stat num">152</div><p>automated tests: 53 contract (incl. a 50,000-case money property test, real NEAR AI signatures verified on-chain, live-state upgrades), 99 TypeScript.</p></div>
     <div class="card grow"><div class="stat num">0/15</div><p>good PRs forfeited by the <b style="color:var(--ink)">live TEE judge</b> on 30 real PRs. $0.00035 a verdict.</p></div>
   </div>
   <div class="row" style="margin-top:44px;flex-wrap:wrap;gap:14px">
     <span class="pill">✓ curve on-chain = curve in the app</span><span class="pill">✓ refund · 90/10 forfeit · void</span><span class="pill">✓ review tip earned / returned</span>
     <span class="pill">✓ slop funds the fix</span><span class="pill">✓ challenge won after a real window</span><span class="pill">✓ gasless bond: 0 NEAR spent</span>
     <span class="pill">✓ agent key can't escape its cap</span><span class="pill">✓ no USDC created or lost</span>
-    <span class="pill">✓ NEAR bond: wrap + pay in one tx</span><span class="pill">✓ a maintainer can't keep a bond alone</span><span class="pill">✓ live PR on a 122-contributor repo, judged in a TEE</span><span class="pill">✓ a stolen oracle key can't redirect a vault</span>
+    <span class="pill">✓ NEAR bond: wrap + pay in one tx</span><span class="pill">✓ a maintainer can't keep a bond alone</span><span class="pill">✓ live PR on a 122-contributor repo, judged in a TEE</span><span class="pill">✓ a stolen oracle key can't redirect a vault — or fake a forfeit</span>
   </div>
   <div class="foot"><span>docs/e2e/testnet-report.md — one explorer link per tx · threat model in SECURITY.md</span><span>14</span></div>
 </section>
