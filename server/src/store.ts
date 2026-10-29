@@ -103,6 +103,14 @@ export class Store {
     return row ? (JSON.parse(row.record) as VerdictRecord) : null;
   }
 
+  /** Aggregate activity for the public live-numbers block (no names, no amounts). */
+  stats(): { prs: number; by_state: Record<string, number>; repos: number; verdicts_live: number } {
+    const by = this.db.query<{ state: string; n: number }, []>("SELECT state, COUNT(*) AS n FROM submissions GROUP BY state").all();
+    const repos = this.db.query<{ n: number }, []>("SELECT COUNT(DISTINCT repo_id) AS n FROM submissions").get()?.n ?? 0;
+    const live = this.db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM verdicts WHERE json_extract(record, '$.mock') = 0").get()?.n ?? 0;
+    return { prs: by.reduce((a, r) => a + r.n, 0), by_state: Object.fromEntries(by.map((r) => [r.state, r.n])), repos, verdicts_live: live };
+  }
+
   /** Newest first. `liveOnly` leaves out records from the offline dev judge. */
   recentVerdicts(limit = 50, repoId?: number, liveOnly = false): VerdictRecord[] {
     const live = liveOnly ? "AND json_extract(record, '$.mock') = 0" : "";

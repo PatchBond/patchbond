@@ -46,6 +46,9 @@ app.get("/api/config", (c) =>
   }),
 );
 
+// Public, aggregate numbers for the README's live block and the home page.
+app.get("/api/stats", (c) => c.json({ ...store.stats(), network: cfg.deployment.network, contract: cfg.deployment.contract, judge: inference.model, at: new Date().toISOString() }));
+
 app.get("/api/verdicts", (c) => {
   const repo = c.req.query("repo");
   // With the live judge on, public lists show live (TEE-signed) verdicts only.

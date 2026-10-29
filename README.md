@@ -3,95 +3,106 @@
 </p>
 
 <p align="center">
-  <b>AI made sending free. PatchBond makes wasting a maintainer's time cost something — and pays the maintainer whose time was wasted.</b>
+  <b>AI made sending free. PatchBond makes wasting a maintainer's time cost something — and the AI judging it can't touch the money.</b>
 </p>
 
 <p align="center">
+  <a href="https://patchbond-production.up.railway.app"><img src="https://img.shields.io/badge/live%20demo-patchbond--production.up.railway.app-22C55E" alt="Live demo"></a>
   <a href="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml"><img src="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/NEAR-testnet%20live-22C55E" alt="NEAR testnet">
   <img src="https://img.shields.io/badge/NEAR%20AI-TEE%20judge%20live-22C55E" alt="NEAR AI judge live">
   <img src="https://img.shields.io/badge/license-MIT-ECEAE4" alt="MIT">
 </p>
 
 ---
 
-PatchBond puts a small **refundable bond** on unsolicited pull requests. A stranger opens a PR; PatchBond asks for a deposit in USDC or NEAR — each repo chooses. An **AI judge running in a TEE on NEAR AI Cloud** reviews it, using facts we compute (CI, functions that don't exist, duplicates, prompt injection). A real contribution gets **every cent back**. Slop is **forfeited to the repo's vault** in our NEAR contract. Every verdict is public, signed, and checkable in your browser.
+Strangers attach a small **refundable bond** to their pull request, in USDC or NEAR. An **AI judge in a TEE on NEAR AI Cloud** reviews it after CI. Real work gets **every cent back**; slop is **forfeited to the maintainers whose time it wasted**. The bond follows an on-chain price curve over the repo's queue — **EIP-1559 for open source**: a spam wave prices itself out, a quiet repo costs a newcomer cents. And the AI can't touch the money: **the contract only forfeits a bond if NEAR AI's enclave signed that verdict**, checked on-chain.
 
-It is a **market for maintainer attention — EIP-1559 for open source**: the bond follows an on-chain price curve over the repo's queue, so a spam wave prices itself out while a quiet repo costs a newcomer a few cents.
+<!-- live:start -->
+### Live now — [patchbond-production.up.railway.app](https://patchbond-production.up.railway.app)
+
+Run `bun scripts/live-stats.ts` to fill this block from the contract and the hosted service.
+<!-- live:end -->
 
 ![PatchBond home](docs/media/home.png)
 
-## Contents
-
-- [Why this exists](#why-this-exists) · [How it works](#how-it-works) · [What makes it different](#what-makes-it-different)
-- [Try it in 5 minutes](#try-it-in-5-minutes) — for judges and reviewers, from a clean clone
-- [What's real](#whats-real) — an honest built-vs-planned table
-- [Architecture](#architecture) · [NEAR features used](#near-features-used) · [Security model](#security-model)
-- [Testing](#testing) · [Judge accuracy](#judge-accuracy) · [Running your own](#running-your-own)
-- [Libraries and AI-assisted code](#libraries-and-ai-assisted-code) · [License](#license)
+**Contents:** [Why](#why-this-exists) · [How it works](#how-it-works) · [What's different](#what-makes-it-different) · [Why on-chain](#why-on-chain) · [Objections](#objections) · [Try it in 5 minutes](#try-it-in-5-minutes) · [What's real](#whats-real) · [Check our claims](#check-our-claims) · [Judge accuracy](#judge-accuracy) · [Security](#security-model) · [Architecture](#architecture) · [NEAR features](#near-features-used) · [Testing](#testing) · [Run your own](#running-your-own)
 
 ## Why this exists
 
-> I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), a security and formal-verification suite for Stellar Soroban, which **122 people have contributed to** ([contributors](https://github.com/HyperSafeD/Sanctifier/graphs/contributors)) through **571 pull requests** ([all PRs](https://github.com/HyperSafeD/Sanctifier/pulls?q=is%3Apr)). Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one of them costs a maintainer time to read, check and close — time taken from the people doing real work. AI is here to help open source, not to drown it. So I built PatchBond on NEAR.
+> I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), a security and formal-verification suite for Stellar Soroban, which **122 people have contributed to** ([contributors](https://github.com/HyperSafeD/Sanctifier/graphs/contributors)) through **571 pull requests** ([all PRs](https://github.com/HyperSafeD/Sanctifier/pulls?q=is%3Apr)). Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one costs a maintainer time to read, check and close. AI is here to help open source, not to drown it. So I built PatchBond on NEAR — and it now runs on Sanctifier.
 >
 > — the PatchBond team
 
-PatchBond answers each part of that pattern directly:
-
 | The pattern | What PatchBond does |
 |---|---|
-| Tens of PRs at once | **Attention pricing**: every extra open submission makes the next bond 12.5% more expensive — a flood prices itself out. |
-| PRs for issues assigned to someone else | **Assignment check**: a fact read from GitHub; repos that require assignment can treat it as forfeit evidence. |
-| "Claims he did what he didn't do" | **Claims vs diff**: every claim of work in the description is matched against the diff; claims with nothing behind them become evidence. |
+| Tens of PRs at once | **Attention pricing**: every extra open submission makes the next bond 12.5% more expensive. |
+| PRs for issues assigned to someone else | **Assignment check**, read from GitHub; repos can make it forfeit evidence. |
+| "Claims he did what he didn't do" | **Claims vs diff**: every claim of work in the description is matched against the diff. |
 | Maintainers paying for it all with their time | **Slop pays the maintainer**: forfeited bonds go to the repo's vault. |
 
-### The wider problem
-
-- A Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** (31% on large projects) — [Phoronix](https://www.phoronix.com/news/Linux-Foundation-25p-AI-Slop), [The Register](https://www.theregister.com/ai-and-ml/2026/10/21/ai-cuts-coding-time-but-its-also-filling-open-sources-inbox-with-crap/5304389).
-- curl moved low/medium-severity security reports to public view because AI-generated reports nearly overwhelmed its team; GitHub is adding options to limit or turn off pull requests.
-- The sender spends ten seconds. The maintainer spends an hour. Nothing connects the two — until the sender has skin in the game.
+The wider problem: a Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** ([Phoronix](https://www.phoronix.com/news/Linux-Foundation-25p-AI-Slop), [The Register](https://www.theregister.com/ai-and-ml/2026/10/21/ai-cuts-coding-time-but-its-also-filling-open-sources-inbox-with-crap/5304389)); curl moved low-severity reports public after AI reports nearly overwhelmed it. The sender spends ten seconds, the maintainer an hour — until the sender has skin in the game.
 
 ## How it works
 
 ```
- Stranger opens PR ──► PatchBond comment: "refundable $2.25 deposit" (price follows the queue)
-        │
+ Stranger opens PR ──► bot comment: "refundable $0.78 deposit — pay within 24 h" (price follows the queue)
+        │                    └─ unpaid after 24 h → closed (paying later reopens it)
         ▼
- Pays with a NEAR wallet (USDC, or NEAR wrapped in the same tx) ──► bond held by the contract, not a company
+ Pays from a NEAR wallet: USDC (gasless) or NEAR (wrapped in the same tx) ──► held by the contract
         │
         ▼
  Repo's CI finishes ──► facts computed ──► verifiable model in a TEE ──► signed verdict
-        │
-        ├── refund  ──► every cent back (+ builds on-chain reputation; proven people pay $0)
-        ├── forfeit ──► 90% to the repo's vault, 10% to run PatchBond
-        └── needs_human ──► the maintainer decides (no decision in 14 days → refunded)
-        │
+        ├── refund      ──► every cent back, on-chain reputation (proven contributors pay $0)
+        ├── forfeit     ──► the contract checks NEAR AI's signature ──► 90% repo vault · 10% PatchBond
+        └── needs_human ──► the maintainer decides (none in 14 days → refunded)
         ▼
- Verdict is proposed on-chain ──► 72 h challenge window ──► finalized (anyone can)
+ Proposed on-chain ──► 72 h challenge window (a stronger model re-judges) ──► finalized
 ```
 
-Maintainers, collaborators and proven contributors (≥3 refunds on ≥2 repos, no recent forfeit) are never asked to pay. **When in doubt, PatchBond refunds**: a forfeit needs high confidence *and* concrete evidence, and clean CI plus real code can't be forfeited by the model alone.
+Maintainers, collaborators and proven contributors (≥3 refunds on ≥2 repos, no recent forfeit) never pay. **When in doubt, PatchBond refunds.**
 
 ## What makes it different
 
-Free slop *detectors* exist. PatchBond is not a code reviewer and detection isn't the edge — the mechanisms are. All of them are enforced by one NEAR contract ([`contract/vault/src`](contract/vault/src)):
+Free slop *detectors* exist; PatchBond isn't a code reviewer. The edge is the mechanism — all enforced by one NEAR contract ([`contract/vault/src`](contract/vault/src)):
 
 | Mechanism | What it does | Where |
 |---|---|---|
-| **Attention pricing** | `bond = clamp(min, max, base × 1.125^(open − capacity)) × reputation`, computed on-chain from unsettled deposits — no oracle. | [`curve.rs`](contract/vault/src/curve.rs) |
-| **Optimistic AI verdicts** | A cheap verifiable model decides; either side stakes the bond to challenge; a stronger model re-judges; the loser's stake pays the winner. The maintainer can refund at once, but their forfeit is a 48 h proposal the contributor disputes for free (penalty from the vault if overturned). | [`settle.rs`](contract/vault/src/settle.rs) |
-| **Priority lane** | An optional review tip goes to the repo **only if a maintainer reviews within the promised window** — otherwise it's refunded. Pays for attention, never for submitting. | [`settle.rs`](contract/vault/src/settle.rs) |
-| **Slop funds the fix** | A forfeited PR that claimed to fix issue #N becomes a bounty on #N, paid automatically to whoever's real fix is merged. | [`settle.rs`](contract/vault/src/settle.rs) |
-| **Agent passports** | Coding agents pay from a capped in-contract budget with a **function-call key** that can call one method. They declare operator, harness and model; every harness gets a public refund/forfeit record. | [`budget.rs`](contract/vault/src/budget.rs) |
-| **Verifiable verdicts, enforced on-chain** | We keep the exact request/response bytes and NEAR AI's TEE signature; the verdict page recomputes both hashes and recovers the signer **in your browser**. And the **contract itself** checks it: a forfeit is accepted only with NEAR AI's signed response — the contract recomputes the hash, recovers the signer with `ecrecover`, requires a registered key from NEAR AI's attestation report — a model's enclave key, or the gateway key **bound to one verifiable model** (the contract reads the model from the signed request, so a non-TEE model served by the same gateway never counts) — and reads the model's own verdict, confidence and evidence out of the signed bytes. Our server can't invent a forfeit. | [`tee.rs`](contract/vault/src/tee.rs), [`shared/src/verify.ts`](shared/src/verify.ts) |
+| **Attention pricing** | `bond = clamp(min, max, base × 1.125^(open − capacity)) × reputation`, computed on-chain from unsettled deposits. | [`curve.rs`](contract/vault/src/curve.rs) |
+| **Verdicts the contract enforces** | A forfeit needs NEAR AI's TEE-signed response: the contract recomputes its hash, recovers the signer with `ecrecover`, requires a key from NEAR AI's attestation report, and reads the model's own verdict, confidence and evidence. **Our own server can't invent a forfeit.** | [`tee.rs`](contract/vault/src/tee.rs) |
+| **Optimistic verdicts** | A cheap verifiable model decides; either side can stake to challenge; a stronger model re-judges; the loser's stake pays the winner. | [`settle.rs`](contract/vault/src/settle.rs) |
+| **Fair to contributors** | A maintainer refunds instantly but can only *propose* a forfeit (48 h, disputable for free); if a re-judge overturns it, the contributor gets a penalty from the vault. Every override is public. | [`settle.rs`](contract/vault/src/settle.rs) |
+| **Malicious code** | A deterministic scan — Trojan Source Unicode, decoded-payload `exec`, `curl \| sh`, secret exfiltration, poisoned workflows and lockfiles — proposes a forfeit even if the model missed it. | [`malice.ts`](server/src/judge/malice.ts) |
+| **Slop funds the fix** | A forfeited PR that claimed to fix issue #N becomes a bounty on #N, paid to whoever's real fix is merged. | [`settle.rs`](contract/vault/src/settle.rs) |
+| **Agent passports** | Coding agents pay from a capped budget with a **function-call key** that can call one method, declaring operator, harness and model; every harness gets a public record. | [`budget.rs`](contract/vault/src/budget.rs) |
 
-<p align="center"><img src="docs/media/verdict.png" alt="A public verdict with in-browser verification" width="820"></p>
+<p align="center"><img src="docs/media/verdict.png" alt="A live TEE-signed verdict, verified in the browser" width="820"></p>
+
+## Why on-chain
+
+Why not just take card deposits? Because the payers are increasingly agents, and the judge is an AI:
+
+- **Agents can't hold credit cards — they can hold capped keys.** A function-call key pays bonds and nothing else, under a daily cap the contract enforces.
+- **No custodian.** Bonds sit in a contract; only the repo's linked payout account can withdraw. We can't freeze, seize or redirect them — not even with our own keys.
+- **The AI can't touch the money.** The contract checks NEAR AI's TEE signature before any forfeit, so a compromised server can only refund.
+- **Reputation is portable.** A contributor's refunds and forfeits are public on-chain, readable by any repo or tool — proven people pay $0 everywhere.
+- **Global by default.** Anyone with a NEAR wallet pays in USDC (gasless) or NEAR; maintainers withdraw to NEAR, a DAO, or another chain via NEAR Intents.
+
+## Objections
+
+| Objection | Answer |
+|---|---|
+| "A bond scares off newcomers." | Maintainers, collaborators and proven contributors pay $0. A quiet repo charges cents, real work is refunded in full automatically, the 24 h deadline is announced up front, and every repo can turn bonds or auto-close off. |
+| "The judge only flags 8 of 15 slop PRs." | Detection isn't the product — the bond is. A spammer must pay *before* any judgement, unpaid PRs close themselves, and a flood raises the price for everyone in it. The judge's job is never to take a good contributor's money: **0 of 15** good PRs forfeited. |
+| "A rich spammer just pays." | Then the maintainer is paid for their time — that's the point. Each forfeit multiplies that account's next bond (×2–×4) and is public on-chain. |
+| "Can PatchBond or the maintainer steal deposits?" | No. Only the linked payout account withdraws; our oracle can't forfeit without NEAR AI's signature; a maintainer's forfeit is a free-to-dispute proposal with a penalty if wrong. |
+| "Can your server feed the model false facts?" | Every verdict publishes the exact request — the diff, CI results and every computed fact — so anyone can check them against GitHub, and any verdict can be challenged. |
+| "Isn't this pay-to-contribute, like tea.xyz?" | The opposite: nobody is ever paid for submitting. Spam *costs* money instead of earning it. No token. |
 
 ## Try it in 5 minutes
 
-Every step below works from a clean clone on macOS or Linux. Nothing needs a wallet until step 5.
+**Fastest:** open the [live demo](https://patchbond-production.up.railway.app), press ⌘K, paste any public PR URL, then **Verify signature** on the verdict.
 
-**Prerequisites:** [Bun](https://bun.sh) ≥ 1.4, Rust stable with `wasm32-unknown-unknown`, [`cargo-near`](https://github.com/near/cargo-near) ≥ 0.22. Optional: [`near-cli-rs`](https://github.com/near/near-cli-rs), the `gh` CLI (raises GitHub rate limits automatically).
+From a clean clone (macOS or Linux). **Prerequisites:** [Bun](https://bun.sh) ≥ 1.4, Rust stable with `wasm32-unknown-unknown`, [`cargo-near`](https://github.com/near/cargo-near) ≥ 0.22; optionally `near-cli-rs` and `gh`.
 
 ```bash
 git clone https://github.com/PatchBond/patchbond && cd patchbond
@@ -101,52 +112,66 @@ cp .env.example .env          # testnet by default; set NEARAI_API_KEY + JUDGE_M
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **99 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
-| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **49 contract tests pass**: 11 unit (incl. a 50,000-case property test of the money split) + 38 on a local NEAR sandbox with real token transfers (every money path in USDC and in NEAR, challenges, maintainer safeguards, a real function-call key, link-once, pause, currency switching, TEE-signature proofs incl. genuine NEAR AI model-enclave and gateway signatures). Four more upgrade tests replay live state from each older build (see [`tests/migrate.rs`](contract/vault/tests/migrate.rs)). |
-| 3 | `bun run --cwd server judge-pr https://github.com/tj/commander.js/pull/2637` | A **refund** with its reasons, the facts, and `"verifies": true`. Then `…/OWASP/Nettacker/pull/1787` → **needs_human** (CI is failing, so a refund isn't automatic). With a NEAR AI key the verdict is signed in a TEE (~$0.0004); without one the same pipeline runs offline with a local key, so you can reproduce everything for free. |
-| 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
-| 5 | On testnet, with test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: open <http://localhost:5317/pay/1/1?repo=PatchBond/playground&user=YOUR_GITHUB_LOGIN> | Pay a real bond into the live contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet). The page shows the live quote from the on-chain curve. For a repo that takes **NEAR**, open `/pay/2/1?repo=PatchBond/playground-near&user=…` — the wallet wraps and pays in one transaction. |
-| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet parent account; see [`server/e2e/testnet.ts`](server/e2e/testnet.ts)) | The full money flow on **real testnet**: 62 transactions — including a gasless bond through the relayer, an agent paying via the MCP server, and NEAR bonds wrapped and paid in one transaction through the real `wrap.testnet` — then every account is deleted. Last report: [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md) — one explorer link per transaction. |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **99 TypeScript tests pass** — judge facts and rules, the malicious-code scan, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 linking, the MCP server over real stdio. |
+| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **49 contract tests pass** on a local NEAR sandbox with real token transfers — every money path in USDC and NEAR, challenges, maintainer safeguards, a real function-call key, and TEE proofs with **genuine NEAR AI signatures**. |
+| 3 | `bun run --cwd server judge-pr https://github.com/tj/commander.js/pull/2637` | A **refund** with reasons, facts and `"verifies": true`; `…/OWASP/Nettacker/pull/1787` → **needs_human** (failing CI). With a NEAR AI key it's TEE-signed (~$0.0004); without one the same pipeline runs offline with a local key. |
+| 4 | `bun run dev`, open <http://localhost:5317> | Drag the bond curve, **Simulate a spam wave**, ⌘K → judge a PR → **Verify signature** in the browser. |
+| 5 | With test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: `/pay/1/1?repo=PatchBond/playground&user=YOUR_LOGIN` (or `/pay/2/1?repo=PatchBond/playground-near&user=…` for NEAR) | Pay a real bond into [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) at the live on-chain quote. |
+| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet account) | **62 real testnet transactions** — every money path, a gasless bond, an agent via MCP, NEAR via the real `wrap.testnet` — then every account is deleted. [Last report](docs/e2e/testnet-report.md), one explorer link per transaction. |
 
-### For coding agents (MCP)
-
-```bash
-claude mcp add patchbond -e PATCHBOND_API=http://localhost:8787 -- bun "$PWD/mcp/src/index.ts"
-```
-
-Read-only works with no wallet (`patchbond_policy`, `patchbond_preflight`, `patchbond_status`, `patchbond_reputation`). To pay bonds, add `PATCHBOND_AGENT_ACCOUNT`, `PATCHBOND_AGENT_KEY` (a function-call key limited to `deposit_from_budget`) and `PATCHBOND_OPERATOR`. **The server refuses to start with a full-access key.** Setup steps are on the app's **Agents** page.
-
-| Tool | Does |
-|---|---|
-| `patchbond_policy(repo)` | Does the repo use PatchBond, what's the bond right now, am I exempt? |
-| `patchbond_preflight(pr_url)` | **Free**: the judge's deterministic checks on your PR and the likely verdict, before paying. |
-| `patchbond_deposit(pr_url)` | Pays from your capped budget with your function-call key; records your passport. |
-| `patchbond_status(pr_url)` | Bond state (held / proposed / challenged / settled) and the verdict with reasons. |
-| `patchbond_budget()` · `patchbond_reputation()` · `patchbond_appeal()` | Budget left today; on-chain reputation and your harness's record; attach a note to a verdict. |
+**Coding agents (MCP):** `claude mcp add patchbond -e PATCHBOND_API=https://patchbond-production.up.railway.app -- bun "$PWD/mcp/src/index.ts"`. Read-only tools work with no wallet (`patchbond_policy`, free `patchbond_preflight`, `patchbond_status`, `patchbond_reputation`); `patchbond_deposit` pays with a function-call key limited to `deposit_from_budget` — **the server refuses to start with a full-access key**. Setup is on the app's **Agents** page.
 
 ## What's real
 
-Honest status on 2026-10-29. Testnet is the reproduce-it-yourself path; the final demo runs on mainnet.
+Honest status on 2026-10-29. Testnet is the reproduce-it-yourself path; mainnet follows with the team's go-ahead.
 
 | Part | Status |
 |---|---|
-| Vault contract: bonds **in USDC or NEAR (per repo)**, curve, refund/forfeit 90/10, void, tips, bounties, withdraw, challenges, agent budgets, reputation, NEP-297 events, link-once + hand-over, pause, state migration | ✅ Built, 53 tests, **live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), full e2e on testnet |
-| AI judge: facts (CI, phantom vs unresolved symbols, duplicates, linked issue, **issue assignment**, **claims vs diff**, injection), prompt, server safety rules, record + verification | ✅ Built and tested; 0/15 good PRs forfeited by the real model on the labelled set |
-| NEAR AI Cloud verifiable model (`z-ai/glm-5.3-flash`) | ✅ **Live**: real TEE-signed verdicts that verify in the browser; $0.00035 per verdict; low reasoning effort (NEAR AI caps output at 4k tokens) |
-| GitHub App bot: pay-link comment, check runs, deposit watch, judge after CI, settle, finalize, review → tip, merge → bounty, 14-day refund | ✅ Built, 8 scenario tests against a fake GitHub; live App being set up |
-| Web app: home, pay, verdict with in-browser verification, repo, agents, ⌘K | ✅ Built |
-| MCP server for agents (7 tools, key safety check) | ✅ Built, paid a real bond on testnet in the e2e |
-| Maintainer dashboard: GitHub sign-in, NEP-413 wallet proof → `link_repo`, withdraw, bond-policy editor with live price preview, needs-human queue | ✅ Built, 6 tests (forged signature, wrong account, function-call key, replay, non-admin, CSRF) |
-| Re-judging challenges with a stronger model (Kimi K3) seeing both sides' statements, then `resolve_challenge` | ✅ Built and tested; `moonshotai/kimi-k3` (verifiable), ~$0.04 per re-judge |
-| Maintainer safeguards: forfeits are disputable 48 h proposals, free disputes, escrowed penalty, public maintainer record | ✅ Built, 4 sandbox tests, live on testnet |
-| Malicious-code scan (16 rules, high/medium) feeding the judge | ✅ Built, 19 tests, 0 false positives on the eval set |
-| Unpaid PRs cost maintainers nothing: `patchbond: awaiting deposit` / `deposit paid` labels, unpaid PRs **closed after 24 h** — the deadline is announced in the bot's first comment and on the pay page, paying later reopens the PR, repos can change it or turn it off with `close_unpaid_after_hours` in `.github/patchbond.yml`, free GitHub-email @mention when a deposit lands, in-app activity feed | ✅ Built and tested against a fake GitHub |
-| Payout to another chain via NEAR Intents 1Click (Base, Arbitrum, Ethereum, Solana) | ✅ Live **dry-run quotes** from the real 1Click API in the dashboard (Intents has no testnet); the mainnet withdraw-and-bridge runs only with the team's go-ahead |
-| Payout to a Sputnik DAO / Trezu treasury | ✅ `set_payout` hands a repo to a DAO account, which then withdraws by proposal |
-| Gasless contributors (NEP-366): the wallet signs a delegate action, our relayer pays the gas; the relayer only forwards bond/challenge payments into PatchBond | ✅ Built; on the pay page by default (Meteor, Intear, HOT); proven on testnet — the contributor spent 0 yoctoNEAR |
-| On-chain verification of NEAR AI's TEE signature (`ecrecover`) before any oracle forfeit | ✅ Built, 4 sandbox tests incl. genuine NEAR AI model-enclave and gateway signatures; **live on testnet** (`get_tee_signers`) |
-| Sealed security reports (judged in the TEE, stored encrypted to maintainers) | 🧪 Stretch, not built |
-| Bank/card payouts, GitLab, a token | ❌ Out of scope. **No token, ever. Nobody is paid for submitting.** |
+| Vault contract: USDC or NEAR bonds per repo, curve, refund/forfeit, void, tips, bounties, challenges, maintainer safeguards, agent budgets, reputation, NEP-297 events, link-once, pause, upgrades | ✅ **Live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), 53 tests, full e2e |
+| On-chain check of NEAR AI's TEE signature before any forfeit | ✅ **Live on testnet** with NEAR AI's GLM enclave key and the gateway key bound to Kimi K3 (`get_tee_signers`) |
+| AI judge on NEAR AI Cloud (`z-ai/glm-5.3-flash`, re-judges by `moonshotai/kimi-k3`) | ✅ **Live**, TEE-signed, $0.00035 a verdict; 0/15 good PRs forfeited |
+| GitHub App bot: deposit comment + 24 h deadline, labels, check runs, deposit watch, judge after CI, settle, @mention on payment, review → tip, merge → bounty | ✅ **Live** as the [`patchbond` App](https://github.com/apps/patchbond) on Sanctifier — first real PR [#1972](https://github.com/HyperSafeD/Sanctifier/pull/1972) went comment → bond → verdict → settlement |
+| Web app: pay, verdicts with in-browser verification, maintainer dashboard (sign-in, NEP-413 linking, withdraw, policy, activity), agents, ⌘K | ✅ **Live** at the demo URL |
+| MCP server for agents (7 tools) | ✅ Paid a real bond on testnet in the e2e |
+| Gasless bonds (NEP-366 relayer) | ✅ Proven on testnet — the contributor spent 0 NEAR |
+| Payout to another chain via NEAR Intents 1Click | ✅ Live dry-run quotes (Intents has no testnet); the real bridge runs on mainnet |
+| Payout to a Sputnik DAO / Trezu treasury (`set_payout`) | ✅ Built |
+| Sealed security reports | 🧪 Not built |
+| A token, or paying anyone for submitting | ❌ Never |
+
+## Check our claims
+
+| Claim | Check it |
+|---|---|
+| The judge models exist and are verifiable | NEAR AI's public model list: <https://cloud-api.near.ai/v1/model/list> (`metadata.verifiable: true`) |
+| The contract only forfeits on NEAR AI's signature | Call `get_tee_signers` on [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) and compare with `signing_address` in NEAR AI's attestation report (`GET /v1/attestation/report?model=…`) |
+| A verdict wasn't edited | Any verdict on the [live demo](https://patchbond-production.up.railway.app) → **Verify signature** (runs in your browser) |
+| The facts given to the model are true | Each verdict publishes the exact request bytes — diff, CI results, every computed fact — to compare with the PR on GitHub |
+| Money moved on-chain | [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md): 62 transactions, one explorer link each |
+| Built during the hackathon | First commit 2026-10-28 (window: 2026-10-19 → 11-14); see the commit history |
+
+## Judge accuracy
+
+On 30 real PRs ([`docs/eval/candidates.json`](docs/eval/candidates.json): slop = closed PRs maintainers labelled AI slop; good = authors' first merged PRs). `bun run --cwd server eval`.
+
+| Judge | Good PRs forfeited | Good PRs refunded automatically | Slop not waved through (forfeit or to a human) | Invalid answers | Cost / verdict |
+|---|---|---|---|---|---|
+| **NEAR AI `glm-5.3-flash`** (TEE-signed) | **0 / 15** | **14 / 15** | **8 / 15** | 0 | **$0.00035** |
+| Facts layer alone (no model) | 0 / 15 | 13 / 15 | 3 / 15 | — | free |
+
+A refund is automatic only when clear-cut (CI passing, model ≥ 80% sure); doubtful PRs go to the maintainer and are refunded after 14 days if nobody decides. Honest limits: 30 PRs is small and the 0.8 threshold was chosen on it. Results: [`results-z-ai-glm-5-3-flash.json`](docs/eval/results-z-ai-glm-5-3-flash.json), [`results-facts-only.json`](docs/eval/results-facts-only.json).
+
+## Security model
+
+Full threat model: **[SECURITY.md](SECURITY.md)**.
+
+- **Our server can't invent a forfeit** — the contract requires NEAR AI's TEE signature on it (a model's enclave key, or the gateway key bound to one verifiable model, read from the signed request). A stolen oracle key can only refund ([tests](contract/vault/tests/tee_proofs.rs), incl. genuine NEAR AI signatures).
+- **Nobody takes a vault** except its linked payout account — not the owner, not the oracle; a stolen oracle key can't relink a linked repo.
+- **Maintainers can't keep a bond alone** — 48 h proposal, free dispute, re-judge, penalty if overturned, public record ([tests](contract/vault/tests/maintainer_safeguards.rs)).
+- **Every payout has a callback** that books money back on failure; book-keeping precedes transfers, so nothing is paid twice.
+- **Agents hold only a function-call key**; the contract enforces the cap; the MCP server refuses full-access keys.
+- **Prompt injection** is fenced as untrusted data and is itself evidence; output must match a strict schema. **The model can't forfeit alone**: confidence ≥ threshold, evidence, and a hard fact are all required.
+- **Webhooks are HMAC-verified; repo linking** needs GitHub admin rights plus a NEP-413 signature from a full-access key; OAuth is CSRF-protected ([tests](server/test/maintainers.test.ts)).
 
 ## Architecture
 
@@ -156,120 +181,55 @@ flowchart LR
     PR[Pull request] -->|webhook| BOT
     CI[Repo CI] -.check runs.-> BOT
   end
-  subgraph Server["server/ (Bun)"]
-    BOT[GitHub App bot] --> FACTS[Facts: CI, symbols, duplicates, injection]
+  subgraph Server["server/ (Bun) — also serves web/"]
+    BOT[GitHub App bot] --> FACTS[Facts + malicious-code scan]
     FACTS --> JUDGE[Judge + safety rules]
     JUDGE -->|exact bytes| NEARAI[(NEAR AI Cloud<br/>TEE model)]
     NEARAI -->|signature| JUDGE
-    JUDGE --> STORE[(Verdict records)]
   end
   subgraph NEAR["NEAR (contract/)"]
-    VAULT[PatchBond vault]
-    USDC[(USDC NEP-141)]
+    VAULT[PatchBond vault<br/>checks TEE signature]
+    TOK[(USDC · wNEAR)]
   end
-  WEB["web/ (React)"] -->|ft_transfer_call| USDC --> VAULT
-  BOT -->|oracle: settle, link, mark_reviewed| VAULT
-  WEB -->|verify in browser| STORE
+  WEB["web/ (React)"] -->|ft_transfer_call| TOK --> VAULT
+  BOT -->|settle + TEE proof| VAULT
   AGENT["Coding agent"] -->|MCP| MCP["mcp/"] -->|function-call key| VAULT
 ```
 
-| Folder | What | Tech |
-|---|---|---|
-| [`contract/`](contract) | The vault (+ a test-only NEP-141 token) | Rust, near-sdk 5.30, cargo-near, near-workspaces |
-| [`server/`](server) | GitHub App bot, judge, verdict API, CLI tools, testnet e2e | Bun, Hono, Octokit, near-api-js 7 |
-| [`web/`](web) | Pay, verdicts with in-browser verification, maintainer dashboard, repo and agent pages | React 19, Vite, Tailwind 4, shadcn/ui, Motion, NEAR Connect |
-| [`mcp/`](mcp) | MCP server for coding agents | `@modelcontextprotocol/sdk` |
-| [`shared/`](shared) | Verdict schema, verification, the bond curve (identical to the contract's) | TypeScript, viem, zod |
-
-The trust boundary is stated plainly: the contract trusts our **oracle** account for GitHub facts (who is admin, PR state, CI), because a contract can't read GitHub. The **AI verdict itself is independently verifiable**, every forfeit is challengeable with a stake, and the oracle can't move vault funds.
+`contract/` Rust (near-sdk 5.30, near-workspaces) · `server/` Bun, Hono, Octokit, near-api-js 7 · `web/` React 19, Vite, Tailwind 4, shadcn/ui, Motion, NEAR Connect · `mcp/` MCP TypeScript SDK · `shared/` verdict schema, verification and the bond curve (identical to the contract's).
 
 ## NEAR features used
 
 | Feature | Where |
 |---|---|
-| Rust smart contract (near-sdk 5), NEP-297 events | [`contract/vault/src/lib.rs`](contract/vault/src/lib.rs), [`events.rs`](contract/vault/src/events.rs) |
-| NEP-141 USDC + `ft_transfer_call` / `ft_on_transfer` (bonds, challenges, budgets) | [`deposit.rs`](contract/vault/src/deposit.rs), [`web/src/pages/Pay.tsx`](web/src/pages/Pay.tsx) |
-| **NEAR bonds via wNEAR** — a repo can price bonds in NEAR; the contributor's wallet registers, wraps and pays in **one transaction** (three actions to `wrap.near`); maintainers withdraw and unwrap | [`deposit.rs`](contract/vault/src/deposit.rs), [`lib.rs` `set_currency`](contract/vault/src/lib.rs), [`Pay.tsx`](web/src/pages/Pay.tsx), [`Dashboard.tsx`](web/src/pages/Dashboard.tsx) |
-| Cross-contract calls with callbacks (every payout books money back on failure) | [`payout.rs`](contract/vault/src/payout.rs) |
-| **Function Call access keys** as capped agent wallets (method-limited; can't attach deposits) | [`budget.rs`](contract/vault/src/budget.rs), [`mcp/src/client.ts`](mcp/src/client.ts) |
-| **NEAR AI Cloud** verifiable inference + TEE signatures | [`server/src/judge/nearai.ts`](server/src/judge/nearai.ts), [`shared/src/verify.ts`](shared/src/verify.ts) |
-| NEAR Connect wallet selector (testnet-capable wallets only on testnet) | [`web/src/lib/wallet.tsx`](web/src/lib/wallet.tsx) |
-| Named accounts / sub-accounts (contract, oracle, throwaway e2e stacks) | [`deploy/testnet.json`](deploy/testnet.json), [`server/e2e/testnet.ts`](server/e2e/testnet.ts) |
-| NEAR Intents 1Click (cross-chain payout quotes) | [`server/src/intents.ts`](server/src/intents.ts), dashboard → Vault |
-| Sputnik DAO / Trezu as payout accounts (`set_payout`) | [`lib.rs`](contract/vault/src/lib.rs) |
-| **Meta transactions (NEP-366)** — gasless bonds through our relayer | [`server/src/relayer.ts`](server/src/relayer.ts), [`web/src/lib/wallet.tsx`](web/src/lib/wallet.tsx) |
-
-## Security model
-
-Full threat model, key powers and known limits: **[SECURITY.md](SECURITY.md)**.
-
-
-- **A maintainer can't take a contributor's bond on their own say-so.** Refunds are instant, but a maintainer's forfeit is only a **48-hour proposal** (fixed in the contract, not the repo's policy) that the contributor can **dispute for free**. Then only a stronger model decides, not the maintainer, and if it overturns the forfeit, **one bond escrowed from the maintainer's vault goes to the contributor**. Every maintainer forfeit, dispute and overturn is public on the repo page and on the pay page, before anyone pays ([tests](contract/vault/tests/maintainer_safeguards.rs)).
-- **Malicious code is caught by a deterministic scan, not by hoping the model notices** ([`malice.ts`](server/src/judge/malice.ts)): Trojan Source bidi/zero-width characters, executing decoded payloads, `curl | sh`, reverse shells, miners, `rm -rf /`, secrets sent over the network, install hooks that download code, `pull_request_target` workflows, lockfiles resolving outside the registry. A high finding proposes a forfeit (still challengeable); a medium one sends the PR to a human. Tests, fixtures and docs are skipped, and the scan raised **zero findings across the 30 real PRs** in the eval set.
-- **Nobody can take a repo's vault** except its linked payout account — not the contract owner, not the oracle; a stolen oracle key can't even relink a linked repo ([tests](contract/vault/tests/money_paths.rs)).
-- **Every outgoing transfer has a callback** that books the money back (vault, treasury, budget or the receiver's claimable balance) if the transfer fails. Book-keeping happens before transfers, so nothing can be paid twice.
-- **Agents hold only a function-call key** limited to `deposit_from_budget`; the contract enforces the daily cap and the budget. The MCP server checks the key on-chain and refuses full-access keys. On testnet, the e2e proves the key can't call the token or any other method.
-- **Prompt injection**: contributor text is fenced as untrusted data, our tags are neutralised, injection attempts are themselves evidence, and the output must match a strict schema.
-- **Our own server can't invent a forfeit**: once NEAR AI's attested enclave key is registered (it is, on testnet), the contract accepts an oracle forfeit only with the TEE-signed response saying `forfeit`, at or above the repo's confidence threshold, with evidence — verified on-chain with `ecrecover` ([tests](contract/vault/tests/tee_proofs.rs), including a genuine NEAR AI signature). A stolen oracle key can only *refund*.
-- **The model can't forfeit on its own**: a forfeit needs confidence ≥ the repo's threshold, at least one concrete piece of evidence, and a hard fact (failing CI, phantom code, a duplicate or injection). A failed lookup never becomes an accusation. Library calls the repo doesn't define are "unresolved", never "phantom".
-- **Webhooks are HMAC-verified**; forged deliveries are rejected ([test](server/test/bot.test.ts)). Secrets live in `.env` (git-ignored); keys never leave the machine.
-- **Repo linking** needs both a GitHub sign-in proving admin rights (checked again at the moment of linking) and a NEP-413 signature from a **full-access** key of the payout account; challenges are single-use and expire in 10 minutes; the OAuth flow is CSRF-protected ([tests](server/test/maintainers.test.ts)).
-- **Griefing**: a deposit paid for someone else's PR is voided (full refund, no reputation effect) and the real author can still pay.
+| **NEAR AI Cloud** verifiable inference + TEE signatures, verified in the browser **and on-chain** (`env::ecrecover`) | [`nearai.ts`](server/src/judge/nearai.ts), [`verify.ts`](shared/src/verify.ts), [`tee.rs`](contract/vault/src/tee.rs) |
+| Rust contract, NEP-297 events, cross-contract calls with callbacks | [`lib.rs`](contract/vault/src/lib.rs), [`events.rs`](contract/vault/src/events.rs), [`payout.rs`](contract/vault/src/payout.rs) |
+| NEP-141 USDC + `ft_transfer_call` / `ft_on_transfer` | [`deposit.rs`](contract/vault/src/deposit.rs), [`Pay.tsx`](web/src/pages/Pay.tsx) |
+| **wNEAR**: register + wrap + pay in one transaction; withdraw + unwrap | [`deposit.rs`](contract/vault/src/deposit.rs), [`Pay.tsx`](web/src/pages/Pay.tsx), [`Dashboard.tsx`](web/src/pages/Dashboard.tsx) |
+| **Function Call access keys** as capped agent wallets | [`budget.rs`](contract/vault/src/budget.rs), [`mcp/src/client.ts`](mcp/src/client.ts) |
+| **Meta transactions (NEP-366)** — gasless bonds | [`relayer.ts`](server/src/relayer.ts), [`wallet.tsx`](web/src/lib/wallet.tsx) |
+| NEP-413 signed messages (maintainers prove wallet ownership) | [`maintainers.ts`](server/src/maintainers.ts) |
+| NEAR Intents 1Click (cross-chain payouts) | [`intents.ts`](server/src/intents.ts) |
+| Sputnik DAO / Trezu payout accounts, named and sub-accounts, NEAR Connect | [`lib.rs`](contract/vault/src/lib.rs), [`deploy/testnet.json`](deploy/testnet.json), [`wallet.tsx`](web/src/lib/wallet.tsx) |
 
 ## Testing
 
 | Suite | Count | Command |
 |---|---|---|
-| Contract unit tests (curve, exemption, forfeit tax, money-split property test, TEE parsing) | 11 | `cd contract && cargo test -p patchbond-vault --lib` |
-| Contract sandbox tests (real NEP-141 transfers on a local NEAR node): money paths 15 · NEAR bonds 7 · optimistic verdicts & agents 8 · maintainer safeguards 4 · TEE proofs 4 | 38 | `cd contract && cargo test -p patchbond-vault` |
-| Contract upgrade tests (replay state from each older live build; need those builds, see the file) | 4 | [`tests/migrate.rs`](contract/vault/tests/migrate.rs) |
-| Server: judge facts (assignment, claims vs diff, malicious-code scan), rules, pre-flight, GitHub bot vs fake GitHub (re-judging, labels, 24 h close), maintainer onboarding, spending guard, Intents quotes, relayer | 80 | `cd server && bun test` |
-| MCP: client, key safety, stdio protocol | 12 | `cd mcp && bun test` |
-| Shared: verification tamper tests, curve = contract values, amounts | 7 | `cd shared && bun test` |
+| Contract unit (curve, money-split property test, TEE parsing) | 11 | `cd contract && cargo test -p patchbond-vault --lib` |
+| Contract sandbox: money paths 15 · NEAR bonds 7 · optimistic & agents 8 · maintainer safeguards 4 · TEE proofs 4 | 38 | `cd contract && cargo test -p patchbond-vault` |
+| Contract upgrades (replay each older live build; see the file) | 4 | [`tests/migrate.rs`](contract/vault/tests/migrate.rs) |
+| Server: facts, malicious scan, rules, bot vs fake GitHub, onboarding, spending guard, Intents, relayer | 80 | `cd server && bun test` |
+| MCP · shared | 12 · 7 | `cd mcp && bun test` · `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 62 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
-
-CI runs the TypeScript and contract suites on every push ([workflow](.github/workflows/ci.yml)).
-
-## Check our claims
-
-Everything above can be checked without trusting us:
-
-| Claim | Check it |
-|---|---|
-| The judge models exist and are verifiable | NEAR AI's public model list: <https://cloud-api.near.ai/v1/model/list> (`z-ai/glm-5.3-flash`, `moonshotai/kimi-k3`, `metadata.verifiable: true`) |
-| The contract only forfeits on NEAR AI's signature | Call `get_tee_signers` on [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) and compare with `signing_address` in NEAR AI's attestation report (`GET /v1/attestation/report?model=…`) — code in [`tee.rs`](contract/vault/src/tee.rs) |
-| A verdict wasn't edited | Any verdict page → **Verify signature** (runs in your browser). Live: <https://patchbond-production.up.railway.app> |
-| The facts given to the model are true | Each verdict publishes the exact request bytes — the diff, the CI results and every computed fact — so you can compare them with the PR on GitHub. The TEE proves the model saw exactly those bytes; anyone can challenge a verdict built on wrong facts. |
-| Money moved on-chain | [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md): 62 transactions, one explorer link each |
-| Built during the hackathon | The repository's first commit is 2026-10-28 (window: 2026-10-19 → 11-14); see the commit history |
-
-## Judge accuracy
-
-Measured on a labelled set of 30 real PRs ([`docs/eval/candidates.json`](docs/eval/candidates.json): slop = closed PRs maintainers labelled AI slop; good = authors' first merged PR). `bun run --cwd server eval`.
-
-| Judge | Good PRs forfeited | Good PRs refunded automatically | Slop *not* waved through (forfeit or to a human) | Invalid answers | Cost per verdict |
-|---|---|---|---|---|---|
-| **NEAR AI `glm-5.3-flash`** (verifiable, TEE-signed) | **0 / 15** | **14 / 15** | **8 / 15** | 0 | **$0.00035** |
-| Facts layer alone (no model) | 0 / 15 | 13 / 15 | 3 / 15 | — | free |
-
-The target is **zero good PRs forfeited**; sending doubtful PRs to a human is acceptable (they're refunded automatically after 14 days if nobody decides). A refund is automatic only when it's clear-cut — CI passing and the model at least 80% sure. The whole 30-PR run cost $0.01 of NEAR AI credits; every record is saved and verifiable at `/v/<id>`. Results: [`docs/eval/results-z-ai-glm-5-3-flash.json`](docs/eval/results-z-ai-glm-5-3-flash.json), [`results-facts-only.json`](docs/eval/results-facts-only.json).
-
-Honest limits: 30 PRs is a small set, the 0.8 refund threshold was chosen on it, and "AI slop" as maintainers label it is often well-formed but unrequested code — which a diff alone can't prove. That's why a forfeit needs a hard fact and stays challengeable.
 
 ## Running your own
 
-**Hosting the app** (one Docker service — site, API, webhook and sign-in on one URL): see **[docs/DEPLOY.md](docs/DEPLOY.md)**. The steps below cover deploying your own contract.
-
-1. Deploy: `cd contract/vault && cargo near deploy build-non-reproducible-wasm <account> with-init-call new json-args '{"owner":"…","oracle":"…","treasury":"…","token":"<USDC>","wnear":"wrap.near"}' …`, then register the contract with USDC and with wNEAR (`storage_deposit` on each). Write the accounts to `deploy/<network>.json`.
-2. `cp .env.example .env`; set `NEAR_NETWORK`, `JUDGE_MODE=nearai` + `NEARAI_API_KEY`, and the oracle key (or keep it in near-cli's keychain).
-3. `bun run dev`, open <http://localhost:8787/setup> and click **Create on GitHub** — the App is created from a manifest with the right permissions and its credentials are saved to `.env`. For local webhooks set `WEBHOOK_URL` to a [smee.io](https://smee.io/new) channel; `bun run dev` starts the tunnel.
-4. Install the App on a repository. Outside PRs now get a deposit request.
-
-All network-specific values (accounts, USDC contract, RPC) come from `deploy/<network>.json` and `.env` — the same code runs on testnet and mainnet.
+**Host the app** (one Docker service: site, API, webhook, sign-in): [docs/DEPLOY.md](docs/DEPLOY.md). **Your own contract:** `cd contract/vault && cargo near deploy build-non-reproducible-wasm <account> with-init-call new json-args '{"owner":"…","oracle":"…","treasury":"…","token":"<USDC>","wnear":"wrap.near"}' …`, register it with USDC and wNEAR (`storage_deposit`), register NEAR AI's attested keys with `set_tee_signers`, and write the accounts to `deploy/<network>.json`. Then `bun run dev`, open `/setup` and click **Create on my GitHub account** — the App is created from a manifest and its credentials saved to `.env`. Everything network-specific comes from `deploy/<network>.json` and `.env`.
 
 ## Libraries and AI-assisted code
 
-As the hackathon rules ask (Q-005): the project uses open-source libraries including near-sdk, near-contract-standards, near-workspaces, cargo-near, near-api-js, NEAR Connect (`@hot-labs/near-connect`), Octokit, Hono, viem, zod, the MCP TypeScript SDK, React, Vite, Tailwind CSS, shadcn/ui (Radix), Motion, sonner, cmdk and lucide icons. Parts of the code were written with AI coding assistants, directed and reviewed by the team. No templates were used.
+As the rules ask (Q-005): near-sdk, near-contract-standards, near-workspaces, cargo-near, near-api-js, NEAR Connect, Octokit, Hono, viem, zod, the MCP TypeScript SDK, React, Vite, Tailwind CSS, shadcn/ui (Radix), Motion, sonner, cmdk and lucide. Parts of the code were written with AI coding assistants, directed and reviewed by the team. No templates were used.
 
 ## License
 
