@@ -1,7 +1,7 @@
 import { verifyRecord, type Check, type VerdictRecord } from "@patchbond/shared";
 import { ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Scramble } from "../components/fx";
 import { Seal, type SealState } from "../components/Seal";
@@ -517,7 +517,16 @@ function Appeals({ r }: { r: VerdictRecord }) {
   const { data, reload } = useAsync(() => api.appeals(r.id), [r.id]);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const short = 10 - note.trim().length;
   async function send() {
+    if (short > 0) {
+      setHint(note.trim() ? `Add ${short} more character${short === 1 ? "" : "s"}: say what the judge got wrong — file and line.` : "Write your appeal first: what did the judge get wrong? Name the file and line.");
+      box.current?.focus();
+      return;
+    }
+    setHint(null);
     setBusy(true);
     try {
       await api.appeal(r.id, note.trim(), wallet.accountId ?? "anonymous");
@@ -548,15 +557,21 @@ function Appeals({ r }: { r: VerdictRecord }) {
         </ul>
       )}
       <textarea
+        ref={box}
         value={note}
-        onChange={(e) => setNote(e.target.value)}
+        onChange={(e) => {
+          setNote(e.target.value);
+          setHint(null);
+        }}
         rows={3}
         placeholder="e.g. parse_with_validation() is defined in src/validate.c:40 on the base branch — the judge missed it."
         className="mt-4 w-full resize-y rounded-xl border border-line bg-bg px-3 py-2.5 text-sm outline-none placeholder:text-faint focus:border-brand"
       />
       <div className="mt-2 flex items-center justify-between gap-3">
-        <span className="text-xs text-faint">{note.trim().length}/2000 · at least 10 characters</span>
-        <Button variant="ghost" disabled={busy || note.trim().length < 10} onClick={() => void send()}>
+        <span className={`text-xs ${hint ? "text-warn" : "text-faint"}`}>
+          {hint ?? (short > 0 ? `${note.trim().length}/2000 · ${short} more to go (at least 10)` : `${note.trim().length}/2000 · ready to attach`)}
+        </span>
+        <Button variant={short > 0 ? "ghost" : "primary"} disabled={busy} onClick={() => void send()}>
           {busy ? <Spinner /> : "Attach appeal"}
         </Button>
       </div>
