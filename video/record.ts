@@ -1,7 +1,7 @@
 // Records the real, running app (bun run dev) and real testnet transactions as 1080p clips for the
 // pitch video. Nothing is mocked here: every frame is the live UI or a public block explorer.
 //   (repo root) bun run dev      # in another terminal
-//   cd video && bun run record
+//   cd video && bun run record   # ONLY=judge,pay bun run record → just those scenes
 
 import { chromium, type Page } from "playwright";
 import { mkdirSync, readFileSync, renameSync } from "node:fs";
@@ -18,10 +18,17 @@ const tx = (label: string) => report.match(new RegExp(`\\[[^\\]]*${label}[^\\]]*
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 
+const ONLY = process.env.ONLY?.split(",");
+/** Seconds since the current scene's recording started — printed so the cut can line up with it. */
+let sceneStart = 0;
+const mark = (what: string) => console.log(`  ${what} at ${((Date.now() - sceneStart) / 1000).toFixed(1)} s`);
+
 async function scene(name: string, run: (page: Page) => Promise<void>) {
+  if (ONLY && !ONLY.includes(name)) return;
   const context = await browser.newContext({ viewport: SIZE, recordVideo: { dir: OUT, size: SIZE }, colorScheme: "dark" });
   const page = await context.newPage();
   const t0 = Date.now();
+  sceneStart = t0;
   try {
     await run(page);
   } catch (e) {
@@ -61,25 +68,29 @@ await scene("spam", async (p) => {
   await p.waitForTimeout(7500);
 });
 
+// Judged live by the NEAR AI model in a TEE (~$0.0004); the wait for the verdict is cut in the edit.
 await scene("judge", async (p) => {
   await p.goto(WEB, { waitUntil: "networkidle" });
   await p.waitForTimeout(800);
   await p.keyboard.press("Meta+K");
   await p.waitForTimeout(600);
-  await p.keyboard.type("https://github.com/the-tcpdump-group/tcpdump/pull/1471", { delay: 28 });
+  mark("typing");
+  await p.keyboard.type("https://github.com/tj/commander.js/pull/2637", { delay: 28 });
   await p.waitForTimeout(700);
   await p.keyboard.press("Enter");
-  await p.waitForURL(/\/v\//, { timeout: 90_000 });
+  await p.waitForURL(/\/v\//, { timeout: 180_000 });
+  mark("verdict page");
   await p.waitForTimeout(3500);
   await glide(p, 700);
   await p.waitForTimeout(1500);
   await scrollTo(p, "Verify it yourself", -200);
+  mark("verify clicked");
   await p.getByRole("button", { name: /Verify signature/ }).click();
   await p.waitForTimeout(5500);
 });
 
 await scene("pay", async (p) => {
-  await p.goto(`${WEB}/pay/1/1?repo=PatchBond/playground&user=tunde`, { waitUntil: "networkidle" });
+  await p.goto(`${WEB}/pay/2/1?repo=PatchBond/playground-near&user=tunde`, { waitUntil: "networkidle" });
   await p.waitForTimeout(2500);
   await p.getByText("Optional: priority tip, linked issue").click();
   await p.waitForTimeout(3000);

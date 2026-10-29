@@ -30,7 +30,15 @@
       "bars": 2
     },
     {
+      "id": "attack",
+      "bars": 1
+    },
+    {
       "id": "verify",
+      "bars": 2
+    },
+    {
+      "id": "fair",
       "bars": 2
     },
     {
@@ -95,9 +103,21 @@
       "speed": 1.12
     },
     {
+      "scene": "attack",
+      "at": 0.05,
+      "text": "Malware? Forfeited.",
+      "speed": 1.15
+    },
+    {
       "scene": "verify",
       "at": 0.1,
-      "text": "Then it signs the verdict. Anyone can verify it.",
+      "text": "Signed live in a TEE. Anyone can verify it.",
+      "speed": 1.12
+    },
+    {
+      "scene": "fair",
+      "at": 0.15,
+      "text": "And maintainers can't steal it. Disputes are free.",
       "speed": 1.12
     },
     {
@@ -109,7 +129,7 @@
     {
       "scene": "grid",
       "at": 0.1,
-      "text": "Gasless for people. Capped wallets for agents.",
+      "text": "USDC or NEAR. Capped wallets for agents.",
       "speed": 1.12
     },
     {
