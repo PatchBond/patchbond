@@ -60,6 +60,9 @@ const summary = {
   good_prs_forfeited: goodForfeited.length,
   forfeit_precision: forfeits.length ? +(1 - goodForfeited.length / forfeits.length).toFixed(3) : null,
   slop_caught: `${slop.filter((r) => r.verdict === "forfeit").length}/${slop.length}`,
+  /** Slop that wasn't refunded automatically (forfeited, or sent to a maintainer). */
+  slop_not_auto_refunded: `${slop.filter((r) => r.verdict !== "refund").length}/${slop.length}`,
+  good_auto_refunded: `${ok.filter((r) => r.label === "good" && r.verdict === "refund").length}/${ok.filter((r) => r.label === "good").length}`,
   needs_human_rate: +(ok.filter((r) => r.verdict === "needs_human").length / Math.max(ok.length, 1)).toFixed(3),
   invalid_model_answers: ok.filter((r) => r.model === "invalid").length,
   avg_seconds: +(ok.reduce((a, r) => a + r.ms, 0) / Math.max(ok.length, 1) / 1000).toFixed(1),

@@ -130,8 +130,8 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 | Part | Status |
 |---|---|
 | Vault contract: bonds **in USDC or NEAR (per repo)**, curve, refund/forfeit 90/10, void, tips, bounties, withdraw, challenges, agent budgets, reputation, NEP-297 events, link-once + hand-over, pause, state migration | ✅ Built, 47 tests, **live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), full e2e on testnet |
-| AI judge: facts (CI, phantom vs unresolved symbols, duplicates, linked issue, **issue assignment**, **claims vs diff**, injection), prompt, server safety rules, record + verification | ✅ Built and tested; 0/15 good PRs forfeited on the labelled set |
-| NEAR AI Cloud verifiable model (`z-ai/glm-5.3-flash`) | ⚠️ Client built; **running on a clearly labelled mock judge** (dev-key signatures, every record marked `mock`) until the NEAR AI account has credits |
+| AI judge: facts (CI, phantom vs unresolved symbols, duplicates, linked issue, **issue assignment**, **claims vs diff**, injection), prompt, server safety rules, record + verification | ✅ Built and tested; 0/15 good PRs forfeited by the real model on the labelled set |
+| NEAR AI Cloud verifiable model (`z-ai/glm-5.3-flash`) | ✅ **Live**: real TEE-signed verdicts that verify in the browser; $0.00035 per verdict; low reasoning effort (NEAR AI caps output at 4k tokens) |
 | GitHub App bot: pay-link comment, check runs, deposit watch, judge after CI, settle, finalize, review → tip, merge → bounty, 14-day refund | ✅ Built, 8 scenario tests against a fake GitHub; live App being set up |
 | Web app: home, pay, verdict with in-browser verification, repo, agents, ⌘K | ✅ Built |
 | MCP server for agents (7 tools, key safety check) | ✅ Built, paid a real bond on testnet in the e2e |
@@ -230,12 +230,14 @@ CI runs the TypeScript and contract suites on every push ([workflow](.github/wor
 
 Measured on a labelled set of 30 real PRs ([`docs/eval/candidates.json`](docs/eval/candidates.json): slop = closed PRs maintainers labelled AI slop; good = authors' first merged PR). `bun run --cwd server eval`.
 
-| Judge | Good PRs forfeited | Slop forfeited | needs_human |
-|---|---|---|---|
-| Facts layer only (mock model) | **0 / 15** | 2 / 15 | 13% |
-| NEAR AI `glm-5.3-flash` | pending credits | pending | pending |
+| Judge | Good PRs forfeited | Good PRs refunded automatically | Slop *not* waved through (forfeit or to a human) | Invalid answers | Cost per verdict |
+|---|---|---|---|---|---|
+| **NEAR AI `glm-5.3-flash`** (verifiable, TEE-signed) | **0 / 15** | **14 / 15** | **8 / 15** | 0 | **$0.00035** |
+| Facts layer only (mock model) | 0 / 15 | 13 / 15 | 3 / 15 | — | — |
 
-The target is **zero good PRs forfeited**; a high `needs_human` rate is acceptable. Results: [`docs/eval/results-mock.json`](docs/eval/results-mock.json).
+The target is **zero good PRs forfeited**; sending doubtful PRs to a human is acceptable (they're refunded automatically after 14 days if nobody decides). A refund is automatic only when it's clear-cut — CI passing and the model at least 80% sure. The whole 30-PR run cost $0.01 of NEAR AI credits; every record is saved and verifiable at `/v/<id>`. Results: [`docs/eval/results-z-ai-glm-5-3-flash.json`](docs/eval/results-z-ai-glm-5-3-flash.json), [`results-mock.json`](docs/eval/results-mock.json).
+
+Honest limits: 30 PRs is a small set, the 0.8 refund threshold was chosen on it, and "AI slop" as maintainers label it is often well-formed but unrequested code — which a diff alone can't prove. That's why a forfeit needs a hard fact and stays challengeable.
 
 ## Running your own
 

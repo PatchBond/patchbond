@@ -13,6 +13,9 @@ export interface RuleInput {
 }
 
 /** Hard facts the server established itself. Without one, the model can't forfeit on its own. */
+/** Below this the model's refund isn't trusted to be automatic. */
+export const REFUND_CONFIDENCE = 0.8;
+
 export function hardFacts(facts: Facts, rules: RepoRules = DEFAULT_RULES): string[] {
   const out: string[] = [];
   if (facts.ci === "failure") out.push("failing CI");
@@ -55,6 +58,17 @@ export function applyRules({ model, facts, threshold, rules }: RuleInput): Verdi
       applied.push("Proven contributor (prior refunds, no forfeits) → a forfeit goes to a human");
     }
   }
+  // A refund is automatic only when it's clear-cut. Failing CI, or a hesitant model, sends it to a
+  // maintainer instead (still refunded after the needs-human timeout if nobody decides). On the
+  // labelled set this routes most "AI slop" to a human and almost no good PR (docs/JUDGE.md).
+  if (verdict === "refund" && facts.ci === "failure") {
+    verdict = "needs_human";
+    applied.push(`CI is failing (${facts.ci_failed_checks.slice(0, 3).join(", ")}) → a refund isn't automatic; a maintainer decides`);
+  } else if (verdict === "refund" && confidence < REFUND_CONFIDENCE) {
+    verdict = "needs_human";
+    applied.push(`Refund confidence ${confidence} is below ${REFUND_CONFIDENCE} → a maintainer decides`);
+  }
+
   // Malicious code is decided by the deterministic scan, not by whether the model noticed. The
   // forfeit is still only proposed: the contributor can challenge it in the window.
   const high = (facts.malicious ?? []).filter((f) => f.severity === "high");

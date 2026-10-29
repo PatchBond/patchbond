@@ -118,7 +118,7 @@ describe("facts", () => {
   });
 });
 
-describe("server rules only ever soften a forfeit", () => {
+describe("server rules: forfeits need hard facts; refunds need to be clear-cut", () => {
   test("low confidence, no evidence, clean facts, proven author → needs_human", () => {
     const f = facts({ ci: "failure" });
     expect(applyRules({ model: mv({ confidence: 0.7 }), facts: f, threshold: 0.85 }).verdict).toBe("needs_human");
@@ -127,9 +127,18 @@ describe("server rules only ever soften a forfeit", () => {
     expect(applyRules({ model: mv(), facts: facts({ ci: "failure", author_reputation: "proven" }), threshold: 0.85 }).verdict).toBe("needs_human");
   });
 
-  test("a well-founded forfeit stands; refunds are never touched", () => {
+  test("a well-founded forfeit stands", () => {
     expect(applyRules({ model: mv(), facts: facts({ phantom_symbols: ["x"] }), threshold: 0.85 }).verdict).toBe("forfeit");
-    expect(applyRules({ model: mv({ verdict: "refund" }), facts: facts({ ci: "failure" }), threshold: 0.85 }).verdict).toBe("refund");
+  });
+
+  test("a refund is automatic only when clear-cut: failing CI or low confidence go to a maintainer, never to a forfeit", () => {
+    const refund = (confidence: number, ci: "success" | "failure") =>
+      applyRules({ model: mv({ verdict: "refund", confidence }), facts: facts({ ci, ci_failed_checks: ci === "failure" ? ["build"] : [] }), threshold: 0.85 });
+    expect(refund(0.9, "success").verdict).toBe("refund");
+    expect(refund(0.95, "failure").verdict).toBe("needs_human");
+    expect(refund(0.95, "failure").rules_applied[0]).toContain("CI is failing (build)");
+    expect(refund(0.7, "success").verdict).toBe("needs_human");
+    expect(refund(0.7, "success").rules_applied[0]).toContain("below 0.8");
   });
 
   test("invalid model output → needs_human", () => {
