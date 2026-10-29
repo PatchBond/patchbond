@@ -101,10 +101,19 @@ export function calledSymbols(diff: string, max = 15): string[] {
     .map(codeOnly);
   const text = added.join("\n");
   const defined = new Set<string>();
-  for (const m of text.matchAll(
-    /\b(?:function|def|fn|func|class|struct|enum|interface|type|const|let|var|static|void|int|char|bool)\s+\*?([A-Za-z_][A-Za-z0-9_]*)/g,
-  )) {
+  // Chained qualifiers ("static void", "static inline const char *") name the identifier after the
+  // last one; matching them one at a time would take "void" for the name and skip the real one.
+  const QUAL = "function|def|fn|func|class|struct|enum|interface|type|const|let|var|static|inline|extern|unsigned|signed|void|int|char|bool|long|short|float|double|size_t|u_char|u_int";
+  for (const m of text.matchAll(new RegExp(`\\b(?:(?:${QUAL})\\s+\\**)+([A-Za-z_][A-Za-z0-9_]*)`, "g"))) {
     defined.add(m[1]!);
+  }
+  // K&R / BSD style puts the return type on its own line and the name at column 0:
+  //   static void
+  //   pcap_callback(u_char *user, …)
+  // Calls are indented; an unindented `name(` is a definition.
+  for (const line of added) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*\(/);
+    if (m) defined.add(m[1]!);
   }
   const calls = new Set<string>();
   for (const m of text.matchAll(/(?<![.\w>:])([A-Za-z_][A-Za-z0-9_]{3,})\s*\(/g)) {

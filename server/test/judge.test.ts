@@ -61,6 +61,21 @@ describe("facts", () => {
     expect(calledSymbols("+function helperThing() {}\n+helperThing();\n+// fakeCall()")).toEqual([]);
   });
 
+  test("C prototypes and K&R-style definitions count as defined (tcpdump#1471 was a false phantom)", () => {
+    const diff = [
+      "+static void pcap_callback_with_flush_signal_blocking(u_char *,",
+      "+    const struct pcap_pkthdr *, const u_char *);",
+      "+\t\tstatus = pcap_loop(pd, cnt, pcap_callback_with_flush_signal_blocking, data);",
+      "+static void",
+      "+pcap_callback_with_flush_signal_blocking(u_char *user,",
+      "+    const struct pcap_pkthdr *h, const u_char *sp)",
+      "+static inline const char *",
+      "+pcap_fmt_thing(int x)",
+      "+\tpcap_really_missing(x);",
+    ].join("\n");
+    expect(calledSymbols(diff)).toEqual(["pcap_loop", "pcap_really_missing"]);
+  });
+
   test("strings, comments and ALL_CAPS macros are not calls", () => {
     expect(calledSymbols('+  log_msg("failed unsuccessfully (again)"); // retryLater()\n+  if (WIFEXITED(st)) {}')).toEqual(["log_msg"]);
     expect(namespaceOf("pcap_open_live")).toBe("pcap");

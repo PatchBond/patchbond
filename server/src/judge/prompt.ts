@@ -75,7 +75,10 @@ export function requestBody(model: string, repo: RepoContext, facts: Facts, c: C
   return JSON.stringify({
     model,
     temperature: 0,
-    // Reasoning models think first (~1.5k tokens here); leave room for the JSON answer after.
+    // The judge reasons first, and NEAR AI caps output at 4k tokens: on a big PR, unbounded or
+    // "medium" reasoning used all of it and never answered. "low" keeps it short; the server's facts
+    // already did the heavy lifting (CI, phantom code, duplicates, claims, malicious patterns).
+    reasoning_effort: "low",
     max_tokens: 4_000,
     response_format: { type: "json_object" },
     messages: [
