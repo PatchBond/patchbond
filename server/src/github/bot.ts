@@ -3,7 +3,8 @@
 
 import { App, Octokit } from "octokit";
 import type { Config } from "../config";
-import type { Chain } from "../near";
+import { teeProof, type Chain } from "../near";
+import type { VerdictRecord } from "@patchbond/shared";
 import type { Store, Submission } from "../store";
 import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
@@ -26,6 +27,8 @@ export class Bot {
   readonly app: App;
   /** Challenges being re-judged right now (a slow tx must not start a second re-judge). */
   private rejudging = new Set<string>();
+  /** Re-judge results not yet accepted on-chain, so a retry never pays for a second model call. */
+  private rejudged = new Map<string, VerdictRecord>();
   /** `.github/patchbond.yml` per repo, briefly cached (the tick reads it for auto-close). */
   private rulesCache = new Map<number, { rules: RepoRules; at: number }>();
 
@@ -264,8 +267,11 @@ export class Bot {
     this.store.saveVerdict(record);
 
     let onChain = false;
-    if (record.final.verdict !== "needs_human") {
-      await this.chain.settle(s.repo_id, s.number, record.final.verdict, record.verdict_hash);
+    // The contract only forfeits what the TEE itself signed as a forfeit. When the server's scan
+    // escalated past the model (malicious code the model let through), a maintainer confirms it.
+    const signedForfeit = record.model_verdict?.verdict === "forfeit";
+    if (record.final.verdict === "refund" || (record.final.verdict === "forfeit" && signedForfeit)) {
+      await this.chain.settle(s.repo_id, s.number, record.final.verdict, record.verdict_hash, record.final.verdict === "forfeit" ? teeProof(record) : undefined);
       onChain = true;
     }
     const v = record.final.verdict;
@@ -287,6 +293,8 @@ export class Bot {
    * sides' statements as untrusted claims. needs_human resolves as refund (when in doubt, refund).
    */
   private async rejudge(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string, freeDispute = false) {
+    // A re-judge costs real credits: reuse it if resolving on-chain failed and we're retrying.
+    const key = `${s.repo_id}/${s.number}`;
     const gh = await this.app.getInstallationOctokit(s.installation_id);
     const [owner, repo] = s.full_name.split("/") as [string, string];
     const repoOnChain = await this.chain.getRepo(s.repo_id);
@@ -296,10 +304,23 @@ export class Bot {
       authorReputation: "new",
     });
     const statements = s.verdict_id ? this.store.appeals(s.verdict_id).map((a) => ({ from: a.author, note: a.note })) : [];
-    const record = await judge(input, this.strong, new Date(), { proposed, challenger, statements });
-    this.store.saveVerdict(record);
-    const verdict = record.final.verdict === "forfeit" ? "forfeit" : "refund";
-    await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash);
+    const record = this.rejudged.get(key) ?? (await judge(input, this.strong, new Date(), { proposed, challenger, statements }));
+    if (!this.rejudged.has(key)) {
+      this.rejudged.set(key, record);
+      this.store.saveVerdict(record);
+    }
+    // A forfeit needs the stronger model's own TEE-signed forfeit; anything less resolves as a refund.
+    let verdict: "refund" | "forfeit" = record.final.verdict === "forfeit" && record.model_verdict?.verdict === "forfeit" ? "forfeit" : "refund";
+    try {
+      await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash, verdict === "forfeit" ? teeProof(record) : undefined);
+    } catch (e) {
+      if (verdict !== "forfeit" || !/TEE proof rejected|needs the NEAR AI TEE proof/.test(String(e))) throw e;
+      // e.g. the re-judge model's enclave key isn't registered on the contract: when in doubt, refund.
+      this.log(`re-judge forfeit for ${key} not accepted on-chain (${String(e).slice(0, 120)}); refunding`);
+      verdict = "refund";
+      await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash);
+    }
+    this.rejudged.delete(key);
     this.store.setState(s.repo_id, s.number, "settled", { verdict_id: record.id });
     const overturned = verdict !== proposed;
     const what = freeDispute

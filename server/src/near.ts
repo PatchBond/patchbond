@@ -1,6 +1,6 @@
 // The vault contract, from the oracle's side: views for anyone, calls signed with the oracle key.
 
-import type { Currency } from "@patchbond/shared";
+import { sha256Hex, type Currency, type VerdictRecord } from "@patchbond/shared";
 import { Account, JsonRpcProvider, type KeyPairString } from "near-api-js";
 import type { Config } from "./config";
 
@@ -57,6 +57,18 @@ const DEFAULT_POLICY: Repo["policy"] = {
   review_window_sec: 259_200, challenge_window_sec: 259_200, forfeit_threshold_bps: 8_500,
 };
 
+/** What the contract needs to verify a NEAR AI TEE signature on its own (contract/vault/src/tee.rs). */
+export interface TeeProof {
+  model: string;
+  request_sha256: string;
+  response: string;
+  signature: string;
+}
+
+export function teeProof(r: VerdictRecord): TeeProof {
+  return { model: r.model, request_sha256: sha256Hex(r.request_body), response: r.response_body, signature: r.signature.signature };
+}
+
 export class Chain {
   readonly provider: JsonRpcProvider;
   private oracle?: Account;
@@ -94,12 +106,13 @@ export class Chain {
   registerRepo = (repo_id: number) => this.call("register_repo", { repo_id, policy: { ...DEFAULT_POLICY, enabled: false } }, 30n);
   setPolicy = (repo_id: number, policy: Repo["policy"]) => this.call("set_policy", { repo_id, policy }, 30n);
   linkRepo = (repo_id: number, payout: string) => this.call("link_repo", { repo_id, payout }, 30n);
-  settle = (repo_id: number, number: number, verdict: Verdict, verdict_hash: string) =>
-    this.call("settle", { repo_id, number, verdict, verdict_hash }, 150n);
+  /** `proof` lets the contract check NEAR AI's TEE signature on a forfeit itself (see teeProof). */
+  settle = (repo_id: number, number: number, verdict: Verdict, verdict_hash: string, proof?: TeeProof) =>
+    this.call("settle", { repo_id, number, verdict, verdict_hash, proof: proof ?? null }, 150n);
   markReviewed = (repo_id: number, number: number) => this.call("mark_reviewed", { repo_id, number }, 30n);
   payBounty = (repo_id: number, issue: number, recipient: string) => this.call("pay_bounty", { repo_id, issue, recipient }, 100n);
   finalize = (repo_id: number, number: number) => this.call("finalize", { repo_id, number }, 150n);
-  resolveChallenge = (repo_id: number, number: number, verdict: Verdict, verdict_hash: string) =>
-    this.call("resolve_challenge", { repo_id, number, verdict, verdict_hash }, 200n);
+  resolveChallenge = (repo_id: number, number: number, verdict: Verdict, verdict_hash: string, proof?: TeeProof) =>
+    this.call("resolve_challenge", { repo_id, number, verdict, verdict_hash, proof: proof ?? null }, 200n);
 }
 

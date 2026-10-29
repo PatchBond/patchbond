@@ -16,6 +16,7 @@ use near_sdk::json_types::U128;
 use near_sdk::{env, near, require, AccountId, Promise};
 
 use crate::payout::Fallback;
+use crate::tee::TeeProof;
 use crate::types::*;
 use crate::{events, PatchBond, PatchBondExt};
 
@@ -38,7 +39,9 @@ impl PatchBond {
     /// window (or settles at once if the window is 0). The repo's payout account can refund (or
     /// void) at once at any stage; its forfeit only proposes — see the module docs.
     /// `verdict_hash` = hex sha256 of the signed verdict record on the public verdict page.
-    pub fn settle(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String) {
+    /// `proof`: the NEAR AI TEE signature over the model's answer. Required for an oracle forfeit
+    /// once TEE signers are registered (see `tee.rs`); never needed to refund.
+    pub fn settle(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, proof: Option<TeeProof>) {
         assert_hash(&verdict_hash);
         let caller = env::predecessor_account_id();
         let repo = self.repo(repo_id);
@@ -78,6 +81,9 @@ impl PatchBond {
             status == DepositStatus::Held,
             format!("#{number} on repo {repo_id} already has a verdict; challenge it instead")
         );
+        if verdict == Verdict::Forfeit {
+            self.assert_tee_forfeit(repo_id, number, proof.as_ref());
+        }
         if window_ms == 0 {
             return self.finish(repo_id, number, verdict, verdict_hash, status);
         }
@@ -111,12 +117,15 @@ impl PatchBond {
 
     /// Oracle (after the stronger model re-judged with both sides' statements), or the maintainer
     /// for a contributor's challenge: the final verdict on a challenged deposit.
-    pub fn resolve_challenge(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String) {
+    pub fn resolve_challenge(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, proof: Option<TeeProof>) {
         require!(
             env::predecessor_account_id() == self.oracle,
             "Only the PatchBond oracle resolves challenges (maintainers use settle)"
         );
         assert_hash(&verdict_hash);
+        if verdict == Verdict::Forfeit {
+            self.assert_tee_forfeit(repo_id, number, proof.as_ref());
+        }
         let status = self.unsettled_mut(repo_id, number).status.clone();
         require!(
             matches!(status, DepositStatus::Challenged { .. }),
@@ -161,6 +170,29 @@ impl PatchBond {
 }
 
 impl PatchBond {
+    /// Once TEE signers are registered, the oracle can only forfeit what a registered NEAR AI enclave
+    /// signed as a forfeit — with the repo's confidence threshold and at least one piece of evidence.
+    /// A compromised server can still refund (harmless), but can no longer invent a forfeit.
+    fn assert_tee_forfeit(&self, repo_id: RepoId, number: Number, proof: Option<&TeeProof>) {
+        if self.tee_signers.is_empty() {
+            return;
+        }
+        let proof = proof.unwrap_or_else(|| env::panic_str("A forfeit needs the NEAR AI TEE proof (proof: model, request_sha256, response, signature)"));
+        let signed = crate::tee::verify(proof).unwrap_or_else(|e| env::panic_str(&format!("TEE proof rejected: {e}")));
+        require!(
+            self.tee_signers.contains(&signed.signer),
+            format!("TEE proof rejected: 0x{} isn't a registered NEAR AI enclave key", signed.signer)
+        );
+        require!(signed.verdict == "forfeit", format!("TEE proof rejected: the model said \"{}\", not \"forfeit\"", signed.verdict));
+        let threshold = self.repo(repo_id).policy.forfeit_threshold_bps as u32;
+        require!(
+            signed.confidence_bps >= threshold,
+            format!("TEE proof rejected: confidence {} bps is below the repo's {} bps", signed.confidence_bps, threshold)
+        );
+        require!(signed.evidence > 0, "TEE proof rejected: a forfeit needs at least one piece of evidence");
+        events::tee_verified(repo_id, number, &signed.signer, &proof.model);
+    }
+
     /// The maintainer's forfeit: a 48 h proposal the contributor may dispute for free. Up to one
     /// bond is escrowed from the vault, paid to the contributor if the dispute wins.
     fn propose_maintainer_forfeit(&mut self, repo_id: RepoId, number: Number, verdict_hash: String, now: TimestampMs) {

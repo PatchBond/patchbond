@@ -1,0 +1,31 @@
+{
+  "note": "live: a genuine NEAR AI Cloud TEE signature (a refund). Others: synthetic, signed by test_signer.",
+  "live": {
+    "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c",
+    "proof": {
+      "model": "z-ai/glm-5.3-flash",
+      "request_sha256": "ae28992dcb14385efb5bdc8ee9bb05701d217abb03ef3c2023ab227c36a89965",
+      "response": "{\"id\":\"d29591b8d8674102b5fd7eba849fd80c\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"refund\\\",\\\"confidence\\\":0.9,\\\"category\\\":\\\"ok\\\",\\\"reasons\\\":[\\\"Small focused fix preserving helpGroupHeading on replacement help options in lib/help.js.\\\",\\\"Includes two regression tests covering short- and long-flag conflicts.\\\",\\\"CI passes and no malicious patterns, phantom symbols, or unbacked claims.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"lib/help.js\\\",\\\"line\\\":92,\\\"note\\\":\\\"helpGroup preserved on recreated help option\\\"}]}\"},\"finish_reason\":\"stop\",\"logprobs\":null,\"matched_stop\":154827}],\"model\":\"z-ai/glm-5.3-flash\",\"created\":1793285572,\"usage\":{\"prompt_tokens\":1826,\"total_tokens\":1916,\"completion_tokens\":90,\"prompt_tokens_details\":{\"cached_tokens\":768},\"reasoning_tokens\":1,\"completion_tokens_details\":{\"reasoning_tokens\":1}}}",
+      "signature": "0x6fe45fb152e3fd5ebc44704a0436d5379fae9f54c5fb2c0a5c639f450c08645f0059259cd285ccb29dcfd53dd06ee0c8d90a9a6a8681ce7a9d0ffb749c445c511b"
+    }
+  },
+  "test_signer": "0xb677d87aa8ceb2ea012c3e17b799e61adb8638ce",
+  "forfeit": {
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "1d13fd87c8d1bd84c5fb23712af383717a7d539d2e4ad2def972862fd5d34b40",
+    "response": "{\"id\":\"chat-test\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.93,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"src/a.c\\\",\\\"line\\\":3,\\\"note\\\":\\\"pcap_magic() is not defined\\\"}]}\"}}]}",
+    "signature": "0x013836219c99c4d9af61fb34f1b01822357b7fbc2dbf11c39935ed3c1a3a85a85eb0a0de6f8e0377747119077d9b943e39fd8c12e2a5e422e5f6bef0cf2e02581b"
+  },
+  "low_confidence": {
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "1d13fd87c8d1bd84c5fb23712af383717a7d539d2e4ad2def972862fd5d34b40",
+    "response": "{\"id\":\"chat-test\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.6,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"src/a.c\\\",\\\"line\\\":3,\\\"note\\\":\\\"pcap_magic() is not defined\\\"}]}\"}}]}",
+    "signature": "0x2ae74e7e46d26ea9ceeec3f7d2e4202957345e9462f0c764cfe454e5e06cb39b6333530c820640d5be6ffb30ab18e925cd7c9cb0e4fe530285058acc318ece791c"
+  },
+  "no_evidence": {
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "1d13fd87c8d1bd84c5fb23712af383717a7d539d2e4ad2def972862fd5d34b40",
+    "response": "{\"id\":\"chat-test\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.93,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[]}\"}}]}",
+    "signature": "0x02049a985eb8c44dd7da3bacdad5537b27365dbdc27315e7b61a449daae4e91e40fa718c1de00f214a0663a53877f18f76e1b756d745bab2dc174ea1d691b9831b"
+  }
+}

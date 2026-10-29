@@ -2,7 +2,7 @@
 
 import { generateKeyPairSync } from "node:crypto";
 import type { ChainPort } from "../src/github/bot";
-import type { Deposit, Repo } from "../src/near";
+import type { Deposit, Repo, TeeProof } from "../src/near";
 
 export interface PrFixture {
   number: number;
@@ -94,7 +94,7 @@ export function fakeChain(repoId: number) {
   const log: string[] = [];
   const key = (r: number, n: number) => `${r}/${n}`;
   const policy = { enabled: true, base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8, review_window_sec: 259200, challenge_window_sec: 259200, forfeit_threshold_bps: 8500 };
-  const chain: ChainPort & { linkRepo: (r: number, payout: string) => Promise<unknown>; pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[] } = {
+  const chain: ChainPort & { linkRepo: (r: number, payout: string) => Promise<unknown>; pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[]; proofs: Map<string, TeeProof> } = {
     repos,
     deposits,
     log,
@@ -115,8 +115,10 @@ export function fakeChain(repoId: number) {
       repos.set(id, { payout: null, policy, vault: "0", open: 0, linked_at: null, stats: { deposits: 0, refunds: 0, forfeits: 0, forfeited_total: "0", tips_earned: "0" }, currency: "usdc" });
       return undefined as never;
     },
-    settle: async (r, n, verdict, hash) => {
+    proofs: new Map(),
+    settle: async (r, n, verdict, hash, proof) => {
       log.push(`settle ${r}#${n} ${verdict}`);
+      if (proof) chain.proofs.set(key(r, n), proof);
       const d = deposits.get(key(r, n))!;
       d.verdict_hash = hash;
       d.status = verdict === "void" ? { settled: { verdict, at: Date.now() } } : { proposed: { verdict, deadline: Date.now() + 400 } };

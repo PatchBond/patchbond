@@ -119,6 +119,10 @@ describe("GitHub bot", () => {
     await bot.tick();
     await bot.tick();
     expect(chain.log).toContain(`settle ${REPO.id}#2 forfeit`);
+    // The forfeit carries the signed response, so the contract can check the TEE signature itself.
+    const proof = chain.proofs.get(`${REPO.id}/2`)!;
+    expect(JSON.parse(JSON.parse(proof.response).choices[0].message.content).verdict).toBe("forfeit");
+    expect(proof.signature).toMatch(/^0x[0-9a-f]{130}$/);
     expect((gh.posted(/\/check-runs\/\d+$/).at(-1)!.body as { conclusion: string }).conclusion).toBe("failure");
     // awaiting → paid → forfeit, so maintainers can filter at every stage
     expect(gh.posted(/\/labels$/).map((c) => (c.body as { labels: string[] }).labels[0])).toEqual([

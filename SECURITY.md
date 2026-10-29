@@ -36,7 +36,7 @@ don't open a public issue.
 
 ## Trust assumptions and known limits
 
-- **The oracle is trusted for GitHub facts** (who is an admin, PR state, CI results), because a contract can't read GitHub. A compromised oracle could propose wrong verdicts — mitigated by the challenge window, the maintainer's instant refund and the public record — but it cannot withdraw or redirect a linked vault.
+- **The oracle is trusted for GitHub facts** (who is an admin, PR state, CI results), because a contract can't read GitHub. A compromised oracle could propose wrong *refunds* — mitigated by the challenge window and the public record — but it **cannot forfeit** without NEAR AI's TEE-signed response saying so (checked on-chain in `contract/vault/src/tee.rs` against the enclave keys in NEAR AI's attestation report, registered by the owner), and it cannot withdraw or redirect a linked vault.
 - **The AI verdict is independently verifiable** (TEE signature over the exact bytes, checked in the browser). Checking that signature *inside the contract* (`ecrecover`) is a planned stretch goal.
 - **Upgrades** — the contract account's key (held by the team) can redeploy the code. That is normal for a hackathon deployment and is how the v0.1 → v0.2 `migrate` ran on testnet. For a production mainnet deployment the plan is to move upgrades behind a DAO with a time lock, or remove the key.
 - **Storage** — the contract pays NEAR for storage out of its own balance; the floors above make griefing it cost more than it does.

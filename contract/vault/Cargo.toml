@@ -10,7 +10,7 @@ repository = "https://github.com/patchbond/patchbond"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-near-sdk = { workspace = true }
+near-sdk = { workspace = true, features = ["unstable"] } # unstable: env::ecrecover (tee.rs)
 near-contract-standards = { workspace = true }
 
 [dev-dependencies]

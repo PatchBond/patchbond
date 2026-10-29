@@ -142,3 +142,12 @@ pub fn passport(agent: &AccountId, passport: &Passport) {
 pub fn paused(paused: bool) {
     emit("paused", json!({ "paused": paused }));
 }
+
+pub fn tee_signers(signers: &[String]) {
+    emit("tee_signers", json!({ "signers": signers.iter().map(|a| format!("0x{a}")).collect::<Vec<_>>() }));
+}
+
+/// A forfeit backed by a verified NEAR AI TEE signature.
+pub fn tee_verified(repo_id: RepoId, number: Number, signer: &str, model: &str) {
+    emit("tee_verified", json!({ "repo_id": repo_id, "number": number, "signer": format!("0x{signer}"), "model": model }));
+}

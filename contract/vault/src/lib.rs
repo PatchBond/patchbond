@@ -16,6 +16,7 @@ mod deposit;
 mod events;
 mod payout;
 mod settle;
+pub mod tee;
 pub mod types;
 
 use near_sdk::json_types::U128;
@@ -88,6 +89,9 @@ pub struct PatchBond {
     /// vault as a penalty if the contributor's dispute wins.
     maintainer_forfeits: LookupMap<(RepoId, Number), U128>,
     maintainer_records: LookupMap<RepoId, MaintainerRecord>,
+    /// NEAR AI enclave signing addresses (lower-case hex, no 0x) from NEAR AI's attestation reports.
+    /// Once any is registered, every forfeit the oracle posts must carry a TEE proof signed by one.
+    tee_signers: Vec<String>,
 }
 
 /// State layout before currencies existed (v0.2, live on testnet); read once by `migrate`.
@@ -135,6 +139,36 @@ struct PatchBondV3Pre {
     totals: Totals,
     totals_near: Totals,
     paused: bool,
+}
+
+/// v0.4 with the maintainer-forfeit safeguards (live on testnet 2026-10-29), before TEE proofs.
+#[near(serializers = [borsh])]
+struct PatchBondV4 {
+    owner: AccountId,
+    oracle: AccountId,
+    treasury: AccountId,
+    token: AccountId,
+    wnear: Option<AccountId>,
+    currencies: LookupMap<RepoId, Currency>,
+    deposit_currency: LookupMap<(RepoId, Number), Currency>,
+    repos: LookupMap<RepoId, Repo>,
+    deposits: LookupMap<(RepoId, Number), Deposit>,
+    reputation: LookupMap<AccountId, Reputation>,
+    bounties: LookupMap<(RepoId, Number), U128>,
+    claimable: LookupMap<AccountId, U128>,
+    claimable_near: LookupMap<AccountId, U128>,
+    bounty_held: LookupMap<RepoId, U128>,
+    budgets: LookupMap<AccountId, Budget>,
+    passports: LookupMap<AccountId, Passport>,
+    agent_stats: LookupMap<String, AgentStats>,
+    treasury_balance: u128,
+    treasury_near: u128,
+    totals: Totals,
+    totals_near: Totals,
+    paused: bool,
+    unsettled: LookupMap<RepoId, u32>,
+    maintainer_forfeits: LookupMap<(RepoId, Number), U128>,
+    maintainer_records: LookupMap<RepoId, MaintainerRecord>,
 }
 
 /// v0.3 with `unsettled` (live on testnet 2026-10-28), before the maintainer-forfeit safeguards.
@@ -225,8 +259,8 @@ impl PatchBondV3Pre {
 }
 
 impl PatchBondV3 {
-    fn upgrade(self, wnear: Option<AccountId>) -> PatchBond {
-        PatchBond {
+    fn upgrade(self, wnear: Option<AccountId>) -> PatchBondV4 {
+        PatchBondV4 {
             owner: self.owner,
             oracle: self.oracle,
             treasury: self.treasury,
@@ -256,9 +290,42 @@ impl PatchBondV3 {
     }
 }
 
+impl PatchBondV4 {
+    fn upgrade(self, wnear: Option<AccountId>) -> PatchBond {
+        PatchBond {
+            owner: self.owner,
+            oracle: self.oracle,
+            treasury: self.treasury,
+            token: self.token,
+            wnear: self.wnear.or(wnear),
+            currencies: self.currencies,
+            deposit_currency: self.deposit_currency,
+            repos: self.repos,
+            deposits: self.deposits,
+            reputation: self.reputation,
+            bounties: self.bounties,
+            claimable: self.claimable,
+            claimable_near: self.claimable_near,
+            bounty_held: self.bounty_held,
+            budgets: self.budgets,
+            passports: self.passports,
+            agent_stats: self.agent_stats,
+            treasury_balance: self.treasury_balance,
+            treasury_near: self.treasury_near,
+            totals: self.totals,
+            totals_near: self.totals_near,
+            paused: self.paused,
+            unsettled: self.unsettled,
+            maintainer_forfeits: self.maintainer_forfeits,
+            maintainer_records: self.maintainer_records,
+            tee_signers: Vec::new(),
+        }
+    }
+}
+
 #[near]
 impl PatchBond {
-    /// One-time upgrade from any earlier layout (v0.2 USDC-only, v0.3-pre, v0.3) to the current
+    /// One-time upgrade from any earlier layout (v0.2 USDC-only, v0.3-pre, v0.3, v0.4) to the current
     /// one, one step at a time. Only the contract account itself can call it, i.e. right after a
     /// redeploy by whoever holds the contract's key. `wnear` is used when the old state has none.
     #[private]
@@ -266,16 +333,18 @@ impl PatchBond {
     pub fn migrate(wnear: Option<AccountId>) -> Self {
         use near_sdk::borsh::BorshDeserialize;
         let raw = env::storage_read(b"STATE").unwrap_or_else(|| env::panic_str("No state to migrate"));
-        let v3 = if let Ok(old) = PatchBondV3::try_from_slice(&raw) {
+        let v4 = if let Ok(old) = PatchBondV4::try_from_slice(&raw) {
             old
-        } else if let Ok(old) = PatchBondV3Pre::try_from_slice(&raw) {
+        } else if let Ok(old) = PatchBondV3::try_from_slice(&raw) {
             old.upgrade(wnear.clone())
+        } else if let Ok(old) = PatchBondV3Pre::try_from_slice(&raw) {
+            old.upgrade(wnear.clone()).upgrade(wnear.clone())
         } else if let Ok(old) = PatchBondV2::try_from_slice(&raw) {
-            old.upgrade(wnear.clone()).upgrade(None)
+            old.upgrade(wnear.clone()).upgrade(None).upgrade(wnear.clone())
         } else {
             env::panic_str("State matches no earlier layout; nothing to migrate")
         };
-        v3.upgrade(wnear)
+        v4.upgrade(wnear)
     }
 
     #[init]
@@ -306,10 +375,23 @@ impl PatchBond {
             unsettled: LookupMap::new(StorageKey::Unsettled),
             maintainer_forfeits: LookupMap::new(StorageKey::MaintainerForfeits),
             maintainer_records: LookupMap::new(StorageKey::MaintainerRecords),
+            tee_signers: Vec::new(),
         }
     }
 
     // ---------- owner ----------
+
+    /// Owner: the NEAR AI enclave signing addresses to accept (from NEAR AI's attestation reports,
+    /// which anyone can check). Replaces the list; an empty list turns the TEE-proof requirement off.
+    pub fn set_tee_signers(&mut self, signers: Vec<String>) {
+        self.assert_owner();
+        require!(signers.len() <= 16, "At most 16 TEE signers");
+        self.tee_signers = signers
+            .iter()
+            .map(|a| tee::normalize_address(a).unwrap_or_else(|| env::panic_str(&format!("{a} isn't a 20-byte hex address"))))
+            .collect();
+        events::tee_signers(&self.tee_signers);
+    }
 
     /// Owner: the wNEAR contract to accept for NEAR-denominated repos.
     pub fn set_wnear(&mut self, wnear: AccountId) {
@@ -488,6 +570,11 @@ impl PatchBond {
             Currency::Usdc => self.totals.clone(),
             Currency::Near => self.totals_near.clone(),
         }
+    }
+
+    /// Registered NEAR AI enclave signing addresses (0x-prefixed). Empty = forfeits need no TEE proof.
+    pub fn get_tee_signers(&self) -> Vec<String> {
+        self.tee_signers.iter().map(|a| format!("0x{a}")).collect()
     }
 
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
