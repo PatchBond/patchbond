@@ -62,7 +62,7 @@ export const api = {
   verdict: (id: string) => get<VerdictRecord>(`/api/verdicts/${encodeURIComponent(id)}`),
   verdicts: (limit = 20, repo?: number) =>
     get<Omit<VerdictRecord, "request_body" | "response_body">[]>(`/api/verdicts?limit=${limit}${repo ? `&repo=${repo}` : ""}`),
-  submission: (repo: number, number: number) => get<{ submission: unknown; deposit: Deposit | null; repo: Repo | null }>(`/api/submissions/${repo}/${number}`),
+  submission: (repo: number, number: number) => get<{ submission: { state: string; close_at: number | null } | null; deposit: Deposit | null; repo: Repo | null }>(`/api/submissions/${repo}/${number}`),
   appeals: (verdictId: string) => get<{ author: string; note: string; created_at: number }[]>(`/api/appeals/${encodeURIComponent(verdictId)}`),
   appeal: async (verdict_id: string, note: string, from: string) => {
     const res = await fetch("/api/appeals", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ verdict_id, note, from }) });

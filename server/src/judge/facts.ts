@@ -207,7 +207,10 @@ export interface RepoRules {
   closeUnpaidAfterHours: number | null;
 }
 
-export const DEFAULT_RULES: RepoRules = { assignmentRequired: false, unassignedEffect: "flag", closeUnpaidAfterHours: null };
+/** Unpaid PRs close after a day unless the repo says otherwise (`close_unpaid_after_hours: off`). */
+export const DEFAULT_CLOSE_UNPAID_HOURS = 24;
+
+export const DEFAULT_RULES: RepoRules = { assignmentRequired: false, unassignedEffect: "flag", closeUnpaidAfterHours: DEFAULT_CLOSE_UNPAID_HOURS };
 
 /** Parses `.github/patchbond.yml` (flat `key: value` lines; unknown keys ignored). */
 export function parseRepoRules(text: string | undefined): RepoRules {
@@ -222,9 +225,16 @@ export function parseRepoRules(text: string | undefined): RepoRules {
   return {
     assignmentRequired: /^(true|yes|on)$/i.test(kv.assignment_required ?? ""),
     unassignedEffect: kv.unassigned_pr === "evidence" ? "evidence" : "flag",
-    // At least an hour, so a contributor always has time to pay.
-    closeUnpaidAfterHours: Number(kv.close_unpaid_after_hours) >= 1 ? Number(kv.close_unpaid_after_hours) : null,
+    closeUnpaidAfterHours: closeAfter(kv.close_unpaid_after_hours),
   };
+}
+
+/** "off" / "false" / "0" turn auto-close off; otherwise at least an hour, so there's always time to pay. */
+function closeAfter(v: string | undefined): number | null {
+  if (v === undefined || v === "") return DEFAULT_CLOSE_UNPAID_HOURS;
+  if (/^(off|false|no|never|0)$/i.test(v)) return null;
+  const h = Number(v);
+  return Number.isFinite(h) ? Math.max(1, h) : DEFAULT_CLOSE_UNPAID_HOURS;
 }
 
 export function assignmentFact(author: string, issue: { exists: boolean; assignees?: string[] } | null, rules: RepoRules): Facts["assignment"] {

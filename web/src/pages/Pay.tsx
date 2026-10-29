@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
 import { Button, Eyebrow, Notice, Panel, Spinner } from "../components/kit";
-import { chain, explorerTx, money } from "../lib/api";
+import { api, chain, explorerTx, money } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 import { useWallet } from "../lib/wallet";
@@ -30,6 +30,8 @@ export function Pay() {
       chain.quote(cfg, repoId, wallet.accountId),
       chain.maintainerRecord(cfg, repoId).catch(() => null),
     ]);
+    // The deadline the bot announced on the PR (the server may be unreachable; the page still works).
+    const closeAt = await api.submission(repoId, number).then((r) => r.submission?.close_at ?? null).catch(() => null);
     const currency = repo?.currency ?? "usdc";
     const [balance, registered] = wallet.accountId
       ? await Promise.all([
@@ -37,7 +39,7 @@ export function Pay() {
           currency === "near" && cfg.wnear ? chain.registered(cfg, cfg.wnear, wallet.accountId) : Promise.resolve(true),
         ])
       : [null, true];
-    return [repo, deposit, quote, balance, registered, record] as const;
+    return [repo, deposit, quote, balance, registered, record, closeAt] as const;
   }, [cfg, repoId, number, wallet.accountId]);
 
   if (!Number.isInteger(repoId) || !Number.isInteger(number)) {
@@ -45,7 +47,7 @@ export function Pay() {
   }
   if (loading && !data) return <Centered><Spinner /></Centered>;
   if (error) return <Centered><Notice tone="error" title="Couldn't read the contract">{error}. Try again in a moment.</Notice></Centered>;
-  const [repo, deposit, quote, balance, registered, record] = data!;
+  const [repo, deposit, quote, balance, registered, record, closeAt] = data!;
   if (!repo) {
     return <Centered><Notice tone="error" title="This repo doesn't use PatchBond">Repo {repoId} isn't registered on {cfg.network}. Check the link, or ask the maintainers to install the GitHub App.</Notice></Centered>;
   }
@@ -176,6 +178,15 @@ export function Pay() {
               <span className="text-sm text-muted-foreground">Deposit</span>
               <span className="num text-4xl font-semibold tracking-tight">{money(bond + tip, currency)}</span>
             </div>
+            {closeAt && (
+              <div className="mt-4">
+                <Notice tone={closeAt < Date.now() ? "error" : "info"} title={closeAt < Date.now() ? "This PR was closed for no deposit" : `Pay by ${new Date(closeAt).toLocaleString()}`}>
+                  {closeAt < Date.now()
+                    ? "Pay now and PatchBond reopens it automatically."
+                    : "Unpaid PRs are closed automatically at that time. Nothing is lost: paying later reopens it."}
+                </Notice>
+              </div>
+            )}
             {bond === 0n && wallet.accountId && (
               <div className="mt-4"><Notice tone="ok" title="You're a proven contributor">No deposit needed — 3+ refunds on 2+ repos. Just ask a maintainer to review.</Notice></div>
             )}

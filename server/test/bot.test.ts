@@ -139,12 +139,15 @@ describe("GitHub bot", () => {
     expect(gh.calls.some((c) => c.method === "DELETE" && c.path.endsWith("/labels/patchbond%3A%20awaiting%20deposit"))).toBe(true);
   });
 
-  test("opt-in: an unpaid PR is closed after the repo's grace period and reopens when paid", async () => {
-    gh.setRules("close_unpaid_after_hours: 1\n");
+  test("by default the deposit comment announces a 24 h deadline; an unpaid PR closes then and reopens when paid", async () => {
     await deliver("pull_request", prOpened(3));
+    expect(comments()[0]).toContain("Pay within 24 h — by ");
+    expect(comments()[0]).toContain("paying later reopens this PR");
+    const closeAt = store.submission(REPO.id, 3)!.close_at!;
+    expect(Math.abs(closeAt - (Date.now() + 24 * 3_600_000))).toBeLessThan(60_000);
     await bot.tick();
-    expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit"); // still inside the hour
-    store.db.query("UPDATE submissions SET updated_at = ? WHERE number = 3").run(Date.now() - 2 * 3_600_000);
+    expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit"); // before the deadline
+    store.db.query("UPDATE submissions SET close_at = ? WHERE number = 3").run(Date.now() - 1000);
     await bot.tick();
     expect(store.submission(REPO.id, 3)?.state).toBe("closed_unpaid");
     expect(gh.posted(/\/pulls\/3$/).at(-1)?.body).toEqual({ state: "closed" });
@@ -157,12 +160,27 @@ describe("GitHub bot", () => {
     expect(comments().at(-1)).toContain("so it's reopened");
   });
 
-  test("without the opt-in, unpaid PRs stay open", async () => {
+  test("a repo can choose its own hours, or turn auto-close off", async () => {
+    gh.setRules("close_unpaid_after_hours: 48\n");
+    await deliver("pull_request", prOpened(3));
+    expect(comments()[0]).toContain("Pay within 48 h");
+  });
+
+  test("with close_unpaid_after_hours: off, nothing is announced and unpaid PRs stay open", async () => {
+    gh.setRules("close_unpaid_after_hours: off\n");
+    await deliver("pull_request", prOpened(3));
+    expect(comments()[0]).not.toContain("Pay within");
+    expect(store.submission(REPO.id, 3)?.close_at).toBeNull();
+    await bot.tick();
+    expect(gh.posted(/\/pulls\/3$/)).toHaveLength(0);
+  });
+
+  test("a PR that was never told a deadline is never closed", async () => {
+    gh.setRules("close_unpaid_after_hours: off\n");
     await deliver("pull_request", prOpened(3));
     store.db.query("UPDATE submissions SET updated_at = ? WHERE number = 3").run(Date.now() - 30 * 86_400_000);
     await bot.tick();
     expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit");
-    expect(gh.posted(/\/pulls\/3$/)).toHaveLength(0);
   });
 
   test("the judge waits for CI", async () => {

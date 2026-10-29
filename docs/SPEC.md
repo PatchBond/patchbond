@@ -84,6 +84,7 @@ Issues and bug reports follow the same loop. For bug reports the judge checks: i
 
 ### 5.2 Paying the deposit
 - **NEAR wallet** (testnet first): web app calls USDC `ft_transfer_call(receiver_id=patchbond, amount, msg={"repo_id","number","kind":"pr","github_user"})`. Contract's `ft_on_transfer` records the deposit against `(repo_id, number)`.
+- **Unpaid PRs close after 24 h** (default; `.github/patchbond.yml` → `close_unpaid_after_hours: <hours>` or `off`). The deadline is announced in the deposit comment, the check summary and on the pay page; a PR is never closed on a deadline it wasn't told. Paying later reopens it automatically.
 - **NEAR repos:** one transaction to `wrap.near` with three actions — `storage_deposit` (first time only), `near_deposit(amount)`, `ft_transfer_call` into the vault. The contributor signs once and pays plain NEAR; refunds arrive as wNEAR (unwrap any time).
 - **From another chain:** 1Click quote with destination = the contributor's NEAR account, then the web app does the `ft_transfer_call`. *(VERIFY whether 1Click can deliver straight into a contract call; if it can only do a plain transfer, use the two-step flow.)*
 - **Gas:** contributors shouldn't need NEAR for gas — use meta transactions (NEP-366) through a relayer we fund. *(VERIFY current relayer setup on testnet.)*

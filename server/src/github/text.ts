@@ -14,7 +14,11 @@ export function payLink(webUrl: string, repoId: number, number: number, fullName
   return `${webUrl}/pay/${repoId}/${number}?${q}`;
 }
 
-export function depositComment(o: { author: string; bond: string; currency: Currency; open: number; target: number; link: string; webUrl: string }) {
+/** 1793231373000 → "Thu 29 Oct 2026, 14:09 UTC" */
+export const utc = (ms: number) =>
+  new Date(ms).toLocaleString("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) + " UTC";
+
+export function depositComment(o: { author: string; bond: string; currency: Currency; open: number; target: number; link: string; webUrl: string; closeAt?: number | null; hours?: number | null }) {
   return `${MARKER}
 👋 Thanks for the contribution, @${o.author}!
 
@@ -27,10 +31,12 @@ This repository uses **PatchBond**: outside contributions carry a small **refund
 | **Slop** | Deposit goes to the maintainers |
 
 **[Pay the deposit →](${o.link})**
-
+${o.closeAt ? `
+> ⏰ **Pay within ${o.hours} h — by ${utc(o.closeAt)}.** Unpaid PRs are closed automatically then. Nothing is lost: paying later reopens this PR.
+` : ""}
 An AI judge running in a verified enclave (NEAR AI Cloud) reviews the PR after CI. Every verdict is public, signed and challengeable. Contributors with 3 refunds on 2 repos pay nothing.
 
-<sub>[What is PatchBond?](${o.webUrl}) · Not paying? The PR stays open; a maintainer can still review it.</sub>`;
+<sub>[What is PatchBond?](${o.webUrl}) · ${o.closeAt ? "Maintainers can still review an unpaid PR before it closes." : "Not paying? The PR stays open; a maintainer can still review it."}</sub>`;
 }
 
 export function depositPaidComment(o: { maintainer: string | null; author: string; amount: string; tip: string | null; reviewHours: number; reopened: boolean }) {
@@ -42,9 +48,9 @@ export function depositPaidComment(o: { maintainer: string | null; author: strin
 The AI judge reviews it once CI finishes; the verdict appears here. Filter paid PRs with the \`patchbond: deposit paid\` label.`;
 }
 
-export function unpaidClosedComment(o: { hours: number; link: string }) {
+export function unpaidClosedComment(o: { link: string }) {
   return `${MARKER}
-Closing for now: this repository asks for a refundable deposit within ${o.hours} h, and none arrived. Nothing is lost —
+Closing for now: the refundable deposit wasn't paid by the deadline announced above. Nothing is lost —
 **[pay the deposit](${o.link})** and PatchBond reopens this PR automatically.`;
 }
 

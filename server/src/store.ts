@@ -21,6 +21,8 @@ export interface Submission {
   verdict_id: string | null;
   deposit_seen_at: number | null;
   updated_at: number;
+  /** When an unpaid PR gets closed — announced in the deposit comment; never closed without it. */
+  close_at: number | null;
 }
 
 export interface Session {
@@ -57,7 +59,7 @@ export class Store {
         repo_id INTEGER NOT NULL, number INTEGER NOT NULL, full_name TEXT NOT NULL,
         installation_id INTEGER NOT NULL, author TEXT NOT NULL, head_sha TEXT NOT NULL,
         check_run_id INTEGER, comment_id INTEGER, state TEXT NOT NULL, verdict_id TEXT,
-        deposit_seen_at INTEGER, updated_at INTEGER NOT NULL,
+        deposit_seen_at INTEGER, updated_at INTEGER NOT NULL, close_at INTEGER,
         PRIMARY KEY (repo_id, number));
       CREATE TABLE IF NOT EXISTS appeals (
         id INTEGER PRIMARY KEY AUTOINCREMENT, verdict_id TEXT NOT NULL, author TEXT NOT NULL,
@@ -73,6 +75,10 @@ export class Store {
       CREATE TABLE IF NOT EXISTS repo_maintainers (
         repo_id INTEGER PRIMARY KEY, github_login TEXT NOT NULL, linked_at INTEGER NOT NULL);
     `);
+    // Databases from before auto-close existed.
+    if (!this.db.query<{ name: string }, []>("PRAGMA table_info(submissions)").all().some((c) => c.name === "close_at")) {
+      this.db.exec("ALTER TABLE submissions ADD COLUMN close_at INTEGER");
+    }
   }
 
   saveVerdict(r: VerdictRecord) {
@@ -93,17 +99,20 @@ export class Store {
     return rows.map((r) => JSON.parse(r.record));
   }
 
-  upsertSubmission(s: Omit<Submission, "updated_at">) {
+  upsertSubmission(s: Omit<Submission, "updated_at" | "close_at"> & { close_at?: number | null }) {
     this.db
       .query(
-        `INSERT INTO submissions VALUES ($repo_id, $number, $full_name, $installation_id, $author, $head_sha,
-           $check_run_id, $comment_id, $state, $verdict_id, $deposit_seen_at, $now)
+        `INSERT INTO submissions (repo_id, number, full_name, installation_id, author, head_sha, check_run_id,
+           comment_id, state, verdict_id, deposit_seen_at, updated_at, close_at)
+         VALUES ($repo_id, $number, $full_name, $installation_id, $author, $head_sha,
+           $check_run_id, $comment_id, $state, $verdict_id, $deposit_seen_at, $now, $close_at)
          ON CONFLICT (repo_id, number) DO UPDATE SET head_sha = $head_sha, full_name = $full_name,
            check_run_id = COALESCE($check_run_id, check_run_id), comment_id = COALESCE($comment_id, comment_id),
            state = $state, verdict_id = COALESCE($verdict_id, verdict_id),
-           deposit_seen_at = COALESCE($deposit_seen_at, deposit_seen_at), updated_at = $now`,
+           deposit_seen_at = COALESCE($deposit_seen_at, deposit_seen_at), updated_at = $now,
+           close_at = COALESCE($close_at, close_at)`,
       )
-      .run({ ...prefix(s), $now: Date.now() });
+      .run({ ...prefix({ close_at: null, ...s }), $now: Date.now() });
   }
 
   submission(repoId: number, number: number): Submission | null {

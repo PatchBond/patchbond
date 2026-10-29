@@ -9,7 +9,7 @@ import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
 import { parseRepoRules, type RepoRules } from "../judge/facts";
 import { gatherPr } from "./gather";
-import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, money, payLink, unpaidClosedComment, verdictComment } from "./text";
+import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, money, payLink, unpaidClosedComment, utc, verdictComment } from "./text";
 
 const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 /** Labels maintainers can filter on: review the paid queue, ignore the rest. */
@@ -108,12 +108,15 @@ export class Bot {
 
     const bond = (await this.chain.quote(repo.id, known ?? undefined)) ?? onChain.policy.base_bond;
     const link = payLink(this.cfg.webUrl, repo.id, pr.number, repo.full_name, author);
-    const check = await this.check(gh, repo, pr.head.sha, "in_progress", null, checkSummary("awaiting", `Pay the refundable deposit: ${link}`));
+    // The deadline is announced here, up front; a PR is never closed on a deadline it wasn't told.
+    const hours = (await this.rulesOf(repo.id, installationId, repo.full_name)).closeUnpaidAfterHours;
+    const closeAt = hours ? Date.now() + hours * 3_600_000 : null;
+    const check = await this.check(gh, repo, pr.head.sha, "in_progress", null, checkSummary("awaiting", `Pay the refundable deposit: ${link}${closeAt ? `\n\nUnpaid PRs close at ${utc(closeAt)}; paying later reopens it.` : ""}`));
     const { data: comment } = await gh.rest.issues.createComment({
       owner: repo.owner.login, repo: repo.name, issue_number: pr.number,
-      body: depositComment({ author, bond, currency: onChain.currency ?? "usdc", open: onChain.open, target: onChain.policy.target_open, link, webUrl: this.cfg.webUrl }),
+      body: depositComment({ author, bond, currency: onChain.currency ?? "usdc", open: onChain.open, target: onChain.policy.target_open, link, webUrl: this.cfg.webUrl, closeAt, hours }),
     });
-    this.store.upsertSubmission({ ...base, check_run_id: check, comment_id: comment.id, state: "awaiting_deposit" });
+    this.store.upsertSubmission({ ...base, check_run_id: check, comment_id: comment.id, state: "awaiting_deposit", close_at: closeAt });
     await gh.rest.issues.addLabels({ owner: repo.owner.login, repo: repo.name, issue_number: pr.number, labels: [LABEL.awaiting] }).catch(() => {});
     this.log(`asked ${author} for a deposit on ${repo.full_name}#${pr.number}`);
   }
@@ -211,32 +214,33 @@ export class Bot {
     this.log(`deposit received for ${s.full_name}#${s.number} from ${d.payer}`);
   }
 
-  /** Repos that opted in (`close_unpaid_after_hours`) close PRs still unpaid after that long. */
+  /** Closes a PR still unpaid at the deadline its deposit comment announced (24 h by default). */
   private async maybeCloseUnpaid(s: Submission) {
-    const rules = await this.rulesOf(s);
-    if (!rules.closeUnpaidAfterHours || Date.now() - s.updated_at < rules.closeUnpaidAfterHours * 3_600_000) return;
+    if (!s.close_at || Date.now() < s.close_at) return;
+    // The repo may have turned auto-close off since.
+    if (!(await this.rulesOf(s.repo_id, s.installation_id, s.full_name)).closeUnpaidAfterHours) return;
     const gh = await this.app.getInstallationOctokit(s.installation_id);
     const [owner, repo] = s.full_name.split("/") as [string, string];
     await gh.rest.issues.createComment({
       owner, repo, issue_number: s.number,
-      body: unpaidClosedComment({ hours: rules.closeUnpaidAfterHours, link: payLink(this.cfg.webUrl, s.repo_id, s.number, s.full_name, s.author) }),
+      body: unpaidClosedComment({ link: payLink(this.cfg.webUrl, s.repo_id, s.number, s.full_name, s.author) }),
     });
     await gh.rest.pulls.update({ owner, repo, pull_number: s.number, state: "closed" });
     this.store.setState(s.repo_id, s.number, "closed_unpaid");
-    this.log(`closed unpaid ${s.full_name}#${s.number} after ${rules.closeUnpaidAfterHours} h`);
+    this.log(`closed unpaid ${s.full_name}#${s.number}`);
   }
 
-  private async rulesOf(s: Submission): Promise<RepoRules> {
-    const hit = this.rulesCache.get(s.repo_id);
+  private async rulesOf(repoId: number, installationId: number, fullName: string): Promise<RepoRules> {
+    const hit = this.rulesCache.get(repoId);
     if (hit && Date.now() - hit.at < RULES_TTL_MS) return hit.rules;
-    const gh = await this.app.getInstallationOctokit(s.installation_id);
-    const [owner, repo] = s.full_name.split("/") as [string, string];
+    const gh = await this.app.getInstallationOctokit(installationId);
+    const [owner, repo] = fullName.split("/") as [string, string];
     const text = await gh.rest.repos
       .getContent({ owner, repo, path: ".github/patchbond.yml", mediaType: { format: "raw" } })
       .then((r) => String(r.data))
       .catch(() => undefined);
     const rules = parseRepoRules(text);
-    this.rulesCache.set(s.repo_id, { rules, at: Date.now() });
+    this.rulesCache.set(repoId, { rules, at: Date.now() });
     return rules;
   }
 
