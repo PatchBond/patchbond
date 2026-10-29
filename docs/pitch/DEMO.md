@@ -48,6 +48,7 @@ idea: *real work is free, wasted time is paid for, and the AI can't touch the mo
 > PatchBond puts a refundable bond on outside PRs. A NEAR AI judge in a TEE reviews them — real work is
 > refunded, slop pays the maintainer. And the contract only forfeits if the enclave signed it.
 >
-> Live on my 122-contributor repo. Try it: patchbond-production.up.railway.app
+> Live on my 122-contributor repo. Built at NEAR HACKATHON.
+> Try it: patchbond-production.up.railway.app · code: github.com/PatchBond/patchbond
 >
 > @NEARProtocol @near_ai #NEARHackathon
