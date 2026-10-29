@@ -69,6 +69,30 @@ export function Shell({ children }: { children: ReactNode }) {
               <WalletButton />
             </div>
           </div>
+          {/* Phones: the same links on a second row (the desktop nav and ⌘K button are hidden there). */}
+          <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-2 text-sm text-muted-foreground sm:hidden">
+            {[
+              ["/#how", "How it works"],
+              ["/#verdicts", "Verdicts"],
+            ].map(([href, label]) => (
+              <a key={href} href={href} className="shrink-0 rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink">
+                {label}
+              </a>
+            ))}
+            {(
+              [
+                ["/agents", "Agents"],
+                ["/dashboard", "Maintainers"],
+              ] as const
+            ).map(([to, label]) => (
+              <NavLink key={to} to={to} className={({ isActive }) => `shrink-0 rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink ${isActive ? "text-ink" : ""}`}>
+                {label}
+              </NavLink>
+            ))}
+            <button onClick={() => setPalette(true)} className="shrink-0 rounded-lg border border-line px-2.5 py-1 text-ink">
+              Judge a PR
+            </button>
+          </nav>
         </header>
         <main className="flex-1">
           {/* initial={false}: the first paint never waits on an animation (screenshots, slow devices). */}
