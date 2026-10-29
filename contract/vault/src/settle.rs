@@ -179,9 +179,15 @@ impl PatchBond {
         }
         let proof = proof.unwrap_or_else(|| env::panic_str("A forfeit needs the NEAR AI TEE proof (proof: model, request_sha256, response, signature)"));
         let signed = crate::tee::verify(proof).unwrap_or_else(|e| env::panic_str(&format!("TEE proof rejected: {e}")));
+        let by_enclave = self.tee_signers.contains(&signed.signer);
+        let by_gateway = signed.gateway_signer.as_ref().is_some_and(|g| self.tee_signers.contains(g));
         require!(
-            self.tee_signers.contains(&signed.signer),
-            format!("TEE proof rejected: 0x{} isn't a registered NEAR AI enclave key", signed.signer)
+            by_enclave || by_gateway,
+            format!(
+                "TEE proof rejected: 0x{} isn't a registered NEAR AI enclave key{}",
+                signed.signer,
+                signed.gateway_signer.as_ref().map_or(String::new(), |g| format!(", nor is 0x{g}"))
+            )
         );
         require!(signed.verdict == "forfeit", format!("TEE proof rejected: the model said \"{}\", not \"forfeit\"", signed.verdict));
         let threshold = self.repo(repo_id).policy.forfeit_threshold_bps as u32;
@@ -190,7 +196,8 @@ impl PatchBond {
             format!("TEE proof rejected: confidence {} bps is below the repo's {} bps", signed.confidence_bps, threshold)
         );
         require!(signed.evidence > 0, "TEE proof rejected: a forfeit needs at least one piece of evidence");
-        events::tee_verified(repo_id, number, &signed.signer, &proof.model);
+        let signer = if by_enclave { signed.signer.clone() } else { signed.gateway_signer.clone().unwrap_or_default() };
+        events::tee_verified(repo_id, number, &signer, &proof.model);
     }
 
     /// The maintainer's forfeit: a 48 h proposal the contributor may dispute for free. Up to one

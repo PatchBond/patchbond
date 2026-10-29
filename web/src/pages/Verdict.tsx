@@ -245,7 +245,7 @@ function VerifyPanel({ r }: { r: VerdictRecord }) {
       )}
       {allOk && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="relative mt-4 text-sm text-brand">
-          ✓ Untouched. Signed by {r.mock ? "the dev key " : "the enclave key "}
+          ✓ Untouched. Signed by {r.mock ? "the dev key " : r.signature.signature_kind === "gateway" ? "NEAR AI's attested gateway key " : "the model's enclave key "}
           <span className="font-mono">{r.signature.signing_address.slice(0, 10)}…</span>
           {!r.mock && (
             <>

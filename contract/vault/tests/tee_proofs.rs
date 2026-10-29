@@ -97,3 +97,35 @@ async fn without_registered_signers_nothing_changes() -> anyhow::Result<()> {
     assert_eq!(e.view("get_tee_signers", json!({})).await?, json!([]));
     Ok(())
 }
+
+#[tokio::test]
+async fn a_gateway_key_counts_only_for_the_model_it_was_registered_with() -> anyhow::Result<()> {
+    let e = setup().await?;
+    let fx = fixtures();
+    let test_signer = fx["test_signer"].as_str().unwrap();
+    let kimi = format!("{test_signer}@moonshotai/kimi-k3");
+    let live_gateway = format!("{}@moonshotai/kimi-k3", fx["live_gateway"]["signer"].as_str().unwrap());
+    set_signers(&e, &e.owner, &[&kimi, &live_gateway]).await?.into_result()?;
+    bond(&e, 1).await?;
+
+    // The genuine NEAR AI gateway signature over a real Kimi K3 answer is recognised — the model
+    // just didn't say forfeit, so nothing happens.
+    let r = forfeit_with(&e, 1, Some(&fx["live_gateway"]["proof"])).await?;
+    assert!(failure_text(&r).contains("the model said \\\"needs_human\\\""), "{}", failure_text(&r));
+
+    // The same gateway key over another model (e.g. an external, non-TEE one) doesn't count…
+    let r = forfeit_with(&e, 1, Some(&fx["gateway_other_model"])).await?;
+    assert!(failure_text(&r).contains("isn't a registered NEAR AI enclave key"), "{}", failure_text(&r));
+    // …nor does a proof that claims Kimi K3 while its request asked for something else.
+    let r = forfeit_with(&e, 1, Some(&fx["gateway_model_mismatch"])).await?;
+    assert!(failure_text(&r).contains("The request asked for \\\"anthropic/claude-fable-5\\\""), "{}", failure_text(&r));
+    // Without the request bytes, a gateway signature can't be tied to a model at all.
+    let mut no_request = fx["gateway_forfeit"].clone();
+    no_request["request"] = Value::Null;
+    assert!(forfeit_with(&e, 1, Some(&no_request)).await?.is_failure());
+
+    forfeit_with(&e, 1, Some(&fx["gateway_forfeit"])).await?.into_result()?;
+    assert_eq!(e.view("get_deposit", json!({ "repo_id": REPO, "number": 1 })).await?["status"]["settled"]["verdict"], "forfeit");
+    assert_eq!(e.view("get_tee_signers", json!({})).await?, json!([kimi, live_gateway]));
+    Ok(())
+}

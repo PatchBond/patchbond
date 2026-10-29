@@ -62,11 +62,14 @@ export interface TeeProof {
   model: string;
   request_sha256: string;
   response: string;
+  /** Only for gateway-signed answers: the contract reads the model from the request. */
+  request: string | null;
   signature: string;
 }
 
 export function teeProof(r: VerdictRecord): TeeProof {
-  return { model: r.model, request_sha256: sha256Hex(r.request_body), response: r.response_body, signature: r.signature.signature };
+  const gateway = r.signature.signature_kind === "gateway";
+  return { model: r.model, request_sha256: sha256Hex(r.request_body), response: r.response_body, request: gateway ? r.request_body : null, signature: r.signature.signature };
 }
 
 export class Chain {

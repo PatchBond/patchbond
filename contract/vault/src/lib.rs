@@ -381,14 +381,15 @@ impl PatchBond {
 
     // ---------- owner ----------
 
-    /// Owner: the NEAR AI enclave signing addresses to accept (from NEAR AI's attestation reports,
-    /// which anyone can check). Replaces the list; an empty list turns the TEE-proof requirement off.
+    /// Owner: the NEAR AI signing keys to accept, from NEAR AI's attestation reports (anyone can check
+    /// them): `0x<address>` for a model enclave key, `0x<address>@<model>` for the gateway key for one
+    /// model. Replaces the list; an empty list turns the TEE-proof requirement off.
     pub fn set_tee_signers(&mut self, signers: Vec<String>) {
         self.assert_owner();
         require!(signers.len() <= 16, "At most 16 TEE signers");
         self.tee_signers = signers
             .iter()
-            .map(|a| tee::normalize_address(a).unwrap_or_else(|| env::panic_str(&format!("{a} isn't a 20-byte hex address"))))
+            .map(|a| tee::normalize_signer(a).unwrap_or_else(|| env::panic_str(&format!("{a} isn't 0x<20-byte address> or 0x<address>@<model>"))))
             .collect();
         events::tee_signers(&self.tee_signers);
     }

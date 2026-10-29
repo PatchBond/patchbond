@@ -54,10 +54,18 @@ export async function verifyRecord(r: VerdictRecord): Promise<Check[]> {
     ok: respActual === respHash,
     detail: `sha256(response) = ${respActual}`,
   });
+  // A model-enclave key names the model in the signed text; NEAR AI's gateway key signs only the two
+  // hashes, so the model is the one the (signed) request asked for.
+  let asked: string | null = null;
+  try {
+    asked = JSON.parse(r.request_body)?.model ?? null;
+  } catch {
+    asked = null;
+  }
   checks.push({
     name: "Signed by the stated model",
-    ok: model === r.model,
-    detail: `signed text names ${model || "(nothing)"}`,
+    ok: model ? model === r.model : asked === r.model,
+    detail: model ? `signed text names ${model}` : `gateway-signed; the signed request asks for ${asked ?? "(nothing)"}`,
   });
 
   let recovered = "";
