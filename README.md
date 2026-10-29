@@ -32,7 +32,7 @@ It is a **market for maintainer attention — EIP-1559 for open source**: the bo
 
 ## Why this exists
 
-> I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), a security and formal-verification suite for Stellar Soroban, which **122 people have contributed to** through **571 pull requests**. Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one of them costs a maintainer time to read, check and close — time taken from the people doing real work. AI is here to help open source, not to drown it. So I built PatchBond on NEAR.
+> I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), a security and formal-verification suite for Stellar Soroban, which **122 people have contributed to** ([contributors](https://github.com/HyperSafeD/Sanctifier/graphs/contributors)) through **571 pull requests** ([all PRs](https://github.com/HyperSafeD/Sanctifier/pulls?q=is%3Apr)). Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one of them costs a maintainer time to read, check and close — time taken from the people doing real work. AI is here to help open source, not to drown it. So I built PatchBond on NEAR.
 >
 > — the PatchBond team
 
@@ -47,7 +47,7 @@ PatchBond answers each part of that pattern directly:
 
 ### The wider problem
 
-- A Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** (31% on large projects).
+- A Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** (31% on large projects) — [Phoronix](https://www.phoronix.com/news/Linux-Foundation-25p-AI-Slop), [The Register](https://www.theregister.com/ai-and-ml/2026/10/21/ai-cuts-coding-time-but-its-also-filling-open-sources-inbox-with-crap/5304389).
 - curl moved low/medium-severity security reports to public view because AI-generated reports nearly overwhelmed its team; GitHub is adding options to limit or turn off pull requests.
 - The sender spends ten seconds. The maintainer spends an hour. Nothing connects the two — until the sender has skin in the game.
 
@@ -144,7 +144,8 @@ Honest status on 2026-10-29. Testnet is the reproduce-it-yourself path; the fina
 | Payout to another chain via NEAR Intents 1Click (Base, Arbitrum, Ethereum, Solana) | ✅ Live **dry-run quotes** from the real 1Click API in the dashboard (Intents has no testnet); the mainnet withdraw-and-bridge runs only with the team's go-ahead |
 | Payout to a Sputnik DAO / Trezu treasury | ✅ `set_payout` hands a repo to a DAO account, which then withdraws by proposal |
 | Gasless contributors (NEP-366): the wallet signs a delegate action, our relayer pays the gas; the relayer only forwards bond/challenge payments into PatchBond | ✅ Built; on the pay page by default (Meteor, Intear, HOT); proven on testnet — the contributor spent 0 yoctoNEAR |
-| On-chain verification of the TEE signature (`ecrecover`); sealed security reports | 🧪 Stretch (feasibility proven in a throwaway test) |
+| On-chain verification of NEAR AI's TEE signature (`ecrecover`) before any oracle forfeit | ✅ Built, 4 sandbox tests incl. genuine NEAR AI model-enclave and gateway signatures; **live on testnet** (`get_tee_signers`) |
+| Sealed security reports (judged in the TEE, stored encrypted to maintainers) | 🧪 Stretch, not built |
 | Bank/card payouts, GitLab, a token | ❌ Out of scope. **No token, ever. Nobody is paid for submitting.** |
 
 ## Architecture
@@ -219,14 +220,28 @@ Full threat model, key powers and known limits: **[SECURITY.md](SECURITY.md)**.
 
 | Suite | Count | Command |
 |---|---|---|
-| Contract unit tests (curve, exemption, forfeit tax, money-split property test) | 10 | `cd contract && cargo test -p patchbond-vault --lib` |
-| Contract sandbox tests (real NEP-141 transfers on a local NEAR node) | 23 | `cd contract && cargo test -p patchbond-vault` |
-| Server: judge facts (incl. assignment and claims-vs-diff), rules, pre-flight, GitHub bot vs fake GitHub (incl. challenge re-judging), maintainer onboarding, Intents quotes, relayer | 47 | `cd server && bun test` |
-| MCP: client, key safety, stdio protocol | 11 | `cd mcp && bun test` |
-| Shared: verification tamper tests, curve = contract values | 6 | `cd shared && bun test` |
+| Contract unit tests (curve, exemption, forfeit tax, money-split property test, TEE parsing) | 11 | `cd contract && cargo test -p patchbond-vault --lib` |
+| Contract sandbox tests (real NEP-141 transfers on a local NEAR node): money paths 15 · NEAR bonds 7 · optimistic verdicts & agents 8 · maintainer safeguards 4 · TEE proofs 4 | 38 | `cd contract && cargo test -p patchbond-vault` |
+| Contract upgrade tests (replay state from each older live build; need those builds, see the file) | 4 | [`tests/migrate.rs`](contract/vault/tests/migrate.rs) |
+| Server: judge facts (assignment, claims vs diff, malicious-code scan), rules, pre-flight, GitHub bot vs fake GitHub (re-judging, labels, 24 h close), maintainer onboarding, spending guard, Intents quotes, relayer | 80 | `cd server && bun test` |
+| MCP: client, key safety, stdio protocol | 12 | `cd mcp && bun test` |
+| Shared: verification tamper tests, curve = contract values, amounts | 7 | `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 62 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
 
 CI runs the TypeScript and contract suites on every push ([workflow](.github/workflows/ci.yml)).
+
+## Check our claims
+
+Everything above can be checked without trusting us:
+
+| Claim | Check it |
+|---|---|
+| The judge models exist and are verifiable | NEAR AI's public model list: <https://cloud-api.near.ai/v1/model/list> (`z-ai/glm-5.3-flash`, `moonshotai/kimi-k3`, `metadata.verifiable: true`) |
+| The contract only forfeits on NEAR AI's signature | Call `get_tee_signers` on [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) and compare with `signing_address` in NEAR AI's attestation report (`GET /v1/attestation/report?model=…`) — code in [`tee.rs`](contract/vault/src/tee.rs) |
+| A verdict wasn't edited | Any verdict page → **Verify signature** (runs in your browser). Live: <https://patchbond-production.up.railway.app> |
+| The facts given to the model are true | Each verdict publishes the exact request bytes — the diff, the CI results and every computed fact — so you can compare them with the PR on GitHub. The TEE proves the model saw exactly those bytes; anyone can challenge a verdict built on wrong facts. |
+| Money moved on-chain | [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md): 62 transactions, one explorer link each |
+| Built during the hackathon | The repository's first commit is 2026-10-28 (window: 2026-10-19 → 11-14); see the commit history |
 
 ## Judge accuracy
 
