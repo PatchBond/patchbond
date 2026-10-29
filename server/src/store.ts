@@ -92,6 +92,17 @@ export class Store {
     return row ? JSON.parse(row.record) : null;
   }
 
+  /** The newest verdict on `full_name#number` since `sinceIso` (made by the same kind of judge). */
+  latestVerdictFor(fullName: string, number: number, sinceIso: string, live: boolean): VerdictRecord | null {
+    const row = this.db
+      .query<{ record: string }, [string, number, string, number]>(
+        `SELECT record FROM verdicts WHERE json_extract(record, '$.repo.full_name') = ? AND number = ? AND created_at >= ?
+           AND json_extract(record, '$.mock') = ? ORDER BY created_at DESC LIMIT 1`,
+      )
+      .get(fullName, number, sinceIso, live ? 0 : 1);
+    return row ? (JSON.parse(row.record) as VerdictRecord) : null;
+  }
+
   /** Newest first. `liveOnly` leaves out records from the offline dev judge. */
   recentVerdicts(limit = 50, repoId?: number, liveOnly = false): VerdictRecord[] {
     const live = liveOnly ? "AND json_extract(record, '$.mock') = 0" : "";

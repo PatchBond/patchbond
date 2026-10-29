@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+**/node_modules
+**/data
+**/dist
+contract/target
+video
+docs/media
+docs/pitch
+.git

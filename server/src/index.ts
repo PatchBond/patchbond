@@ -3,11 +3,12 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Octokit } from "octokit";
-import { appendFileSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { join, normalize } from "node:path";
 import { loadConfig } from "./config";
 import { Chain } from "./near";
 import { Store } from "./store";
+import { DEFAULT_LIMITS, JudgeBudget, visitorOf } from "./judgeBudget";
 import { Bot } from "./github/bot";
 import { gatherPr, parseGithubUrl } from "./github/gather";
 import { computeFacts, judge } from "./judge/judge";
@@ -71,15 +72,26 @@ app.get("/api/submissions/:repo/:number", async (c) => {
 });
 
 // Try the judge on any public PR from the web app (hosted demo). Off unless ALLOW_PUBLIC_JUDGE=1.
-let lastPublicJudge = 0;
+const judgeBudget = new JudgeBudget({
+  ...DEFAULT_LIMITS,
+  perDay: Number(process.env.JUDGE_DAILY_LIMIT) || DEFAULT_LIMITS.perDay,
+  perVisitorDay: Number(process.env.JUDGE_VISITOR_DAILY_LIMIT) || DEFAULT_LIMITS.perVisitorDay,
+});
+const REUSE_MS = 24 * 3_600_000;
 app.post("/api/judge", async (c) => {
   if (process.env.ALLOW_PUBLIC_JUDGE !== "1") return c.json({ error: "Public judging is turned off on this server." }, 403);
-  if (Date.now() - lastPublicJudge < 15_000) return c.json({ error: "The judge is busy; try again in 15 seconds." }, 429);
-  lastPublicJudge = Date.now();
   const { url } = await c.req.json<{ url: string }>();
   try {
     const t = parseGithubUrl(url);
     if (t.kind !== "pr") return c.json({ error: "Paste a pull request URL (…/pull/123)." }, 400);
+    // The same PR judged in the last day: show that verdict instead of paying for another.
+    const since = new Date(Date.now() - REUSE_MS).toISOString();
+    const recent = store.latestVerdictFor(`${t.owner}/${t.repo}`, t.number, since, !inference.mock);
+    if (recent) return c.json({ id: recent.id, verdict: recent.final.verdict, reused: true });
+    const visitor = visitorOf(c.req.header("x-forwarded-for"));
+    const refusal = judgeBudget.refuse(visitor);
+    if (refusal) return c.json({ error: refusal }, 429);
+    judgeBudget.spend(visitor);
     const input = await gatherPr(new Octokit({ auth: process.env.GITHUB_TOKEN }), t, { authorReputation: "new", threshold: 0.85 });
     const record = await judge(input, inference);
     store.saveVerdict(record);
@@ -213,12 +225,30 @@ app.get("/setup/callback", async (c) => {
 <p><a style="color:#22C55E" href="${app.html_url}/installations/new">Install it on a repo now →</a></p></body>`);
 });
 
+// Production: one service serves the built web app too (web/dist), so the site, the API, the
+// webhook and GitHub sign-in all live on one origin. In dev, Vite serves the app instead.
+const WEB_DIST = process.env.WEB_DIST || join(cfg.root, "web", "dist");
+if (existsSync(join(WEB_DIST, "index.html"))) {
+  const index = readFileSync(join(WEB_DIST, "index.html"), "utf8");
+  app.get("*", async (c) => {
+    const path = new URL(c.req.url).pathname;
+    const file = Bun.file(join(WEB_DIST, normalize(path).replace(/^(\.\.[/\\])+/, "")));
+    if (path !== "/" && !path.startsWith("/api/") && (await file.exists())) {
+      // Vite fingerprints everything under /assets, so those can be cached for good.
+      const cache = path.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "public, max-age=300";
+      return new Response(file, { headers: { "cache-control": cache } });
+    }
+    if (path.startsWith("/api/")) return c.json({ error: `No such endpoint: ${path}` }, 404);
+    return c.html(index); // client-side routes (/pay/…, /v/…, /dashboard)
+  });
+}
+
 if (bot) {
   setInterval(() => void bot.tick(), cfg.pollMs);
 }
 
 console.log(
-  `PatchBond server on :${cfg.port} — ${cfg.deployment.network} contract ${cfg.deployment.contract}, judge ${inference.model}${inference.mock ? " (MOCK)" : ""}, GitHub App ${bot ? "on" : "off (open /setup)"}`,
+  `PatchBond server on :${cfg.port} — ${cfg.deployment.network} contract ${cfg.deployment.contract}, judge ${inference.model}${inference.mock ? " (offline)" : " (live, TEE)"}, GitHub App ${bot ? "on" : "off (open /setup)"}${existsSync(join(WEB_DIST, "index.html")) ? ", serving web/dist" : ""}`,
 );
 
 export default { port: cfg.port, fetch: app.fetch };

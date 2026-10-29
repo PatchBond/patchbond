@@ -242,6 +242,8 @@ Honest limits: 30 PRs is a small set, the 0.8 refund threshold was chosen on it,
 
 ## Running your own
 
+**Hosting the app** (one Docker service — site, API, webhook and sign-in on one URL): see **[docs/DEPLOY.md](docs/DEPLOY.md)**. The steps below cover deploying your own contract.
+
 1. Deploy: `cd contract/vault && cargo near deploy build-non-reproducible-wasm <account> with-init-call new json-args '{"owner":"…","oracle":"…","treasury":"…","token":"<USDC>","wnear":"wrap.near"}' …`, then register the contract with USDC and with wNEAR (`storage_deposit` on each). Write the accounts to `deploy/<network>.json`.
 2. `cp .env.example .env`; set `NEAR_NETWORK`, `JUDGE_MODE=nearai` + `NEARAI_API_KEY`, and the oracle key (or keep it in near-cli's keychain).
 3. `bun run dev`, open <http://localhost:8787/setup> and click **Create on GitHub** — the App is created from a manifest with the right permissions and its credentials are saved to `.env`. For local webhooks set `WEBHOOK_URL` to a [smee.io](https://smee.io/new) channel; `bun run dev` starts the tunnel.
