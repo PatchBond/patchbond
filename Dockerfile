@@ -21,9 +21,9 @@ FROM oven/bun:1
 WORKDIR /app
 COPY --from=build /app /app
 ENV NODE_ENV=production PORT=8787 DATA_DIR=/data
-# Verdict records, submissions and sessions (SQLite). Mount a volume so they survive deploys.
-RUN mkdir -p /data && chown bun:bun /data
-VOLUME /data
+# Verdict records, submissions and sessions (SQLite) live in /data: attach a volume there so they
+# survive deploys (Railway: a service volume; plain Docker: -v patchbond-data:/data). No VOLUME line —
+# Railway rejects it — and the default user, because hosts mount volumes owned by root.
+RUN mkdir -p /data
 EXPOSE 8787
-USER bun
 CMD ["bun", "server/src/index.ts"]
