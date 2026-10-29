@@ -83,7 +83,7 @@ function Hero() {
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }} className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-faint">
             <span className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-brand" /> verifiable AI in a TEE</span>
-            <span className="flex items-center gap-1.5"><Coins className="size-3.5 text-brand" /> USDC held by a contract, not a company</span>
+            <span className="flex items-center gap-1.5"><Coins className="size-3.5 text-brand" /> USDC or NEAR held by a contract, not a company</span>
             <span className="flex items-center gap-1.5"><Bot className="size-3.5 text-brand" /> capped wallets for coding agents</span>
           </motion.div>
         </div>
@@ -123,7 +123,7 @@ function Counters() {
 
 const STEPS = [
   { icon: GitPullRequest, title: "A stranger opens a PR", body: "PatchBond asks for a small refundable deposit in one comment. Maintainers, collaborators and proven contributors are waved through." },
-  { icon: Coins, title: "They pay the bond", body: "USDC on NEAR, priced by the repo's queue. Agents pay from capped budgets their owners control." },
+  { icon: Coins, title: "They pay the bond", body: "USDC or NEAR, priced by the repo's queue. Agents pay from capped budgets their owners control." },
   { icon: ShieldCheck, title: "A verifiable AI judges it", body: "After CI, a model in a TEE on NEAR AI Cloud reviews it with facts we compute. The response is signed." },
   { icon: Scale, title: "Refund — or the repo is paid", body: "Real work: every cent back. Slop: 90% to the repo's vault, 10% to run PatchBond. Either side can challenge." },
 ];

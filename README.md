@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml"><img src="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/NEAR-testnet%20live-22C55E" alt="NEAR testnet">
+  <img src="https://img.shields.io/badge/NEAR%20AI-TEE%20judge%20live-22C55E" alt="NEAR AI judge live">
   <img src="https://img.shields.io/badge/license-MIT-ECEAE4" alt="MIT">
 </p>
 
@@ -95,16 +96,16 @@ Every step below works from a clean clone on macOS or Linux. Nothing needs a wal
 ```bash
 git clone https://github.com/PatchBond/patchbond && cd patchbond
 bun install
-cp .env.example .env          # defaults work: testnet, mock judge
+cp .env.example .env          # testnet by default; set NEARAI_API_KEY + JUDGE_MODE=nearai for the live TEE judge
 ```
 
 | # | Do | See |
 |---|---|---|
 | 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **93 TypeScript tests pass** — judge facts and safety rules, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 wallet linking, pre-flight, the MCP server over real stdio. |
 | 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **44 contract tests pass**: 10 unit (incl. a 50,000-case property test of the money split) + 34 on a local NEAR sandbox with real token transfers (every money path in USDC and in NEAR, challenges, maintainer safeguards, a real function-call key, link-once, pause, currency switching). Three more upgrade tests replay live state from each older build (see [`tests/migrate.rs`](contract/vault/tests/migrate.rs)). |
-| 3 | `bun run --cwd server judge-pr https://github.com/the-tcpdump-group/tcpdump/pull/1471` | A **forfeit**: the PR calls `pcap_callback_with_flush_signal_blocking`, which doesn't exist in libpcap's own `pcap_*` namespace. `"verifies": true`. Try `https://github.com/tj/commander.js/pull/2637` → **refund**. |
+| 3 | `bun run --cwd server judge-pr https://github.com/tj/commander.js/pull/2637` | A **refund** with its reasons, the facts, and `"verifies": true`. Then `…/OWASP/Nettacker/pull/1787` → **needs_human** (CI is failing, so a refund isn't automatic). With a NEAR AI key the verdict is signed in a TEE (~$0.0004); without one the same pipeline runs offline with a local key, so you can reproduce everything for free. |
 | 4 | `bun run dev`, then open <http://localhost:5317> | The app: drag the bond curve, press **Simulate a spam wave**, ⌘K → paste any PR URL → open the verdict → **Verify signature** (hashes + signer + on-chain hash, checked in the browser). |
-| 5 | On testnet, with test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: open <http://localhost:5317/pay/1/1?repo=PatchBond/playground&user=YOUR_GITHUB_LOGIN> | Pay a real bond into the live contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet). The page shows the live quote from the on-chain curve. |
+| 5 | On testnet, with test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") and a Meteor or Intear wallet: open <http://localhost:5317/pay/1/1?repo=PatchBond/playground&user=YOUR_GITHUB_LOGIN> | Pay a real bond into the live contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet). The page shows the live quote from the on-chain curve. For a repo that takes **NEAR**, open `/pay/2/1?repo=PatchBond/playground-near&user=…` — the wallet wraps and pays in one transaction. |
 | 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet parent account; see [`server/e2e/testnet.ts`](server/e2e/testnet.ts)) | The full money flow on **real testnet**: 62 transactions — including a gasless bond through the relayer, an agent paying via the MCP server, and NEAR bonds wrapped and paid in one transaction through the real `wrap.testnet` — then every account is deleted. Last report: [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md) — one explorer link per transaction. |
 
 ### For coding agents (MCP)
@@ -125,7 +126,7 @@ Read-only works with no wallet (`patchbond_policy`, `patchbond_preflight`, `patc
 
 ## What's real
 
-Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the final demo runs on mainnet.
+Honest status on 2026-10-29. Testnet is the reproduce-it-yourself path; the final demo runs on mainnet.
 
 | Part | Status |
 |---|---|
@@ -136,7 +137,7 @@ Honest status on 2026-10-28. Testnet is the reproduce-it-yourself path; the fina
 | Web app: home, pay, verdict with in-browser verification, repo, agents, ⌘K | ✅ Built |
 | MCP server for agents (7 tools, key safety check) | ✅ Built, paid a real bond on testnet in the e2e |
 | Maintainer dashboard: GitHub sign-in, NEP-413 wallet proof → `link_repo`, withdraw, bond-policy editor with live price preview, needs-human queue | ✅ Built, 6 tests (forged signature, wrong account, function-call key, replay, non-admin, CSRF) |
-| Re-judging challenges with a stronger model (Kimi K3) seeing both sides' statements, then `resolve_challenge` | ✅ Built and tested (runs on the mock until NEAR AI credits) |
+| Re-judging challenges with a stronger model (Kimi K3) seeing both sides' statements, then `resolve_challenge` | ✅ Built and tested; `moonshotai/kimi-k3` (verifiable), ~$0.04 per re-judge |
 | Maintainer safeguards: forfeits are disputable 48 h proposals, free disputes, escrowed penalty, public maintainer record | ✅ Built, 4 sandbox tests, live on testnet |
 | Malicious-code scan (16 rules, high/medium) feeding the judge | ✅ Built, 19 tests, 0 false positives on the eval set |
 | Unpaid PRs cost maintainers nothing: `patchbond: awaiting deposit` / `deposit paid` labels, unpaid PRs **closed after 24 h** — the deadline is announced in the bot's first comment and on the pay page, paying later reopens the PR, repos can change it or turn it off with `close_unpaid_after_hours` in `.github/patchbond.yml`, free GitHub-email @mention when a deposit lands, in-app activity feed | ✅ Built and tested against a fake GitHub |
@@ -233,9 +234,9 @@ Measured on a labelled set of 30 real PRs ([`docs/eval/candidates.json`](docs/ev
 | Judge | Good PRs forfeited | Good PRs refunded automatically | Slop *not* waved through (forfeit or to a human) | Invalid answers | Cost per verdict |
 |---|---|---|---|---|---|
 | **NEAR AI `glm-5.3-flash`** (verifiable, TEE-signed) | **0 / 15** | **14 / 15** | **8 / 15** | 0 | **$0.00035** |
-| Facts layer only (mock model) | 0 / 15 | 13 / 15 | 3 / 15 | — | — |
+| Facts layer alone (no model) | 0 / 15 | 13 / 15 | 3 / 15 | — | free |
 
-The target is **zero good PRs forfeited**; sending doubtful PRs to a human is acceptable (they're refunded automatically after 14 days if nobody decides). A refund is automatic only when it's clear-cut — CI passing and the model at least 80% sure. The whole 30-PR run cost $0.01 of NEAR AI credits; every record is saved and verifiable at `/v/<id>`. Results: [`docs/eval/results-z-ai-glm-5-3-flash.json`](docs/eval/results-z-ai-glm-5-3-flash.json), [`results-mock.json`](docs/eval/results-mock.json).
+The target is **zero good PRs forfeited**; sending doubtful PRs to a human is acceptable (they're refunded automatically after 14 days if nobody decides). A refund is automatic only when it's clear-cut — CI passing and the model at least 80% sure. The whole 30-PR run cost $0.01 of NEAR AI credits; every record is saved and verifiable at `/v/<id>`. Results: [`docs/eval/results-z-ai-glm-5-3-flash.json`](docs/eval/results-z-ai-glm-5-3-flash.json), [`results-facts-only.json`](docs/eval/results-facts-only.json).
 
 Honest limits: 30 PRs is a small set, the 0.8 refund threshold was chosen on it, and "AI slop" as maintainers label it is often well-formed but unrequested code — which a diff alone can't prove. That's why a forfeit needs a hard fact and stays challengeable.
 

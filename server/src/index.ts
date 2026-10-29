@@ -47,7 +47,8 @@ app.get("/api/config", (c) =>
 
 app.get("/api/verdicts", (c) => {
   const repo = c.req.query("repo");
-  const list = store.recentVerdicts(Math.min(Number(c.req.query("limit") ?? 50), 200), repo ? Number(repo) : undefined);
+  // With the live judge on, public lists show live (TEE-signed) verdicts only.
+  const list = store.recentVerdicts(Math.min(Number(c.req.query("limit") ?? 50), 200), repo ? Number(repo) : undefined, !inference.mock);
   // The list omits the raw bytes; the single-verdict endpoint has everything.
   return c.json(list.map(({ request_body: _q, response_body: _r, ...rest }) => rest));
 });

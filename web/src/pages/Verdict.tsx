@@ -347,7 +347,7 @@ function OnChain({ r }: { r: VerdictRecord }) {
     return (
       <Panel className="p-5">
         <Eyebrow>On-chain</Eyebrow>
-        <p className="mt-3 text-sm text-muted-foreground">No deposit for this {r.kind === "pr" ? "PR" : "issue"} on {cfg.network}. This verdict is a demo judgement — nothing was settled.</p>
+        <p className="mt-3 text-sm text-muted-foreground">No deposit was paid for this {r.kind === "pr" ? "PR" : "issue"} on {cfg.network}: it was judged on request, so nothing was settled on-chain.</p>
       </Panel>
     );
   }

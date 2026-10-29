@@ -30,7 +30,8 @@ export function loadConfig() {
   if (!existsSync(deployFile)) throw new Error(`No deployment for ${network}: ${deployFile} is missing`);
   const deployment = JSON.parse(readFileSync(deployFile, "utf8")) as Deployment;
 
-  const judgeMode = (process.env.JUDGE_MODE || "mock") as "mock" | "nearai";
+  // "offline" (formerly "mock"): the same pipeline without an API key.
+  const judgeMode: "mock" | "nearai" = process.env.JUDGE_MODE === "nearai" ? "nearai" : "mock";
   return {
     root: ROOT,
     port: Number(process.env.PORT || 8787),

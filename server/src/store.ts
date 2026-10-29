@@ -92,10 +92,12 @@ export class Store {
     return row ? JSON.parse(row.record) : null;
   }
 
-  recentVerdicts(limit = 50, repoId?: number): VerdictRecord[] {
+  /** Newest first. `liveOnly` leaves out records from the offline dev judge. */
+  recentVerdicts(limit = 50, repoId?: number, liveOnly = false): VerdictRecord[] {
+    const live = liveOnly ? "AND json_extract(record, '$.mock') = 0" : "";
     const rows = repoId
-      ? this.db.query<{ record: string }, [number, number]>("SELECT record FROM verdicts WHERE repo_id = ? ORDER BY created_at DESC LIMIT ?").all(repoId, limit)
-      : this.db.query<{ record: string }, [number]>("SELECT record FROM verdicts ORDER BY created_at DESC LIMIT ?").all(limit);
+      ? this.db.query<{ record: string }, [number, number]>(`SELECT record FROM verdicts WHERE repo_id = ? ${live} ORDER BY created_at DESC LIMIT ?`).all(repoId, limit)
+      : this.db.query<{ record: string }, [number]>(`SELECT record FROM verdicts WHERE 1 = 1 ${live} ORDER BY created_at DESC LIMIT ?`).all(limit);
     return rows.map((r) => JSON.parse(r.record));
   }
 

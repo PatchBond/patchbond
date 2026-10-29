@@ -71,6 +71,6 @@ const summary = {
 };
 console.log("\n" + JSON.stringify(summary, null, 2));
 console.table(rows.map((r) => ({ label: r.label, verdict: r.verdict, model: r.model, ci: r.ci, phantom: r.phantom.join(" ").slice(0, 50), pr: `${r.repo}#${r.number}`, error: r.error ?? "" })));
-const out = join(cfg.root, "docs/eval", `results-${inference.mock ? "mock" : inference.model.replace(/\W+/g, "-")}.json`);
+const out = join(cfg.root, "docs/eval", `results-${inference.mock ? "facts-only" : inference.model.replace(/\W+/g, "-")}.json`);
 writeFileSync(out, JSON.stringify({ at: new Date().toISOString(), summary, rows }, null, 2));
 console.log(`saved ${out}`);
