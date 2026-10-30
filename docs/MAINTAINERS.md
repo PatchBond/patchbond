@@ -9,8 +9,10 @@ automatically; slop pays **you** for the time it took. Your team never pays.
 
 ## 1. Install the GitHub App (1 min)
 
-**https://github.com/apps/patchbond/installations/new** → pick your account or org → choose the
-repositories (one is enough to start) → **Install**.
+**https://github.com/apps/patchbond/installations/select_target** → pick your account or org → choose
+the repositories (one is enough to start) → **Install** → **Authorize** (that signs you in to the
+dashboard). If GitHub later says *"GitHub App has already been installed"*, nothing went wrong — it's
+installed; use **Configure** there to add repos, or go straight to the dashboard.
 
 Nothing changes yet: a new repo starts with bonds **off** until you turn them on in step 4.
 
@@ -39,7 +41,8 @@ account can withdraw them or change the bond policy.
 1. Open **https://patchbond-production.up.railway.app/dashboard** → **Sign in with GitHub**. We
    check with GitHub that you're an admin of the repo.
 2. Connect your wallet (top right), then **Link** next to your repo and sign the free message.
-   No transaction, no fee — it proves the wallet is yours.
+   No transaction, no fee — it proves the wallet is yours. **The bond settings appear only after
+   this step**: only the linked account can change them on-chain.
 
 ## 4. Turn bonds on (1 min)
 

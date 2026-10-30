@@ -14,6 +14,6 @@ export function useConfig(): AppConfig {
  * server reports it). Until then, send people to the maintainer page, which explains setup.
  */
 export function installUrl(cfg: AppConfig): { href: string; external: boolean } {
-  return cfg.github?.app_url ? { href: `${cfg.github.app_url}/installations/new`, external: true } : { href: "/dashboard", external: false };
+  return cfg.github?.app_url ? { href: `${cfg.github.app_url}/installations/select_target`, external: true } : { href: "/dashboard", external: false };
 }
 export const GITHUB_ORG_URL = "https://github.com/PatchBond";

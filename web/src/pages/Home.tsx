@@ -13,8 +13,11 @@ import { useAsync } from "../lib/useAsync";
 export function Home() {
   return (
     <>
-      <Hero />
-      <Counters />
+      {/* The first screen is the pitch: hero + live numbers fill the viewport; "Try it" starts on scroll. */}
+      <div className="flex min-h-[calc(100svh-5.75rem)] flex-col">
+        <Hero />
+        <Counters />
+      </div>
       <TryTheJudge />
       <Explore />
       <Closing />
@@ -25,14 +28,14 @@ export function Home() {
 function Hero() {
   const words = ["AI", "made", "sending", "free."];
   return (
-    <section className="grain relative overflow-hidden border-b border-line">
+    <section className="grain relative flex flex-1 items-center overflow-hidden border-b border-line">
       <div className="grid-bg pointer-events-none absolute inset-0" />
       <motion.div
         className="pointer-events-none absolute -top-48 left-1/3 h-[34rem] w-[50rem] -translate-x-1/2 rounded-full bg-brand/12 blur-3xl"
         animate={{ x: [0, 40, 0], opacity: [0.7, 1, 0.7] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
       />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-14 sm:pt-20 lg:grid-cols-[1.1fr_1fr]">
+      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-14 lg:grid-cols-[1.1fr_1fr]">
         <div>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-line bg-panel/80 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
             <Sparkles className="size-3.5 text-brand" /> Refundable bonds for pull requests · on NEAR

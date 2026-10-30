@@ -148,7 +148,9 @@ function ago(ms: number) {
 function InstallButton({ className = "", label = "Install the GitHub App" }: { className?: string; label?: string }) {
   const cfg = useConfig();
   if (!cfg.github?.app_url) return null; // nothing to install until the operator creates the App
-  const url = `${cfg.github.app_url}/installations/new`;
+  // select_target lists the user's accounts with Install or Configure — so someone who already
+  // installed the App adds repos instead of hitting GitHub's "already installed" notice.
+  const url = `${cfg.github.app_url}/installations/select_target`;
   return (
     // Same tab: after installing, GitHub's Setup URL returns the maintainer to this page.
     <a href={url} className={className}>
@@ -325,9 +327,25 @@ function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => v
       </div>
     );
   }
+  const steps = [
+    { n: 1, t: "Connect a NEAR wallet", done: !!wallet.accountId },
+    { n: 2, t: "Link it — a free signature, no fee", done: false },
+    { n: 3, t: "Set your bond and turn PatchBond on", done: false },
+  ];
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <p className="max-w-xl text-sm text-muted-foreground">Link this repository to your NEAR account. You'll sign a free message in your wallet proving you control it — no transaction, no fee.</p>
+    <div className="space-y-4">
+      <ol className="grid gap-2 sm:grid-cols-3">
+        {steps.map((st) => (
+          <li key={st.n} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${st.done ? "border-brand/40 bg-brand-soft text-ink" : "border-line text-muted-foreground"}`}>
+            <span className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${st.done ? "bg-brand text-bg" : "bg-raised"}`}>{st.done ? "✓" : st.n}</span>
+            {st.t}
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+      <p className="max-w-xl text-sm text-muted-foreground">
+        Link this repository to your NEAR account first: the bond settings unlock here once it's linked, because only that account can change them on-chain — not PatchBond. Until then nobody is asked for a deposit.
+      </p>
       {wallet.accountId ? (
         <Button onClick={() => void link()} disabled={busy}>
           {busy ? <><Spinner /> Sign in your wallet…</> : <><Link2 className="size-4" /> Link to {wallet.accountId}</>}
@@ -335,6 +353,7 @@ function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => v
       ) : (
         <Button variant="ghost" onClick={() => void wallet.connect()}>Connect a NEAR wallet</Button>
       )}
+      </div>
     </div>
   );
 }
