@@ -157,7 +157,7 @@ Honest status on 2026-10-30. Testnet is the reproduce-it-yourself path; mainnet 
 | Gasless bonds (NEP-366 relayer) | ✅ Proven on testnet — the contributor spent 0 NEAR |
 | Payout to another chain via NEAR Intents 1Click | 🟡 Quotes live (dry-run — Intents has no testnet); the actual cross-chain transfer runs only on mainnet, not yet done |
 | Payout to a Sputnik DAO / Trezu treasury (`set_payout`) | ✅ Built |
-| Sealed security reports | 🧪 Not built |
+| **Sealed security reports**: a vulnerability report is encrypted in the reporter's browser to the maintainer and to an OutLayer enclave key no person holds; the bond is bound to the ciphertext; the enclave checks the report against the repo's real code and asks NEAR AI; only the maintainer can read it | 🟡 Built and tested (cross-language crypto fixture, sandbox test, a real enclave run that forfeited a made-up report at 0.85); live on testnet once the enclave's key is published ([how](docs/OUTLAYER.md#sealed-security-reports)) |
 | A token, or paying anyone for submitting | ❌ Never |
 
 ## How it maps to the tracks
@@ -166,7 +166,7 @@ Honest status on 2026-10-30. Testnet is the reproduce-it-yourself path; mainnet 
 |---|---|---|
 | **AI Security & Defense** — *"give AI money without giving it the keys"* | The AI never holds keys: the contract forfeits only what NEAR AI's enclave signed (`ecrecover` on-chain); with OutLayer the server leaves the loop and `exclusive` removes the oracle's forfeit power. Agents pay from **function-call keys** with contract-enforced daily caps; the MCP server refuses full-access keys. Prompt-injection and malicious-code scans, maintainer safeguards. | [`tee.rs`](contract/vault/src/tee.rs), [`outlayer.rs`](contract/vault/src/outlayer.rs), [`budget.rs`](contract/vault/src/budget.rs), [`malice.ts`](server/src/judge/malice.ts), [SECURITY.md](SECURITY.md) |
 | **Agent Economy** — *agents that earn and spend* | Coding agents pay for maintainers' attention from capped budgets, declare a **passport** (operator, harness, model), and build a public refund/forfeit record per agent and per harness; an agent's own reputation sets its price like anyone's. 7 MCP tools. | [`mcp/`](mcp/src), [`budget.rs`](contract/vault/src/budget.rs), the app's **Agents** page |
-| **Privacy & Private AI** — *TEE, NEAR AI Cloud* | Verdicts from a verifiable model in a TEE, signed over the exact bytes; the judge itself runs in an Intel TDX enclave via OutLayer with secrets that only the vault can unlock. | [`nearai.ts`](server/src/judge/nearai.ts), [`outlayer/judge`](outlayer/judge), [docs/OUTLAYER.md](docs/OUTLAYER.md) |
+| **Privacy & Private AI** — *TEE, NEAR AI Cloud* | **Sealed security reports**: encrypted in the reporter's browser to the maintainer and an enclave key generated inside TDX — our server only ever sees ciphertext; judged inside OutLayer by a verifiable NEAR AI model, reasons sealed back to the maintainer. Plus TEE-signed verdicts and the judge running in TDX. | [`nearai.ts`](server/src/judge/nearai.ts), [`outlayer/judge`](outlayer/judge), [docs/OUTLAYER.md](docs/OUTLAYER.md) |
 | **Real-world** — *stablecoins, payments* | USDC (NEP-141) or NEAR bonds, gasless payments (NEP-366), payouts to any chain via NEAR Intents 1Click. | [`deposit.rs`](contract/vault/src/deposit.rs), [`relayer.ts`](server/src/relayer.ts), [`intents.ts`](server/src/intents.ts) |
 | **Social Money** — *reputation-based access, Sputnik DAO / Trezu* | Portable on-chain reputation: proven contributors pay $0 everywhere; a repo's vault can pay out to a Sputnik DAO / Trezu treasury; slop on a claimed fix funds a bounty for the real fix. | [`lib.rs`](contract/vault/src/lib.rs), [`settle.rs`](contract/vault/src/settle.rs) |
 | **Open Innovation** | **EIP-1559 for maintainer attention**: the price of a maintainer's time computed on-chain from their own queue. | [`curve.rs`](contract/vault/src/curve.rs) |
@@ -293,8 +293,7 @@ GitHub is built today.
 2. **Mainnet** with real USDC, the contract's upgrade key moved behind a DAO time-lock, then
    removed.
 3. **OutLayer by default** — every verdict judged in the enclave, `exclusive` on.
-4. **More targets** — bonds on issues and security reports (sealed, judged in the TEE, visible only
-   to maintainers), then GitLab.
+4. **More targets** — bonds on issues, sealed reports on mainnet, then GitLab.
 5. **A bigger public eval** — the labelled set grows with every challenged verdict.
 
 No token, ever, and nobody is ever paid for submitting.

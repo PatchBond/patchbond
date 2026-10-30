@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
 import { BadgeSnippet } from "../components/BadgeSnippet";
@@ -12,6 +13,7 @@ export function RepoPage() {
   const { data: repo, error, loading } = useAsync(() => chain.repo(cfg, repoId), [cfg, repoId]);
   const { data: verdicts } = useAsync(() => api.verdicts(30, repoId), [repoId]);
   const { data: record } = useAsync(() => chain.maintainerRecord(cfg, repoId), [cfg, repoId]);
+  const { data: reportKey } = useAsync(() => chain.reportKey(cfg, repoId).catch(() => null), [cfg, repoId]);
   if (loading) return <div className="grid min-h-[50vh] place-items-center"><Spinner /></div>;
   if (error || !repo) return <div className="mx-auto max-w-lg px-4 py-24"><Notice tone="error" title="Repo not found">{error ?? `Repo ${repoId} isn't registered with PatchBond on ${cfg.network}.`}</Notice></div>;
   const name = verdicts?.[0]?.repo.full_name ?? `Repo ${repoId}`;
@@ -29,6 +31,11 @@ export function RepoPage() {
             <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} currency={repo.currency} />
           </Panel>
           <BadgeSnippet repoId={repoId} compact />
+          {reportKey && (
+            <Link to={`/report/${repoId}`} className="flex items-center gap-2 rounded-xl border border-line bg-bg p-3 text-sm hover:bg-raised">
+              <Lock className="size-4 text-brand" /> Report a vulnerability privately — sealed to the maintainer and an enclave judge
+            </Link>
+          )}
         </div>
         <Panel className="grid grid-cols-2 gap-6 p-6">
           <Stat label="Vault" value={money(repo.vault, repo.currency)} sub="withdrawable by the maintainer" />

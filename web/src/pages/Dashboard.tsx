@@ -2,12 +2,13 @@
 // then withdraw, tune the bond policy (with a live price preview) and decide needs_human cases.
 
 import { DECIMALS, formatAmount, parseAmount, SYMBOL, type Currency, type VerdictRecord } from "@patchbond/shared";
-import { Bell, Link2, LogOut, Scale, Settings2, Vault } from "lucide-react";
+import { Bell, Link2, Lock, LogOut, Scale, Settings2, Vault } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { BadgeSnippet } from "../components/BadgeSnippet";
+import { SecurityReports } from "../components/SecurityReports";
 import { FaucetDialog } from "../components/Faucet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttentionMeter } from "../components/AttentionMeter";
@@ -276,6 +277,7 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
               <TabsTrigger value="vault"><Vault className="size-4" /> Vault</TabsTrigger>
               <TabsTrigger value="policy"><Settings2 className="size-4" /> Bond policy</TabsTrigger>
               <TabsTrigger value="queue"><Scale className="size-4" /> Needs you</TabsTrigger>
+              <TabsTrigger value="reports"><Lock className="size-4" /> Security reports</TabsTrigger>
             </TabsList>
             <TabsContent value="vault" className="pt-4">
               <Withdraw repo={repo} onDone={onChange} />
@@ -287,6 +289,7 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
               <BadgeSnippet repoId={repo.repo_id} />
             </TabsContent>
             <TabsContent value="queue" className="pt-4"><Queue repo={repo} /></TabsContent>
+            <TabsContent value="reports" className="pt-4"><SecurityReports repoId={repo.repo_id} /></TabsContent>
           </Tabs>
         )}
       </div>

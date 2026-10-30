@@ -54,7 +54,7 @@ export function checkDelegate(d: DecodedDelegate, token: string, contract: strin
       return "";
     }
   })();
-  if (action !== "bond" && action !== "challenge") throw new RelayError('Only bond and challenge payments are relayed (msg.action "bond" or "challenge").');
+  if (action !== "bond" && action !== "challenge" && action !== "report") throw new RelayError('Only bond, challenge and report payments are relayed (msg.action "bond", "challenge" or "report").');
 }
 
 export class Relayer {

@@ -29,6 +29,6 @@ describe("relayer only forwards bond payments", () => {
     expect(() => checkDelegate(d({ gas: 300_000_000_000_000n }), TOKEN, PB)).toThrow("Too much gas");
     expect(() => checkDelegate(d({ actions: 2 }), TOKEN, PB)).toThrow("Exactly one");
     expect(() => checkDelegate(d({ args: { receiver_id: "thief.testnet", amount: "1", msg: "{}" } }), TOKEN, PB)).toThrow("only forwards payments into PatchBond");
-    expect(() => checkDelegate(d({ args: { receiver_id: PB, amount: "1", msg: JSON.stringify({ action: "fund_budget" }) } }), TOKEN, PB)).toThrow("Only bond and challenge");
+    expect(() => checkDelegate(d({ args: { receiver_id: PB, amount: "1", msg: JSON.stringify({ action: "fund_budget" }) } }), TOKEN, PB)).toThrow("Only bond, challenge and report");
   });
 });

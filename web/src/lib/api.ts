@@ -56,6 +56,10 @@ async function post<T>(path: string, body: object = {}): Promise<T> {
 export const api = {
   me: () => get<Me>("/api/me"),
   logout: () => post<{ ok: true }>("/api/auth/logout"),
+  reports: (repo_id: number) => get<SealedReportSummary[]>(`/api/reports/${repo_id}`),
+  report: (repo_id: number, number: number) => get<SealedReportSummary & { sealed: string }>(`/api/reports/${repo_id}/${number}`),
+  submitReport: (repo_id: number, sealed: string, reporter: string) => post<{ repo_id: number; number: number; sha256: string }>("/api/reports", { repo_id, sealed, reporter }),
+  judgeReport: (repo_id: number, number: number) => post<{ state: string }>(`/api/reports/${repo_id}/${number}/judge`),
   /** Testnet only: a little NEAR for fees and test USDC for a bond, from PatchBond's faucet. */
   faucet: (account_id: string) => post<{ account_id: string; near: string; usdc: string; note: string }>("/api/faucet", { account_id }),
   linkChallenge: (repo_id: number, account_id: string) => post<{ message: string; recipient: string; nonce: string }>("/api/link/challenge", { repo_id, account_id }),
@@ -155,7 +159,27 @@ export async function view<T>(cfg: AppConfig, method: string, args: object, cont
   return JSON.parse(new TextDecoder().decode(new Uint8Array(body.result.result))) as T;
 }
 
+/** A sealed security report as the server knows it: ciphertext (on request) and the enclave's public record. */
+export interface SealedReportSummary {
+  repo_id: number;
+  number: number;
+  sha256: string;
+  reporter: string;
+  created_at: number;
+  record: null | {
+    id: string;
+    model: string;
+    verdict_hash: string;
+    final: { verdict: "refund" | "forfeit" | "needs_human"; category: string; confidence: number };
+    signature: { text: string; signature: string; signing_address: string };
+    sealed_for_maintainer: unknown;
+    created_at: string;
+  };
+}
+
 export const chain = {
+  reportKey: (cfg: AppConfig, repo_id: number) => view<string | null>(cfg, "get_report_key", { repo_id }),
+  enclaveKey: (cfg: AppConfig) => view<string | null>(cfg, "get_enclave_key", {}),
   repo: (cfg: AppConfig, repo_id: number) => view<Repo | null>(cfg, "get_repo", { repo_id }),
   deposit: (cfg: AppConfig, repo_id: number, number: number) => view<Deposit | null>(cfg, "get_deposit", { repo_id, number }),
   quote: (cfg: AppConfig, repo_id: number, account_id?: string | null) => view<string>(cfg, "quote_bond", { repo_id, account_id: account_id ?? null }),

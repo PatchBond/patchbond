@@ -101,3 +101,36 @@ Anyone can also call `judge_in_tee` themselves — the contributor, the maintain
   is checked off-chain (`outlayer-verify`, the dashboard).
 - **GitHub** for what a PR contains and what CI said — as for every maintainer.
 - **NEAR AI**'s enclave key registration (`set_tee_signers`, from NEAR AI's attestation report).
+
+## Sealed security reports
+
+AI-written "vulnerability" reports that cite code which doesn't exist are drowning maintainers
+(curl moved low-severity reports public to cope). PatchBond lets a repo take reports **sealed**:
+
+1. **Two keys.** The maintainer's X25519 key is derived from a wallet signature (sign the same
+   message again, get the same key — nothing to store) and registered on-chain with
+   `set_report_key` by the repo's payout account. The enclave's key is derived from
+   `PROTECTED_REPORT_KEY`, a secret **OutLayer generates inside the TEE** — no person ever sees it;
+   the pinned program publishes the public half via `refresh_enclave_key` → `get_enclave_key`.
+2. **Sealed in the browser** (`shared/src/sealed.ts`, X25519 → HKDF-SHA256 → ChaCha20-Poly1305) to
+   both keys. PatchBond's server stores ciphertext only.
+3. **The bond is bound to the ciphertext**: `ft_transfer_call` with
+   `{"action":"report", repo_id, number, sealed_sha256, reporter}`; `judge_report_in_tee` refuses any
+   other envelope.
+4. **The enclave** (`outlayer/judge/src/report.rs`) opens the report, checks the files and calls it
+   cites against the repo's real tree and identifiers, asks NEAR AI, applies rules (a forfeit needs
+   the model's confident forfeit, evidence, and cited code that doesn't exist or prompt injection),
+   and answers through the same callback as PRs — the contract checks NEAR AI's signature.
+5. **The public sees** the verdict, the signature and the verdict hash. The request, response and
+   reasons are **sealed to the maintainer**, who decrypts them in the dashboard and checks they match
+   what NEAR AI signed.
+
+Proof: `outlayer/judge/tests/sealed.rs` opens what the browser sealed; `tests/report.rs` (rules);
+`contract/vault/tests/sealed_reports.rs` (keys, binding, settlement with a genuine NEAR AI
+signature). A real wasmtime run on this repo forfeited a made-up report ("`vault_emergency_drain()`
+in `contract/vault/src/admin_override.rs`") at 0.85.
+
+**Setup (once):** add `PROTECTED_REPORT_KEY` (auto-generated, hex32) to the OutLayer secrets
+profile; deploy the new program version; call `refresh_enclave_key` (≈0.01 NEAR). Then each
+maintainer turns reports on in the dashboard → **Security reports**, and links
+`/report/<repo_id>` from their SECURITY.md.

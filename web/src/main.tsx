@@ -11,6 +11,7 @@ import { WalletProvider } from "./lib/wallet";
 import { Home } from "./pages/Home";
 import { Pay } from "./pages/Pay";
 import { VerdictPage } from "./pages/Verdict";
+import { ReportPage } from "./pages/Report";
 import { RepoPage } from "./pages/Repo";
 import { Agents } from "./pages/Agents";
 import { Dashboard } from "./pages/Dashboard";
@@ -48,6 +49,7 @@ function App() {
               <Route path="/pay/:repoId/:number" element={<Pay />} />
               <Route path="/v/:id" element={<VerdictPage />} />
               <Route path="/r/:repoId" element={<RepoPage />} />
+              <Route path="/report/:repoId" element={<ReportPage />} />
               <Route path="/agents" element={<Agents />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="*" element={<NotFound />} />

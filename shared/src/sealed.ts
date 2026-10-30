@@ -86,3 +86,6 @@ export const reportKeyMessage = (account: string) =>
 
 /** sha256 of the envelope's canonical JSON — what the bond is bound to on-chain. */
 export const envelopeHash = (env: Envelope) => bytesToHex(sha256(utf8ToBytes(JSON.stringify(env))));
+
+/** The fixed NEP-413 nonce for that message, so the same signature (and key) comes back every time. */
+export const reportKeyNonce = (account: string) => sha256(utf8ToBytes(reportKeyMessage(account)));
