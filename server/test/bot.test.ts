@@ -265,7 +265,7 @@ describe("GitHub bot", () => {
       return undefined as never;
     };
     const mock = new MockInference();
-    const tee = new TeeRecords({ getTeeSigners: async () => [mock.signingAddress.toLowerCase().slice(2)], getTeeJob: chain.getTeeJob }, store, () => {}, 20);
+    const tee = new TeeRecords({ getTeeSigners: async () => [mock.signingAddress.toLowerCase(), "0xb98a789cdc4817275f5155593ba73ef2a957e779@moonshotai/kimi-k3"] /* as the contract returns them */, getTeeJob: chain.getTeeJob }, store, () => {}, 20);
     bot.useEnclave(tee);
 
     await deliver("pull_request", prOpened(1));

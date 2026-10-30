@@ -29,8 +29,11 @@ export class TeeRecords {
     }
     const failed = (await verifyRecord(r)).filter((c) => !c.ok);
     if (failed.length) return `Record doesn't verify: ${failed.map((c) => c.name).join("; ")}`;
-    const signers = (await this.chain.getTeeSigners()) ?? [];
-    if (!signers.includes(r.signature.signing_address.toLowerCase().replace(/^0x/, ""))) {
+    // The contract lists keys as "0x<address>"; gateway keys ("0x…@model") never count here, as in
+    // the contract's own callback check.
+    const bare = (a: string) => a.toLowerCase().replace(/^0x/, "");
+    const signers = ((await this.chain.getTeeSigners()) ?? []).filter((a) => !a.includes("@")).map(bare);
+    if (!signers.includes(bare(r.signature.signing_address))) {
       return `0x${r.signature.signing_address} isn't a NEAR AI key this contract trusts`;
     }
     this.prune();
