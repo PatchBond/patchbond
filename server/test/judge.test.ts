@@ -129,6 +129,8 @@ describe("server rules: forfeits need hard facts; refunds need to be clear-cut",
 
   test("a well-founded forfeit stands", () => {
     expect(applyRules({ model: mv(), facts: facts({ phantom_symbols: ["x"] }), threshold: 0.85 }).verdict).toBe("forfeit");
+    // First live case (CivicLedger #60): an empty PR claiming to fix an issue — an empty change is a hard fact.
+    expect(applyRules({ model: mv(), facts: facts({ files_changed: 0, additions: 0, deletions: 0 }), threshold: 0.85 }).verdict).toBe("forfeit");
   });
 
   test("a refund is automatic only when clear-cut: failing CI or low confidence go to a maintainer, never to a forfeit", () => {

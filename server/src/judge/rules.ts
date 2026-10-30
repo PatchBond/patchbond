@@ -24,6 +24,8 @@ export function hardFacts(facts: Facts, rules: RepoRules = DEFAULT_RULES): strin
   if (facts.injection_markers.length) out.push("prompt injection");
   if (facts.unbacked_claims.length) out.push("claims not in the diff");
   if (facts.malicious?.some((f) => f.severity === "high")) out.push("malicious code");
+  // A PR that changes nothing can't deliver what it claims (first seen live: an empty PR "fixing" an issue).
+  if (facts.files_changed === 0 || facts.additions + facts.deletions === 0) out.push("empty change");
   if (rules.unassignedEffect === "evidence" && (facts.assignment === "assigned_to_other" || facts.assignment === "unassigned")) out.push("issue not assigned to the author");
   return out;
 }
@@ -52,7 +54,7 @@ export function applyRules({ model, facts, threshold, rules }: RuleInput): Verdi
       applied.push("A forfeit needs at least one concrete piece of evidence → needs_human");
     } else if (hardFacts(facts, rules).length === 0) {
       verdict = "needs_human";
-      applied.push("No hard fact (failing CI, phantom code, duplicate, injection, malicious code, claims missing from the diff, or an issue assigned to someone else) → the model can't forfeit on its own → needs_human");
+      applied.push("No hard fact (failing CI, phantom code, duplicate, injection, malicious code, claims missing from the diff, an empty change, or an issue assigned to someone else) → the model can't forfeit on its own → needs_human");
     } else if (facts.author_reputation === "proven") {
       verdict = "needs_human";
       applied.push("Proven contributor (prior refunds, no forfeits) → a forfeit goes to a human");

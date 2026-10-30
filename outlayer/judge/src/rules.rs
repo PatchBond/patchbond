@@ -106,6 +106,9 @@ pub fn hard_facts(facts: &Facts, rules: &RepoRules) -> Vec<&'static str> {
     if !high(facts).is_empty() {
         out.push("malicious code");
     }
+    if facts.files_changed == 0 || facts.additions + facts.deletions == 0 {
+        out.push("empty change");
+    }
     if rules.unassigned_effect == "evidence" && (facts.assignment == "assigned_to_other" || facts.assignment == "unassigned") {
         out.push("issue not assigned to the author");
     }
@@ -144,7 +147,7 @@ pub fn apply_rules(model: Option<&ModelVerdict>, facts: &Facts, threshold: f64, 
             applied.push("A forfeit needs at least one concrete piece of evidence → needs_human".into());
         } else if hard_facts(facts, rules).is_empty() {
             verdict = "needs_human".into();
-            applied.push("No hard fact (failing CI, phantom code, duplicate, injection, malicious code, claims missing from the diff, or an issue assigned to someone else) → the model can't forfeit on its own → needs_human".into());
+            applied.push("No hard fact (failing CI, phantom code, duplicate, injection, malicious code, claims missing from the diff, an empty change, or an issue assigned to someone else) → the model can't forfeit on its own → needs_human".into());
         } else if facts.author_reputation == "proven" {
             verdict = "needs_human".into();
             applied.push("Proven contributor (prior refunds, no forfeits) → a forfeit goes to a human".into());
@@ -185,4 +188,26 @@ pub fn apply_rules(model: Option<&ModelVerdict>, facts: &Facts, threshold: f64, 
         applied.push(format!("Risky change ({}) → a human looks before the bond is refunded", ids.join(", ")));
     }
     Final { verdict, confidence, category, reasons, evidence, rules_applied: applied }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::facts::{Facts, DEFAULT_RULES};
+
+    fn facts(files: u64, add: u64) -> Facts {
+        Facts {
+            ci: "success".into(), ci_failed_checks: vec![], phantom_symbols: vec![], unresolved_symbols: vec![], duplicate_of: None, issue: None,
+            assignment: "no_issue".into(), unbacked_claims: vec![], files_changed: files, additions: add, deletions: 0, injection_markers: vec![],
+            malicious: vec![], author_reputation: "new".into(),
+        }
+    }
+
+    #[test]
+    fn an_empty_change_is_a_hard_fact() {
+        // First live case (CivicLedger #60): an empty PR claiming to fix an issue.
+        let model = ModelVerdict { verdict: "forfeit".into(), confidence: 0.95, category: "does_not_work".into(), reasons: vec!["empty".into()], evidence: vec![Evidence { file: "(diff)".into(), line: None, note: "empty".into() }] };
+        assert_eq!(apply_rules(Some(&model), &facts(0, 0), 0.85, &DEFAULT_RULES).verdict, "forfeit");
+        assert_eq!(apply_rules(Some(&model), &facts(1, 3), 0.85, &DEFAULT_RULES).verdict, "needs_human");
+    }
 }
