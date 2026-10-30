@@ -8,8 +8,8 @@ What PatchBond would do on NEAR's own core repo today. Run:
 | | |
 |---|---|
 | Open PRs | **186** (101 drafts) |
-| From NEAR's own engineers | ~161 — GitHub labels them `CONTRIBUTOR` because their org membership is private. **PatchBond never charges them**: the bot checks membership of the `near` org directly (or they can be listed under `exempt:`). |
-| From strangers (`NONE` / first-timers) | **20** — the only PRs that would be asked for a bond |
+| From people with earlier commits | ~161, nearly all NEAR's own engineers — GitHub labels them `CONTRIBUTOR` because their org membership is private. **PatchBond never charges them**: the bot checks membership of the `near` org directly (or they can be listed under `exempt:`). An outsider among them who isn't a `near` member would pay like anyone else — we can't see private membership from outside the org, so this split is approximate. |
+| From strangers (`NONE` / first-timers) | **20** — asked for a bond (judged below) |
 | How long those 20 have waited | median **236 days**, oldest **623** |
 
 ## The verdicts
