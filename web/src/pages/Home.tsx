@@ -66,11 +66,11 @@ function Hero() {
             Strangers attach a small deposit to their pull request. Real contributions get <b className="text-ink">every cent back</b>. A forfeited bond pays the maintainers whose time it wasted — decided by an AI judge whose every verdict you can verify yourself.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }} className="mt-8 flex flex-wrap gap-3">
-            <InstallLink>
+            <InstallOrDashboard>
               <Button className="group h-11 px-5">
                 Install on a repo <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
               </Button>
-            </InstallLink>
+            </InstallOrDashboard>
             <a href="#try">
               <Button variant="ghost" className="h-11 px-5">
                 <Gavel className="size-4" /> Judge a PR now
@@ -214,9 +214,9 @@ function Closing() {
         <h2 className="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">Make your repo's attention worth something.</h2>
         <p className="mt-3 max-w-xl text-muted-foreground">Install the GitHub App, set a bond, and let slop pay for the time it takes. Two minutes, no token, no lock-in.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <InstallLink>
+          <InstallOrDashboard>
             <Button className="h-11 px-5">Install on GitHub <ArrowRight className="size-4" /></Button>
-          </InstallLink>
+          </InstallOrDashboard>
           <Link to="/agents">
             <Button variant="ghost" className="h-11 px-5"><Bot className="size-4" /> I run coding agents</Button>
           </Link>
@@ -227,6 +227,24 @@ function Closing() {
 }
 
 /** The GitHub App's install page once it exists; the maintainer page (which explains setup) until then. */
+/**
+ * "Install on a repo" for newcomers; for a signed-in maintainer whose repos already have the App,
+ * "Open your dashboard" — the install picker is a dead end for them (it only offers Configure).
+ */
+function InstallOrDashboard({ children, className = "h-11 px-5" }: { children: React.ReactNode; className?: string }) {
+  const { data: me } = useAsync(() => api.me().catch(() => null), []);
+  if (me?.signed_in && me.repos.length > 0) {
+    return (
+      <Link to="/dashboard" className="group">
+        <Button className={className}>
+          Open your dashboard <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+        </Button>
+      </Link>
+    );
+  }
+  return <InstallLink>{children}</InstallLink>;
+}
+
 function InstallLink({ children }: { children: React.ReactNode }) {
   const { href, external } = installUrl(useConfig());
   return external ? (
