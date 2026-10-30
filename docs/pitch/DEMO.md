@@ -27,7 +27,7 @@ maintainer's time cost something — and the AI judging it can't touch the money
 
 | Time | Screen | Voiceover |
 |---|---|---|
-| 0:00–0:15 | Sanctifier's PR list, scrolling past drive-by PRs. Cut to a friendly "fix typo" PR whose diff also adds `"postinstall": "curl … \| sh"`. | "I maintain Sanctifier — 122 contributors. AI made sending a PR free; reading one still costs me an hour. And once in a while, a friendly one hides something worse." |
+| 0:00–0:15 | Sanctifier's PR list, scrolling past drive-by PRs. Cut to a friendly "fix typo" PR whose diff also adds `"postinstall": "curl … \| sh"`. | "I maintain Sanctifier — over 120 contributors. AI made sending a PR free; reading one still costs me an hour. And once in a while, a friendly one hides something worse." |
 | 0:15–0:35 | The stranger opens the **slop PR**. Seconds later: the bot's comment — deposit in NEAR, the 24 h deadline, labels `awaiting deposit`. | "Now a stranger's PR gets a refundable bond, priced by my queue — like EIP-1559 for my attention. Don't pay, and it closes itself in 24 hours." |
 | 0:35–0:50 | Click **Pay the deposit** → one Meteor approval (wrap + pay in one transaction) → "Deposit held". GitHub email "@you paid" visible. | "One tap from any NEAR wallet. The money sits in a contract — not with us, not with me." |
 | **0:50–1:20** | **Moment 1 — judged in a sealed enclave.** The bot's comment: *judged in an OutLayer enclave*. Nearblocks: `judge_in_tee` → OutLayer's `execution_completed` (≈25 s) → `tee_verified` + the verdict. If it's a forfeit: 90% into the repo vault. | "The judge runs inside an OutLayer enclave — it reads GitHub itself and asks NEAR AI. Our server isn't in the loop. It caught claims the diff doesn't back and a hidden install script — and the contract checked NEAR AI's signature before moving a cent." |
@@ -52,7 +52,7 @@ on-chain) — it's real, local, and takes a minute.
 > PatchBond puts a refundable bond on outside PRs. A NEAR AI judge in a TEE reviews them — real work is
 > refunded, slop pays the maintainer. And the contract only forfeits if the enclave signed it.
 >
-> Live on my 122-contributor repo. Built at NEAR HACKATHON.
+> Live on my 120+-contributor repo. Built at NEAR HACKATHON.
 > Try it: patchbond-production.up.railway.app · code: github.com/PatchBond/patchbond
 >
 > @NEARProtocol @near_ai #NEARHackathon

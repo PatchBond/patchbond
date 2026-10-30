@@ -60,7 +60,7 @@ function Hero() {
             </motion.span>
           </h1>
           <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Strangers attach a small deposit to their pull request. Real contributions get <b className="text-ink">every cent back</b>. Slop pays the maintainers whose time it wasted — decided by an AI judge whose every verdict you can verify yourself.
+            Strangers attach a small deposit to their pull request. Real contributions get <b className="text-ink">every cent back</b>. A forfeited bond pays the maintainers whose time it wasted — decided by an AI judge whose every verdict you can verify yourself.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }} className="mt-8 flex flex-wrap gap-3">
             <InstallLink>

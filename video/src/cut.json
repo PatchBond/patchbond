@@ -73,14 +73,14 @@
     {
       "scene": "threat",
       "at": 0.1,
-      "text": "Each costs a maintainer an hour. Some hide worse.",
+      "text": "Each one takes a maintainer's time. Some hide worse.",
       "speed": 1.12
     },
     {
       "scene": "maintainer",
-      "at": 0.05,
-      "text": "A hundred and twenty-two contributors. Slop daily.",
-      "speed": 1.12
+      "at": 0.02,
+      "text": "Over a hundred and twenty contributors. Slop keeps coming.",
+      "speed": 1.18
     },
     {
       "scene": "logo",
@@ -108,8 +108,8 @@
     },
     {
       "scene": "attack",
-      "at": 0.15,
-      "text": "Hidden backdoor? Forfeited, signed by NEAR A.I.",
+      "at": 0.1,
+      "text": "A test backdoor? Forfeited, signed by NEAR A.I.",
       "speed": 1.12
     },
     {
@@ -139,7 +139,7 @@
     {
       "scene": "chain",
       "at": 0.15,
-      "text": "Slop pays the maintainer, on-chain.",
+      "text": "Forfeited slop pays the maintainer, on-chain.",
       "speed": 1.12
     },
     {
@@ -151,7 +151,7 @@
     {
       "scene": "close",
       "at": 0.15,
-      "text": "Real work gets its bond back. Slop pays the maintainer. PatchBond.",
+      "text": "Real work gets its bond back. Slop pays for its time. PatchBond.",
       "speed": 1.12
     }
   ]

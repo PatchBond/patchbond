@@ -38,7 +38,7 @@ Strangers attach a small **refundable bond** to their pull request, in USDC or N
 
 ## Why this exists
 
-> I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), a security and formal-verification suite for Stellar Soroban, which **122 people have contributed to** ([contributors](https://github.com/HyperSafeD/Sanctifier/graphs/contributors)) through **571 pull requests** ([all PRs](https://github.com/HyperSafeD/Sanctifier/pulls?q=is%3Apr)). Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one costs a maintainer time to read, check and close. AI is here to help open source, not to drown it. So I built PatchBond on NEAR — and it now runs on Sanctifier.
+> I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), a security and formal-verification suite for Stellar Soroban, which **120+ people have contributed to** ([contributors](https://github.com/HyperSafeD/Sanctifier/graphs/contributors)) through **570 pull requests** ([all PRs](https://github.com/HyperSafeD/Sanctifier/pulls?q=is%3Apr)). Lately a pattern keeps repeating: people open tens of pull requests for issues they were never assigned, or describe changes their PR doesn't actually contain. Every one costs a maintainer time to read, check and close. AI is here to help open source, not to drown it. So I built PatchBond on NEAR — it's installed on Sanctifier, with one test PR through it so far.
 >
 > — the PatchBond team
 
@@ -47,7 +47,7 @@ Strangers attach a small **refundable bond** to their pull request, in USDC or N
 | Tens of PRs at once | **Attention pricing**: every extra open submission makes the next bond 12.5% more expensive. |
 | PRs for issues assigned to someone else | **Assignment check**, read from GitHub; repos can make it forfeit evidence. |
 | "Claims he did what he didn't do" | **Claims vs diff**: every claim of work in the description is matched against the diff. |
-| Maintainers paying for it all with their time | **Slop pays the maintainer**: forfeited bonds go to the repo's vault. |
+| Maintainers paying for it all with their time | **Unpaid PRs close themselves; a forfeited bond pays the maintainer** (forfeits are rare by design — the bond itself does most of the filtering). |
 
 The wider problem: a Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** ([Phoronix](https://www.phoronix.com/news/Linux-Foundation-25p-AI-Slop), [The Register](https://www.theregister.com/ai-and-ml/2026/10/21/ai-cuts-coding-time-but-its-also-filling-open-sources-inbox-with-crap/5304389)); curl moved low-severity reports public after AI reports nearly overwhelmed it. The sender spends ten seconds, the maintainer an hour — until the sender has skin in the game.
 
@@ -91,7 +91,7 @@ Free slop *detectors* exist; PatchBond isn't a code reviewer. The edge is the me
 Why not just take card deposits? Because the payers are increasingly agents, and the judge is an AI:
 
 - **Agents can't hold credit cards — they can hold capped keys.** A function-call key pays bonds and nothing else, under a daily cap the contract enforces.
-- **No custodian.** Bonds sit in a contract; only the repo's linked payout account can withdraw. We can't freeze, seize or redirect them — not even with our own keys.
+- **No custodian.** Bonds sit in a contract; only the repo's linked payout account can withdraw. No contract method lets us — the owner or the oracle — move them. **One honest caveat:** this is a hackathon deployment, and we hold the contract account's key, so we could upgrade the code; on mainnet that key goes behind a DAO time-lock, then away ([SECURITY.md](SECURITY.md)).
 - **The AI can't touch the money.** The contract checks NEAR AI's TEE signature before any forfeit, so a compromised server can only refund.
 - **Reputation is portable.** A contributor's refunds and forfeits are public on-chain, readable by any repo or tool — proven people pay $0 everywhere.
 - **Global by default.** Anyone with a NEAR wallet pays in USDC (gasless) or NEAR; maintainers withdraw to NEAR, a DAO, or another chain via NEAR Intents.
@@ -102,7 +102,8 @@ Why not just take card deposits? Because the payers are increasingly agents, and
 |---|---|
 | "A bond scares off newcomers." | Maintainers, collaborators and proven contributors pay $0. A quiet repo charges cents, real work is refunded in full automatically, the 24 h deadline is announced up front, and every repo can turn bonds or auto-close off. |
 | "The judge only flags 8 of 15 slop PRs." | Detection isn't the product — the bond is. A spammer must pay *before* any judgement, unpaid PRs close themselves, and a flood raises the price for everyone in it. The judge's job is never to take a good contributor's money: **0 of 15** good PRs forfeited. |
-| "A rich spammer just pays." | Then the maintainer is paid for their time — that's the point. Each forfeit multiplies that account's next bond (×2–×4) and is public on-chain. |
+| "A rich spammer just pays." | Then every extra PR in the queue costs them 12.5% more, a forfeit pays the maintainer and multiplies that account's next bond (×2–×4), and the record is public. If the judge isn't sure, the PR goes to a maintainer — the spammer has still paid to be looked at. |
+| "Maintainers profit from spam — a perverse incentive?" | A maintainer can't take a bond on their own: their forfeit is a 48 h proposal the contributor disputes for free, a stronger model re-judges, and an overturned maintainer forfeit pays the contributor a penalty from the vault — on the maintainer's public record. AI forfeits need NEAR AI's signed verdict with evidence and a hard fact. Refund is the default ("when in doubt, refund"). PatchBond's 10% of forfeits pays for verdicts; it earns nothing from refunds and nobody is paid for submitting. |
 | "Can PatchBond or the maintainer steal deposits?" | No. Only the linked payout account withdraws; our oracle can't forfeit without NEAR AI's signature; a maintainer's forfeit is a free-to-dispute proposal with a penalty if wrong. |
 | "Can your server feed the model false facts?" | Every verdict publishes the exact request, so anyone can check it against GitHub. And with **OutLayer** on, the server isn't in the loop at all: anyone calls `judge_in_tee`, an Intel TDX enclave fetches the PR from GitHub itself and asks NEAR AI, and the contract checks NEAR AI's signature in the callback ([docs/OUTLAYER.md](docs/OUTLAYER.md)). |
 | "Isn't this pay-to-contribute, like tea.xyz?" | The opposite: nobody is ever paid for submitting. Spam *costs* money instead of earning it. No token. |
@@ -148,13 +149,13 @@ Honest status on 2026-10-30. Testnet is the reproduce-it-yourself path; mainnet 
 |---|---|
 | Vault contract: USDC or NEAR bonds per repo, curve, refund/forfeit, void, tips, bounties, challenges, maintainer safeguards, agent budgets, reputation, NEP-297 events, link-once, pause, upgrades | ✅ **Live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), 54 tests, full e2e |
 | On-chain check of NEAR AI's TEE signature before any forfeit | ✅ **Live on testnet** with NEAR AI's GLM enclave key and the gateway key bound to Kimi K3 (`get_tee_signers`) |
-| **Judging in OutLayer** (`judge_in_tee`): the judge as a wasm program in Intel TDX — fetches the PR from GitHub itself, asks NEAR AI, the contract verifies the signature in the callback; byte-identical prompts to the server's (parity test, 30 real PRs) | ✅ **Live on testnet** — first run: [tx `GTZM613J…`](https://testnet.nearblocks.io/txns/GTZM613JkwxhDoEafaBsEmX5tFr4SGwEQ3SaVtAh6Hr4) (24.5 s in the enclave, 0.0036 NEAR, NEAR AI's GLM key recovered on-chain); the hosted bot now judges paid PRs this way |
+| **Judging in OutLayer** (`judge_in_tee`): the judge as a wasm program in Intel TDX — fetches the PR from GitHub itself, asks NEAR AI, the contract verifies the signature in the callback; byte-identical prompts to the server's (parity test, 30 real PRs) | ✅ **Live on testnet** — first run: [tx `GTZM613J…`](https://testnet.nearblocks.io/txns/GTZM613JkwxhDoEafaBsEmX5tFr4SGwEQ3SaVtAh6Hr4) (24.5 s in the enclave, 0.0036 NEAR, NEAR AI's GLM key recovered on-chain); the hosted bot is set to judge paid PRs this way |
 | AI judge on NEAR AI Cloud (`z-ai/glm-5.3-flash`, re-judges by `moonshotai/kimi-k3`) | ✅ **Live**, TEE-signed, $0.00035 a verdict; 0/15 good PRs forfeited |
-| GitHub App bot: deposit comment + 24 h deadline, labels, check runs, deposit watch, judge after CI, settle, @mention on payment, review → tip, merge → bounty | ✅ **Live** as the [`patchbond` App](https://github.com/apps/patchbond) on Sanctifier — first real PR [#1972](https://github.com/HyperSafeD/Sanctifier/pull/1972) went comment → bond → verdict → settlement |
+| GitHub App bot: deposit comment + 24 h deadline, labels, check runs, deposit watch, judge after CI, settle, @mention on payment, review → tip, merge → bounty | ✅ **Live** as the [`patchbond` App](https://github.com/apps/patchbond) on Sanctifier — first live PR [#1972](https://github.com/HyperSafeD/Sanctifier/pull/1972) went comment → bond → verdict → settlement (a test: opened and paid from the maintainer's own second account, `coldroom5333.testnet`; no outside contributor has paid a bond yet) |
 | Web app: pay, verdicts with in-browser verification, maintainer dashboard (sign-in, NEP-413 linking, withdraw, policy, activity), agents, ⌘K | ✅ **Live** at the demo URL |
 | MCP server for agents (7 tools) | ✅ Paid a real bond on testnet in the e2e |
 | Gasless bonds (NEP-366 relayer) | ✅ Proven on testnet — the contributor spent 0 NEAR |
-| Payout to another chain via NEAR Intents 1Click | ✅ Live dry-run quotes (Intents has no testnet); the real bridge runs on mainnet |
+| Payout to another chain via NEAR Intents 1Click | 🟡 Quotes live (dry-run — Intents has no testnet); the actual cross-chain transfer runs only on mainnet, not yet done |
 | Payout to a Sputnik DAO / Trezu treasury (`set_payout`) | ✅ Built |
 | Sealed security reports | 🧪 Not built |
 | A token, or paying anyone for submitting | ❌ Never |
@@ -212,7 +213,7 @@ Full threat model: **[SECURITY.md](SECURITY.md)**.
 
 - **Our server can't invent a forfeit** — the contract requires NEAR AI's TEE signature on it (a model's enclave key, or the gateway key bound to one verifiable model, read from the signed request). A stolen oracle key can only refund ([tests](contract/vault/tests/tee_proofs.rs), incl. genuine NEAR AI signatures).
 - **The server can leave the loop entirely** — `judge_in_tee` runs the judge in an OutLayer enclave (Intel TDX) that reads GitHub itself; the contract verifies NEAR AI's signature in the callback, and `exclusive` mode removes the oracle's forfeit power. The enclave program builds **byte-identical prompts** to the server's (parity test over 30 real PRs) — [docs/OUTLAYER.md](docs/OUTLAYER.md).
-- **Nobody takes a vault** except its linked payout account — not the owner, not the oracle; a stolen oracle key can't relink a linked repo.
+- **No contract method lets anyone but the linked payout account take a vault** — not the owner role, not the oracle; a stolen oracle key can't relink a linked repo. (The deployer key can still upgrade the code — see SECURITY.md → Upgrades.)
 - **Maintainers can't keep a bond alone** — 48 h proposal, free dispute, re-judge, penalty if overturned, public record ([tests](contract/vault/tests/maintainer_safeguards.rs)).
 - **Every payout has a callback** that books money back on failure; book-keeping precedes transfers, so nothing is paid twice.
 - **Agents hold only a function-call key**; the contract enforces the cap; the MCP server refuses full-access keys.

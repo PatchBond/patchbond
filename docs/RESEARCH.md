@@ -65,7 +65,7 @@ Judges will see many builds of these. Two touch us:
 ## Competitors / prior art for PatchBond (checked 2026-10-28)
 | What | Does | Gap we fill |
 |---|---|---|
-| GitHub native controls (Aug 2026) | Turn PRs off, limit to collaborators, cap concurrent PRs per outsider | Shuts newcomers out; no money, no reputation |
+| GitHub native controls (Feb & Jun 2026 — [changelog](https://github.blog/changelog/2026-02-13-new-repository-settings-for-configuring-pull-request-access/), [cap](https://gigazine.net/gsc_news/en/20260618-github-limit-pull-request)) | Turn PRs off, limit to collaborators, cap concurrent PRs per outsider | Shuts newcomers out; no money, no reputation |
 | peakoss/anti-slop (Action, v0) | 34 heuristic rules incl. contributor history; auto-closes | No deposit, no payment to maintainers, no portable reputation |
 | Scan AI Slop – aislop (App) | Scores PRs 0–100, no LLM | Same |
 | PR Slop Gate (Action) | Heuristics + optional LLM grader; label/close | Same; verdicts not verifiable |

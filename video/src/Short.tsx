@@ -161,7 +161,7 @@ function Threat() {
     <AbsoluteFill>
       <Backdrop hue={C.danger} intensity={0.8} />
       <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
-        <Kinetic words={["Every", "PR", "costs", "an", "hour."]} accent={[3, 4]} size={130} startBeat={0.1} style={{ justifyContent: "center", maxWidth: 1600 }} />
+        <Kinetic words={["Every", "PR", "costs", "someone", "time."]} accent={[3, 4]} size={130} startBeat={0.1} style={{ justifyContent: "center", maxWidth: 1600 }} />
         <Pop at={f(BEAT * 3.6)} style={{ marginTop: 60 }}>
           <div style={{ width: 1180, background: C.panel, border: `1.5px solid ${C.line}`, borderRadius: 24, overflow: "hidden", boxShadow: "0 40px 120px -30px rgba(0,0,0,.9)" }}>
             <div style={{ padding: "18px 28px", fontSize: 30, fontWeight: 650 }}>
@@ -184,8 +184,8 @@ function Threat() {
 
 function Maintainer() {
   const stats = [
-    { n: 122, label: "contributors" },
-    { n: 571, label: "pull requests" },
+    { n: 121, label: "contributors" },
+    { n: 570, label: "pull requests" },
     { n: 88, label: "closed unmerged" },
   ];
   return (
@@ -585,7 +585,7 @@ function Close() {
           <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: "-0.045em", lineHeight: 1.05 }}>Real work gets its bond back.</div>
         </Pop>
         <Pop at={f(BEAT * 2)}>
-          <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: "-0.045em", lineHeight: 1.05, color: C.brand }}>Slop pays the maintainer.</div>
+          <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: "-0.045em", lineHeight: 1.05, color: C.brand }}>Slop pays for its time.</div>
         </Pop>
         <Pop at={f(BEAT * 5)} style={{ marginTop: 70 }}>
           <Wordmark size={92} />
