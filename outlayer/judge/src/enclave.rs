@@ -5,7 +5,7 @@ use crate::http;
 
 use base64::Engine;
 use patchbond_judge::facts::{self, CheckRun, Contribution, Issue, OpenItem, SymbolIndex};
-use patchbond_judge::{compute_facts, decide, record, request_for, symbols, Gathered, Input, NearAiSignature, Output};
+use patchbond_judge::{compute_facts, decide, record, report, request_for, rules, sealed, symbols, verdict_hash, Gathered, Input, NearAiSignature, Output};
 use serde_json::Value;
 
 const GITHUB: &str = "https://api.github.com";
@@ -23,7 +23,16 @@ pub fn run() {
             return;
         }
     };
-    let out = judge(&input).unwrap_or_else(|reason| Output::not_judged(&input, "skip", reason));
+    if input.mode == "pubkey" {
+        // The enclave's key for sealed reports, from a secret OutLayer generated inside the TEE.
+        match std::env::var("PROTECTED_REPORT_KEY") {
+            Ok(k) => print!(r#"{{"status":"pubkey","pubkey":"{}"}}"#, sealed::public_key(&sealed::enclave_secret(&k))),
+            Err(_) => print!(r#"{{"status":"skip","reason":"PROTECTED_REPORT_KEY isn't set for this project"}}"#),
+        }
+        let _ = std::io::stdout().flush();
+        return;
+    }
+    let out = if input.is_report() { judge_report(&input) } else { judge(&input) }.unwrap_or_else(|reason| Output::not_judged(&input, "skip", reason));
     let line = serde_json::to_string(&out).unwrap();
     print!("{line}");
     let _ = std::io::stdout().flush();
@@ -99,6 +108,57 @@ fn judge(input: &Input) -> Result<Output, String> {
     if let Some(url) = &input.record_url {
         let rec = record(input, &g, &j, &chat_id, &request_body, &response_body, &sig, &now_iso());
         // Best effort: the record's hashes are on-chain, so whoever serves it can't alter it.
+        let _ = http::post(url, &[("content-type", "application/json".into())], rec.to_string().as_bytes());
+    }
+    Ok(out)
+}
+
+/// A sealed security report: open it (only the enclave and the maintainer can), check it against the
+/// repo's real files and identifiers, ask NEAR AI, and seal the full details back to the maintainer.
+fn judge_report(input: &Input) -> Result<Output, String> {
+    let gh = GitHub { token: std::env::var("GITHUB_TOKEN").ok().filter(|t| !t.is_empty()) };
+    let key = std::env::var("NEARAI_API_KEY").map_err(|_| "NEARAI_API_KEY secret is missing")?;
+    let secret = sealed::enclave_secret(&std::env::var("PROTECTED_REPORT_KEY").map_err(|_| "PROTECTED_REPORT_KEY secret is missing")?);
+    let env: sealed::Envelope = serde_json::from_str(input.sealed.as_deref().ok_or("no sealed report in the input")?).map_err(|e| format!("bad envelope: {e}"))?;
+    let maintainer = input.maintainer_key.as_deref().ok_or("no maintainer key in the input")?;
+    let report_text = sealed::open(&env, &secret)?;
+
+    let repo = gh.json(&format!("{GITHUB}/repositories/{}", input.repo_id))?;
+    let full = repo["full_name"].as_str().ok_or("repository has no full_name")?.to_string();
+    let branch = repo["default_branch"].as_str().unwrap_or("main").to_string();
+    let base = format!("{GITHUB}/repos/{full}");
+    let tree: std::collections::HashSet<String> = gh
+        .json(&format!("{base}/git/trees/{branch}?recursive=1"))
+        .ok()
+        .and_then(|t| t["tree"].as_array().map(|a| a.iter().filter_map(|e| e["path"].as_str().map(String::from)).collect()))
+        .unwrap_or_default();
+    let index = gh.bytes(&format!("{base}/tarball/{branch}")).ok().and_then(|tgz| symbols::index_identifiers(&tgz).ok()).map(|i| Box::new(i) as Box<dyn SymbolIndex>);
+    let facts = report::report_facts(&report_text, &tree, index, &input.reputation);
+    let request_body = report::request_body(&input.model, &full, &facts, &report_text);
+
+    let (chat_id, response_body, sig) = near_ai(&key, &input.model, &request_body)?;
+    let mv = rules::model_verdict(&response_body);
+    let final_ = report::apply_rules(mv.as_ref(), &facts, input.threshold_bps as f64 / 10_000.0);
+    let vh = verdict_hash(input.repo_id, input.number, &sig.text, &final_.verdict);
+    let out = Output::settled(input, &final_.verdict, mv.as_ref(), &request_body, &response_body, &sig, &vh);
+
+    if let Some(url) = &input.record_url {
+        // The public sees the verdict and the signature; the maintainer gets everything, sealed.
+        let details = serde_json::json!({ "facts": facts, "final": final_, "model_verdict": mv, "chat_id": chat_id, "request_body": request_body, "response_body": response_body });
+        let sealed_details = sealed::seal(&details.to_string(), &[maintainer], &secret)?;
+        let rec = serde_json::json!({
+            "kind": "report",
+            "runner": "outlayer-tdx",
+            "id": &vh[..16],
+            "repo": { "id": input.repo_id, "full_name": full },
+            "number": input.number,
+            "model": input.model,
+            "signature": sig,
+            "verdict_hash": vh,
+            "final": { "verdict": final_.verdict, "category": final_.category, "confidence": final_.confidence },
+            "sealed_for_maintainer": sealed_details,
+            "created_at": now_iso(),
+        });
         let _ = http::post(url, &[("content-type", "application/json".into())], rec.to_string().as_bytes());
     }
     Ok(out)

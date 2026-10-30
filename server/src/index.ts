@@ -167,6 +167,51 @@ app.post("/api/relay", async (c) => {
   }
 });
 
+// ---- Sealed security reports: we store ciphertext only; the enclave and the maintainer can read it. ----
+const REPORT_BASE = 1_000_000_000_000;
+app.post("/api/reports", async (c) => {
+  const body = await c.req.json<{ repo_id: number; sealed: string; reporter?: string }>().catch(() => null);
+  if (!body || typeof body.sealed !== "string" || !Number.isSafeInteger(body.repo_id)) return c.json({ error: "Send { repo_id, sealed }." }, 400);
+  if (body.sealed.length > 24_000) return c.json({ error: "A sealed report is at most 24 KB — trim the report." }, 413);
+  const [mk, ek] = await Promise.all([chain.getReportKey(body.repo_id), chain.getEnclaveKey()]);
+  if (!mk) return c.json({ error: "This repo hasn't enabled private security reports." }, 400);
+  if (!ek) return c.json({ error: "The enclave judge has no report key yet — try again later." }, 503);
+  let kids: string[] = [];
+  try {
+    const env = JSON.parse(body.sealed) as { v: number; to: { kid: string }[] };
+    if (env.v !== 1) throw new Error("version");
+    kids = env.to.map((t) => t.kid);
+  } catch {
+    return c.json({ error: "That isn't a sealed report envelope." }, 400);
+  }
+  if (!kids.includes(mk) || !kids.includes(ek)) return c.json({ error: "The report must be sealed to both the maintainer's key and the enclave's key." }, 400);
+  const reporter = (body.reporter ?? "anonymous").replace(/[^\w.-]/g, "").slice(0, 39) || "anonymous";
+  const sha256 = new Bun.CryptoHasher("sha256").update(body.sealed).digest("hex");
+  const number = store.addReport({ repo_id: body.repo_id, sealed: body.sealed, sha256, reporter }, REPORT_BASE);
+  return c.json({ repo_id: body.repo_id, number, sha256, reporter });
+});
+app.get("/api/reports/:repo", (c) => c.json(store.reports(Number(c.req.param("repo"))).map(({ sealed: _, ...r }) => r)));
+app.get("/api/reports/:repo/:number", (c) => {
+  const r = store.report(Number(c.req.param("repo")), Number(c.req.param("number")));
+  return r ? c.json(r) : c.json({ error: "No such report." }, 404);
+});
+/** After the bond is paid: ask the contract to judge the report in the enclave (idempotent). */
+app.post("/api/reports/:repo/:number/judge", async (c) => {
+  const repoId = Number(c.req.param("repo"));
+  const number = Number(c.req.param("number"));
+  const r = store.report(repoId, number);
+  if (!r) return c.json({ error: "No such report." }, 404);
+  const [d, job] = await Promise.all([chain.getDeposit(repoId, number), chain.getTeeJob(repoId, number)]);
+  if (!d) return c.json({ error: "The bond for this report isn't paid yet." }, 409);
+  if (job) return c.json({ state: job.state });
+  try {
+    await chain.judgeReportInTee(repoId, number, r.sealed);
+    return c.json({ state: "requested" });
+  } catch (e) {
+    return c.json({ error: `Couldn't start judging: ${(e as Error).message.slice(0, 200)}` }, 502);
+  }
+});
+
 // README badge: "PatchBond · bond $0.50 · 3 refunded", live from the contract.
 app.get("/badge/:repo{[0-9]+\\.svg}", async (c) => {
   const id = Number(c.req.param("repo").replace(/\.svg$/, ""));

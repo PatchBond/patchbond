@@ -43,6 +43,32 @@ export interface LinkChallenge {
   expires_at: number;
 }
 
+interface SealedReportRow {
+  repo_id: number;
+  number: number;
+  sealed: string;
+  sha256: string;
+  reporter: string;
+  created_at: number;
+  record: string | null;
+}
+export type SealedReport = Omit<SealedReportRow, "record"> & { record: SealedRecord | null };
+
+/** What the enclave publishes for a sealed report: the verdict and signature; the rest is sealed. */
+export interface SealedRecord {
+  kind: "report";
+  runner: "outlayer-tdx";
+  id: string;
+  repo: { id: number; full_name: string };
+  number: number;
+  model: string;
+  signature: { text: string; signature: string; signing_address: string; signing_algo: string; signature_kind?: string };
+  verdict_hash: string;
+  final: { verdict: "refund" | "forfeit" | "needs_human"; category: string; confidence: number };
+  sealed_for_maintainer: unknown;
+  created_at: string;
+}
+
 export class Store {
   readonly db: Database;
 
@@ -74,11 +100,39 @@ export class Store {
         github_user TEXT PRIMARY KEY, near_account TEXT NOT NULL, seen_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS repo_maintainers (
         repo_id INTEGER PRIMARY KEY, github_login TEXT NOT NULL, linked_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS reports (
+        repo_id INTEGER NOT NULL, number INTEGER NOT NULL, sealed TEXT NOT NULL, sha256 TEXT NOT NULL,
+        reporter TEXT NOT NULL, created_at INTEGER NOT NULL, record TEXT, PRIMARY KEY (repo_id, number));
     `);
     // Databases from before auto-close existed.
     if (!this.db.query<{ name: string }, []>("PRAGMA table_info(submissions)").all().some((c) => c.name === "close_at")) {
       this.db.exec("ALTER TABLE submissions ADD COLUMN close_at INTEGER");
     }
+  }
+
+  // ---- Sealed security reports: only ciphertext and the enclave's sealed record are stored. ----
+
+  addReport(r: { repo_id: number; sealed: string; sha256: string; reporter: string }, base: number): number {
+    const last = this.db.query<{ n: number | null }, [number]>("SELECT MAX(number) AS n FROM reports WHERE repo_id = ?").get(r.repo_id)?.n;
+    const number = Math.max(base, (last ?? base - 1) + 1);
+    this.db.query("INSERT INTO reports (repo_id, number, sealed, sha256, reporter, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(r.repo_id, number, r.sealed, r.sha256, r.reporter, Date.now());
+    return number;
+  }
+
+  report(repoId: number, number: number): SealedReport | null {
+    const row = this.db.query<SealedReportRow, [number, number]>("SELECT * FROM reports WHERE repo_id = ? AND number = ?").get(repoId, number);
+    return row ? { ...row, record: row.record ? JSON.parse(row.record) : null } : null;
+  }
+
+  reports(repoId: number): SealedReport[] {
+    return this.db
+      .query<SealedReportRow, [number]>("SELECT * FROM reports WHERE repo_id = ? ORDER BY number DESC LIMIT 200")
+      .all(repoId)
+      .map((row) => ({ ...row, record: row.record ? JSON.parse(row.record) : null }));
+  }
+
+  saveReportRecord(repoId: number, number: number, record: unknown) {
+    this.db.query("UPDATE reports SET record = ? WHERE repo_id = ? AND number = ?").run(JSON.stringify(record), repoId, number);
   }
 
   saveVerdict(r: VerdictRecord) {

@@ -83,6 +83,7 @@ fn same_bytes_as_the_typescript_judge() {
                 threshold_bps: 8500,
                 model: "z-ai/glm-5.3-flash".into(),
                 record_url: None,
+                ..Default::default()
             };
             for d in &case.decisions {
                 let j = decide(&input, &f.gathered, facts.clone(), &d.response_body, &case.signed_text);

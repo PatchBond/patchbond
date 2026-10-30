@@ -18,7 +18,7 @@ use crate::{events, PatchBond, PatchBondExt};
 
 const CONFIG_KEY: &[u8] = b"ol:cfg";
 const GAS_FOR_OUTLAYER: Gas = Gas::from_tgas(150);
-const GAS_FOR_CALLBACK: Gas = Gas::from_tgas(60);
+pub(crate) const GAS_FOR_CALLBACK: Gas = Gas::from_tgas(60);
 
 #[near(serializers = [borsh, json])]
 #[derive(Clone, Debug, PartialEq)]
@@ -59,10 +59,10 @@ pub struct TeeOutput {
 }
 
 /// Per-deposit job state: requested, or judged (one enclave verdict per deposit — no re-rolls).
-fn job_key(repo_id: RepoId, number: Number) -> Vec<u8> {
+pub(crate) fn job_key(repo_id: RepoId, number: Number) -> Vec<u8> {
     format!("ol:job:{repo_id}:{number}").into_bytes()
 }
-const REQUESTED: &[u8] = b"r";
+pub(crate) const REQUESTED: &[u8] = b"r";
 
 /// An enclave judgment: "requested", or "judged" with the verdict hash the contract computed — the
 /// only record PatchBond's server will publish for it.
@@ -123,24 +123,12 @@ impl PatchBond {
             "model": cfg.model,
             "record_url": cfg.record_url,
         });
-        let mut args = json!({
-            "source": { "Project": { "project_id": cfg.project_id, "version_key": cfg.version_key } },
-            "resource_limits": { "max_instructions": 50_000_000_000u64, "max_memory_mb": 512, "max_execution_seconds": 120 },
-            "input_data": input.to_string(),
-            "response_format": "Json",
-            "payer_account_id": env::predecessor_account_id(),
-        });
-        if let (Some(owner), Some(profile)) = (&cfg.secrets_owner, &cfg.secrets_profile) {
-            args["secrets_ref"] = json!({ "profile": profile, "account_id": owner });
-        }
         events::tee_requested(repo_id, number, &env::predecessor_account_id());
-        Promise::new(cfg.account)
-            .function_call("request_execution".to_string(), args.to_string().into_bytes(), env::attached_deposit(), GAS_FOR_OUTLAYER)
-            .then(
-                Self::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_CALLBACK)
-                    .on_tee_judgment(repo_id, number, env::predecessor_account_id(), U128(env::attached_deposit().as_yoctonear())),
-            )
+        outlayer_call(&cfg, input).then(
+            Self::ext(env::current_account_id())
+                .with_static_gas(GAS_FOR_CALLBACK)
+                .on_tee_judgment(repo_id, number, env::predecessor_account_id(), U128(env::attached_deposit().as_yoctonear())),
+        )
     }
 
     /// OutLayer's answer: our program's JSON, or `null` if the run failed (OutLayer refunds the
@@ -228,11 +216,27 @@ impl PatchBond {
     }
 }
 
-fn outlayer_config() -> Option<OutlayerConfig> {
+/// Asks OutLayer to run the pinned program on `input`, paid by the attached NEAR (unused is refunded
+/// to the caller).
+pub(crate) fn outlayer_call(cfg: &OutlayerConfig, input: Value) -> Promise {
+    let mut args = json!({
+        "source": { "Project": { "project_id": cfg.project_id, "version_key": cfg.version_key } },
+        "resource_limits": { "max_instructions": 50_000_000_000u64, "max_memory_mb": 512, "max_execution_seconds": 120 },
+        "input_data": input.to_string(),
+        "response_format": "Json",
+        "payer_account_id": env::predecessor_account_id(),
+    });
+    if let (Some(owner), Some(profile)) = (&cfg.secrets_owner, &cfg.secrets_profile) {
+        args["secrets_ref"] = json!({ "profile": profile, "account_id": owner });
+    }
+    Promise::new(cfg.account.clone()).function_call("request_execution".to_string(), args.to_string().into_bytes(), env::attached_deposit(), GAS_FOR_OUTLAYER)
+}
+
+pub(crate) fn outlayer_config() -> Option<OutlayerConfig> {
     env::storage_read(CONFIG_KEY).and_then(|b| near_sdk::borsh::from_slice(&b).ok())
 }
 
-fn is_hex64(s: &str) -> bool {
+pub(crate) fn is_hex64(s: &str) -> bool {
     s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
 }
 

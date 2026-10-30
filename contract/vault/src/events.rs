@@ -166,3 +166,13 @@ pub fn tee_requested(repo_id: RepoId, number: Number, by: &AccountId) {
 pub fn tee_result(repo_id: RepoId, number: Number, outcome: &str, detail: &str) {
     emit("tee_result", json!({ "repo_id": repo_id, "number": number, "outcome": outcome, "detail": detail }));
 }
+
+/// A repo's maintainer registered the key its sealed security reports are encrypted to.
+pub fn report_key(repo_id: RepoId, key: &str) {
+    emit("report_key", json!({ "repo_id": repo_id, "key": key }));
+}
+
+/// The enclave program reported its key for sealed reports.
+pub fn enclave_key(key: &str) {
+    emit("enclave_key", json!({ "key": key }));
+}

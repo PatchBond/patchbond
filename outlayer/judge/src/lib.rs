@@ -8,7 +8,9 @@ pub mod facts;
 pub mod js;
 pub mod malice;
 pub mod prompt;
+pub mod report;
 pub mod rules;
+pub mod sealed;
 pub mod symbols;
 
 use serde::{Deserialize, Serialize};
@@ -18,9 +20,15 @@ use sha2::{Digest, Sha256};
 use facts::{CheckRun, Contribution, Facts, Issue, OpenItem, SymbolIndex};
 use rules::{Final, ModelVerdict};
 
-/// What the contract passes in `input_data` — all of it from on-chain state.
-#[derive(Clone, Debug, Deserialize)]
+/// What the contract passes in `input_data` — all of it from on-chain state. `mode`: "" (a pull
+/// request), "report" (a sealed security report) or "pubkey" (report the enclave's report key).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
 pub struct Input {
+    pub mode: String,
+    /// Report mode: the envelope the bond is bound to, and the maintainer's X25519 key.
+    pub sealed: Option<String>,
+    pub maintainer_key: Option<String>,
     pub repo_id: u64,
     pub number: u64,
     /// GitHub login the bond was paid for; the PR's author must match.
@@ -32,6 +40,12 @@ pub struct Input {
     /// Where to publish the full record (exact bytes) for the public verdict page.
     #[serde(default)]
     pub record_url: Option<String>,
+}
+
+impl Input {
+    pub fn is_report(&self) -> bool {
+        self.mode == "report"
+    }
 }
 
 /// Everything fetched from GitHub for one PR (also the parity-test fixture format).
@@ -162,13 +176,17 @@ impl Output {
     }
 
     pub fn judged(input: &Input, j: &Judged, request_body: &str, response_body: &str, sig: &NearAiSignature) -> Self {
-        let mv = j.model_verdict.as_ref();
+        Self::settled(input, &j.final_.verdict, j.model_verdict.as_ref(), request_body, response_body, sig, &j.verdict_hash)
+    }
+
+    /// A judged answer from its parts (PRs and sealed reports alike).
+    pub fn settled(input: &Input, verdict: &str, mv: Option<&ModelVerdict>, request_body: &str, response_body: &str, sig: &NearAiSignature, verdict_hash: &str) -> Self {
         Output {
             repo_id: input.repo_id,
             number: input.number,
             status: "judged",
             reason: None,
-            verdict: Some(j.final_.verdict.clone()),
+            verdict: Some(verdict.to_string()),
             model_verdict: Some(mv.map_or("invalid".into(), |m| m.verdict.clone())),
             confidence_bps: Some(mv.map_or(0, |m| (m.confidence * 10_000.0).round() as u32)),
             evidence: Some(mv.map_or(0, |m| m.evidence.len() as u32)),
@@ -176,7 +194,7 @@ impl Output {
             request_sha256: Some(sha256_hex(request_body)),
             response_sha256: Some(sha256_hex(response_body)),
             signature: Some(sig.signature.clone()),
-            verdict_hash: Some(j.verdict_hash.clone()),
+            verdict_hash: Some(verdict_hash.to_string()),
         }
     }
 }

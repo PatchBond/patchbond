@@ -53,6 +53,19 @@ impl FungibleTokenReceiver for PatchBond {
                 self.insert_deposit(sender_id, repo_id, number, kind, github_user, bond, tip, fixes_issue, None);
                 amount.0 - due
             }
+            TransferMsg::Report { repo_id, number, sealed_sha256, reporter } => {
+                self.assert_paid_in(repo_id, paid_in);
+                let sealed_sha256 = sealed_sha256.to_lowercase();
+                self.check_report(repo_id, number, &sealed_sha256);
+                let bond = self.price_for(&sender_id, repo_id, number, &reporter, None);
+                require!(
+                    amount.0 >= bond,
+                    format!("The bond is now {} but {} was sent; the transfer was refunded. Ask for a fresh quote and try again", paid_in.fmt(bond), paid_in.fmt(amount.0))
+                );
+                self.insert_deposit(sender_id, repo_id, number, Kind::Issue, reporter, bond, 0, None, None);
+                self.bind_report(repo_id, number, &sealed_sha256);
+                amount.0 - bond
+            }
             TransferMsg::Challenge { repo_id, number } => {
                 require!(
                     self.deposit_currency_of(repo_id, number) == paid_in,

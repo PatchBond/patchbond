@@ -1,0 +1,7 @@
+{
+ "enclave_secret": "1111111111111111111111111111111111111111111111111111111111111111",
+ "maintainer_public": "f124b5227b73f627c97d8f1a47b26db6309158028937305fb06a0ca1feaee733",
+ "envelope": "{\"v\":1,\"alg\":\"x25519-hkdf-sha256-chacha20poly1305\",\"nonce\":\"q9D1Gj9kia7T+B1C\",\"ct\":\"/D4fLW3Y7jnDHWr33alTLw20OOkLZorGR4V11QyU49TV7SCXFGuhmKSRvh7LvSrt+i29bNZP3YCwbPP6df5qk5hWhp6hdmXy4uJDXeyalnzs8gQ5n6anFwM5HPgL5rehVyWRYNh98baXHhr34BAghRp/UsE7aqEyspTMEmDx5Q==\",\"to\":[{\"kid\":\"f124b5227b73f627c97d8f1a47b26db6309158028937305fb06a0ca1feaee733\",\"epk\":\"3e8cea3bd89d5b6f04d6637cd21770da59204454b576db6d6bbe19a9d0b0fc1e\",\"wnonce\":\"ByxRdpvA5QovVHme\",\"wk\":\"ie+p8jTAvi9aDojXCd/Z26yAOonQBwB5NG0+zwrpKsptGeKB3z5vfVI0za+9mxy9\"},{\"kid\":\"7b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f13\",\"epk\":\"3e541ef9457e80ba19ceec79d6efc4feb7043a8faf91e26db4498876e7fe6871\",\"wnonce\":\"Y4it0vccQWaLsNX6\",\"wk\":\"p1EHWPJTWQweW4qYGoRsHJU/NWA5thQlO6y1mI7HUCQ4UrCMOr80JECqDs4LVooi\"}]}",
+ "sha256": "87356c67b80cc3b8bd02df015eb99dbda40adad2cbde2cc6bb2e0d98db386727",
+ "plaintext": "Report: the `withdraw` function skips the owner check (src/vault.rs:42). Steps: call withdraw from any account."
+}

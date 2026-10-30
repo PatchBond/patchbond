@@ -239,6 +239,9 @@ pub enum TransferMsg {
     Challenge { repo_id: RepoId, number: Number },
     /// Fund (or top up) a capped budget that `agent` can spend on bonds with a function-call key.
     FundBudget { agent: AccountId, daily_cap: Option<U128> },
+    /// Bond for a sealed security report (see sealed.rs): `number` ≥ REPORT_BASE, bound to the
+    /// sha256 of the exact envelope. `reporter` is a label shown to the maintainer (≤ 39 chars).
+    Report { repo_id: RepoId, number: Number, sealed_sha256: String, reporter: String },
 }
 
 /// A capped agent wallet held inside the contract. Function-call keys can't attach
