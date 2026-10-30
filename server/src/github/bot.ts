@@ -6,6 +6,7 @@ import type { Config } from "../config";
 import { teeProof, type Chain } from "../near";
 import type { VerdictRecord } from "@patchbond/shared";
 import type { Store, Submission } from "../store";
+import type { TeeRecords } from "../teeRecords";
 import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
 import { parseRepoRules, type RepoRules } from "../judge/facts";
@@ -21,7 +22,13 @@ const RULES_TTL_MS = 10 * 60_000;
 export type ChainPort = Pick<
   Chain,
   "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
->;
+> &
+  Partial<Pick<Chain, "getTeeJob" | "judgeInTee">>;
+
+/** What the contract acts on at once: refunds, and forfeits the model itself signed. */
+function actsOnChain(r: VerdictRecord): boolean {
+  return r.final.verdict === "refund" || (r.final.verdict === "forfeit" && r.model_verdict?.verdict === "forfeit");
+}
 
 export class Bot {
   readonly app: App;
@@ -31,6 +38,10 @@ export class Bot {
   private rejudged = new Map<string, VerdictRecord>();
   /** `.github/patchbond.yml` per repo, briefly cached (the tick reads it for auto-close). */
   private rulesCache = new Map<number, { rules: RepoRules; at: number }>();
+  /** JUDGE_RUNNER=outlayer: the contract judges in an OutLayer enclave; we only ask and announce. */
+  private tee?: TeeRecords;
+  /** When we last asked the contract to judge each PR in OutLayer. */
+  private teeAsked = new Map<string, number>();
 
   constructor(
     private cfg: Config,
@@ -262,6 +273,8 @@ export class Bot {
     const timedOut = Date.now() - (s.deposit_seen_at ?? 0) > this.cfg.ciTimeoutMs;
     if (!ciDone && !timedOut) return;
 
+    if (this.tee && this.chain.judgeInTee) return this.judgeInEnclave(s, gh, repoOnChain);
+
     this.store.setState(s.repo_id, s.number, "judging");
     const record = await judge(input, this.inference);
     this.store.saveVerdict(record);
@@ -269,11 +282,43 @@ export class Bot {
     let onChain = false;
     // The contract only forfeits what the TEE itself signed as a forfeit. When the server's scan
     // escalated past the model (malicious code the model let through), a maintainer confirms it.
-    const signedForfeit = record.model_verdict?.verdict === "forfeit";
-    if (record.final.verdict === "refund" || (record.final.verdict === "forfeit" && signedForfeit)) {
-      await this.chain.settle(s.repo_id, s.number, record.final.verdict, record.verdict_hash, record.final.verdict === "forfeit" ? teeProof(record) : undefined);
+    if (actsOnChain(record)) {
+      await this.chain.settle(s.repo_id, s.number, record.final.verdict as "refund" | "forfeit", record.verdict_hash, record.final.verdict === "forfeit" ? teeProof(record) : undefined);
       onChain = true;
     }
+    await this.announce(s, gh, record, repoOnChain, onChain);
+  }
+
+  /** Use the OutLayer enclave judge (the contract must have one: `get_outlayer`). */
+  useEnclave(tee: TeeRecords) {
+    this.tee = tee;
+  }
+
+  /**
+   * The enclave fetches the PR itself, so nothing we say reaches the model: we ask the contract to
+   * judge, then announce the record the contract accepted (its callback already settled it).
+   */
+  private async judgeInEnclave(s: Submission, gh: Octokit, repoOnChain: Awaited<ReturnType<ChainPort["getRepo"]>>) {
+    const key = `${s.repo_id}/${s.number}`;
+    const job = await this.chain.getTeeJob!(s.repo_id, s.number);
+    if (!job) {
+      // Not asked yet — or the last run answered "CI still running"/failed and was cleared.
+      if (Date.now() - (this.teeAsked.get(key) ?? 0) < 3 * 60_000) return;
+      this.teeAsked.set(key, Date.now());
+      await this.chain.judgeInTee!(s.repo_id, s.number);
+      this.store.setState(s.repo_id, s.number, "deposit_received");
+      this.log(`asked the contract to judge ${s.full_name}#${s.number} in OutLayer`);
+      return;
+    }
+    if (job.state !== "judged") return;
+    const record = await this.tee!.confirmed(s.repo_id, s.number);
+    if (!record) return; // the enclave's published record hasn't arrived yet
+    this.teeAsked.delete(key);
+    await this.announce(s, gh, record, repoOnChain, actsOnChain(record));
+  }
+
+  private async announce(s: Submission, gh: Octokit, record: VerdictRecord, repoOnChain: Awaited<ReturnType<ChainPort["getRepo"]>>, onChain: boolean) {
+    const [owner, repo] = s.full_name.split("/") as [string, string];
     const v = record.final.verdict;
     const conclusion = v === "refund" ? "success" : v === "forfeit" ? "failure" : "neutral";
     await this.updateCheck(gh, s, "completed", conclusion, checkSummary(v, `${record.final.reasons.join(" ")}\n\nVerdict: ${this.cfg.webUrl}/v/${record.id}`));
@@ -314,7 +359,7 @@ export class Bot {
     try {
       await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash, verdict === "forfeit" ? teeProof(record) : undefined);
     } catch (e) {
-      if (verdict !== "forfeit" || !/TEE proof rejected|needs the NEAR AI TEE proof/.test(String(e))) throw e;
+      if (verdict !== "forfeit" || !/TEE proof rejected|needs the NEAR AI TEE proof|only from the OutLayer enclave/.test(String(e))) throw e;
       // e.g. the re-judge model's enclave key isn't registered on the contract: when in doubt, refund.
       this.log(`re-judge forfeit for ${key} not accepted on-chain (${String(e).slice(0, 120)}); refunding`);
       verdict = "refund";

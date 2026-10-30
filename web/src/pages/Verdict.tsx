@@ -46,6 +46,18 @@ function Verdict({ r }: { r: VerdictRecord }) {
         <p className="mt-2 text-sm text-faint">
           Judged {new Date(r.created_at).toLocaleString()} by <span className="font-mono">{r.model}</span>
         </p>
+        {r.runner === "outlayer-tdx" && (
+          <p className="mt-3 inline-flex max-w-3xl items-start gap-2 rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-sm">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />
+            <span>
+              <b>Judged in an OutLayer enclave (Intel TDX).</b> The program fetched this PR and its CI from GitHub itself, built the facts and the prompt, and asked
+              NEAR AI — PatchBond's server never touched them. The contract checked NEAR AI's signature before settling.{" "}
+              <a href="https://github.com/PatchBond/patchbond/tree/main/outlayer/judge" target="_blank" rel="noreferrer" className="text-brand hover:underline">
+                The program ↗
+              </a>
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[1.5fr_1fr]">

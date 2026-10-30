@@ -18,12 +18,15 @@ import { MockInference } from "./judge/nearai";
 import { maintainerRoutes } from "./maintainers";
 import { dryQuote, IntentsError, type PayoutQuoteRequest } from "./intents";
 import { Relayer, RelayError } from "./relayer";
+import { TeeRecords } from "./teeRecords";
 
 const cfg = loadConfig();
 const chain = new Chain(cfg);
 const store = new Store(cfg.dataDir);
 const inference = makeInference(cfg);
 const bot = cfg.github.configured ? new Bot(cfg, chain, store, inference, makeInference(cfg, true)) : null;
+const teeRecords = new TeeRecords(chain, store, (r) => console.log(`[tee] published ${r.repo.full_name}#${r.number}: ${r.final.verdict}`));
+if (bot && cfg.judge.runner === "outlayer") bot.useEnclave(teeRecords);
 
 const app = new Hono();
 app.use("/api/*", cors());
@@ -102,6 +105,21 @@ app.post("/api/judge", async (c) => {
   } catch (e) {
     return c.json({ error: (e as Error).message }, 400);
   }
+});
+
+// The OutLayer enclave publishes its full record here (exact bytes). It goes public only once it
+// verifies and the contract's own job confirms its verdict hash.
+app.post("/api/tee-records", async (c) => {
+  const body = await c.req.text();
+  if (body.length > 1_000_000) return c.json({ error: "Record too large" }, 413);
+  let record: unknown;
+  try {
+    record = JSON.parse(body);
+  } catch {
+    return c.json({ error: "Not JSON" }, 400);
+  }
+  const refusal = await teeRecords.accept(record).catch((e) => `Couldn't check the record: ${(e as Error).message}`);
+  return refusal ? c.json({ error: refusal }, 400) : c.json({ held: true });
 });
 
 // Pre-flight: the judge's facts as advice before paying. Free — no model call.

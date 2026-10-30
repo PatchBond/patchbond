@@ -11,6 +11,8 @@ import { Bot } from "../src/github/bot";
 import { loadConfig } from "../src/config";
 import { MockInference } from "../src/judge/nearai";
 import { Store } from "../src/store";
+import { TeeRecords } from "../src/teeRecords";
+import { judge } from "../src/judge/judge";
 import { fakeChain, fakeGithub, rsaKey, type PrFixture } from "./fakes";
 
 const REPO = { id: 4242, owner: "acme", name: "widget" };
@@ -252,5 +254,58 @@ describe("GitHub bot", () => {
       bot.app.webhooks.verifyAndReceive({ id: "x", name: "pull_request", payload: JSON.stringify(prOpened(1)), signature: "sha256=deadbeef" }),
     ).rejects.toThrow();
     expect(gh.calls).toHaveLength(0);
+  });
+  test("enclave mode: the contract judges in OutLayer; we publish only the record the chain accepted", async () => {
+    const jobs = new Map<string, { state: "requested" | "judged"; verdict_hash: string | null }>();
+    const asked: string[] = [];
+    chain.getTeeJob = async (r, n) => jobs.get(`${r}/${n}`) ?? null;
+    chain.judgeInTee = async (r, n) => {
+      asked.push(`${r}#${n}`);
+      jobs.set(`${r}/${n}`, { state: "requested", verdict_hash: null });
+      return undefined as never;
+    };
+    const mock = new MockInference();
+    const tee = new TeeRecords({ getTeeSigners: async () => [mock.signingAddress.toLowerCase().slice(2)], getTeeJob: chain.getTeeJob }, store, () => {}, 20);
+    bot.useEnclave(tee);
+
+    await deliver("pull_request", prOpened(1));
+    chain.pay(1, "tunde.testnet", "tunde");
+    await bot.tick(); // CI is green: asks the contract, judges nothing itself
+    expect(asked).toEqual([`${REPO.id}#1`]);
+    expect(chain.log.some((l) => l.startsWith("settle"))).toBe(false);
+    await bot.tick();
+    expect(asked).toHaveLength(1); // still running: not asked twice
+
+    // What the enclave would publish (same shape; here signed by the mock key the fake chain trusts).
+    const f = PRS[0]!;
+    const make = async (body: string) => ({
+      ...(await judge(
+        {
+          repo: { id: REPO.id, full_name: `${REPO.owner}/${REPO.name}` }, author: f.author,
+          contribution: { kind: "pr", number: 1, title: f.title, body, diff: f.diff, files: f.files, additions: 1, deletions: 0 },
+          checkRuns: f.checks, openItems: [], symbolIndex: async () => ({ has: () => true, namespaceSize: () => 0 }),
+          issueLookup: async () => ({ exists: false, open: false }), authorReputation: "new", threshold: 0.85,
+        },
+        mock,
+      )),
+      runner: "outlayer-tdx" as const,
+    });
+    const real = await make(f.body);
+    const forged = await make("Something else entirely.");
+    expect(await tee.accept({ ...real, response_body: real.response_body.replace("refund", "forfeit") })).toContain("doesn't verify");
+    expect(await tee.accept({ ...real, runner: undefined })).toContain("Not an OutLayer verdict record");
+    expect(await tee.accept(forged)).toBeNull(); // verifies, but the chain will never name its hash
+    expect(await tee.accept(real)).toBeNull();
+
+    // The contract's callback accepted `real` (and refunded): the bot announces exactly that record.
+    jobs.set(`${REPO.id}/1`, { state: "judged", verdict_hash: real.verdict_hash });
+    chain.deposits.get(`${REPO.id}/1`)!.status = { proposed: { verdict: "refund", deadline: Date.now() + 400 } };
+    await bot.tick();
+    expect(store.submission(REPO.id, 1)?.state).toBe("judged");
+    expect(store.verdict(real.id)?.runner).toBe("outlayer-tdx");
+    expect(store.verdict(forged.id)).toBeNull();
+    expect(comments().at(-1)).toContain("Deposit refunded");
+    expect(comments().at(-1)).toContain(`/v/${real.id}`);
+    expect(chain.log.some((l) => l.startsWith("settle"))).toBe(false); // the contract settled it, not us
   });
 });

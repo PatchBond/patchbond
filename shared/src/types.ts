@@ -105,4 +105,9 @@ export interface VerdictRecord {
    * (used until the NEAR AI account has credits). The verdict page says so loudly.
    */
   mock: boolean;
+  /**
+   * "outlayer-tdx": judged by the OutLayer enclave program (outlayer/judge), which fetched the PR
+   * from GitHub itself — PatchBond's server never touched the facts or the prompt.
+   */
+  runner?: "outlayer-tdx";
 }

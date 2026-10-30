@@ -72,6 +72,21 @@ export function teeProof(r: VerdictRecord): TeeProof {
   return { model: r.model, request_sha256: sha256Hex(r.request_body), response: r.response_body, request: gateway ? r.request_body : null, signature: r.signature.signature };
 }
 
+export interface OutlayerConfig {
+  account: string;
+  project_id: string;
+  version_key: string | null;
+  model: string;
+  record_url: string | null;
+  exclusive: boolean;
+}
+
+/** "judged" carries the verdict hash the contract computed: the only record we publish for it. */
+export interface TeeJob {
+  state: "requested" | "judged";
+  verdict_hash: string | null;
+}
+
 export class Chain {
   readonly provider: JsonRpcProvider;
   private oracle?: Account;
@@ -84,14 +99,14 @@ export class Chain {
     return this.provider.callFunction<T & {}>({ contractId: this.cfg.deployment.contract, method, args }) as Promise<T | undefined>;
   }
 
-  private async call(methodName: string, args: Record<string, unknown>, tgas = 100n) {
+  private async call(methodName: string, args: Record<string, unknown>, tgas = 100n, deposit = 0n) {
     this.oracle ??= new Account(this.cfg.deployment.oracle, this.provider, this.cfg.oracleKey() as KeyPairString);
     return this.oracle.callFunction({
       contractId: this.cfg.deployment.contract,
       methodName,
       args,
       gas: tgas * TGAS,
-      deposit: 0n,
+      deposit,
     });
   }
 
@@ -103,6 +118,12 @@ export class Chain {
   isExempt = (account_id: string) => this.view<boolean>("is_exempt", { account_id });
   getTotals = () => this.view<{ held: string; refunded: string; forfeited: string; deposits: number }>("get_totals", {});
   getBounty = (repo_id: number, issue: number) => this.view<string>("get_bounty", { repo_id, issue });
+  getTeeSigners = () => this.view<string[]>("get_tee_signers", {});
+  /** The OutLayer enclave judge (contract/vault/src/outlayer.rs), if this contract has one. */
+  getOutlayer = () => this.view<OutlayerConfig | null>("get_outlayer", {});
+  getTeeJob = (repo_id: number, number: number) => this.view<TeeJob | null>("get_tee_job", { repo_id, number });
+  /** Asks the contract to judge in OutLayer. Returns once included; the enclave answers ~1 min later. */
+  judgeInTee = (repo_id: number, number: number, deposit = 20n * 10n ** 21n) => this.call("judge_in_tee", { repo_id, number }, 300n, deposit);
 
   // Installing the App never starts charging anyone: a new repo starts off, and the maintainer turns
   // bonds on from the dashboard once they've linked a payout account.

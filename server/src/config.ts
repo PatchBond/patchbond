@@ -51,6 +51,11 @@ export function loadConfig() {
       /** Re-judges challenged verdicts. */
       strongModel: process.env.JUDGE_STRONG_MODEL || "moonshotai/kimi-k3",
       apiKey: () => need("NEARAI_API_KEY"),
+      /**
+       * "outlayer": the contract judges each PR in an OutLayer enclave (judge_in_tee) and this server
+       * only asks and announces. Needs `get_outlayer` set on the contract.
+       */
+      runner: (process.env.JUDGE_RUNNER === "outlayer" ? "outlayer" : "server") as "outlayer" | "server",
       /** Optional fixed key so mock signatures keep one signing address across restarts. */
       mockKey: process.env.MOCK_SIGNER_KEY || undefined,
     },
