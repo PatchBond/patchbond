@@ -1,0 +1,391 @@
+{
+ "repo": "near/nearcore",
+ "at": "2026-10-30T11:57:25.466Z",
+ "model": "z-ai/glm-5.3-flash",
+ "open": 186,
+ "drafts": 101,
+ "strangers": [
+  {
+   "number": 16688,
+   "author": "0xvectr",
+   "title": "fix(spice): garbage collect contract accesses",
+   "age_days": 2,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Fixes open issue #16645 by deleting contract accesses together with witnesses in GC and undo-block paths.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 5,
+    "additions": 124
+   },
+   "verdict_id": "1bc28fdc6d815d45",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 16613,
+   "author": "bercedev",
+   "title": "doc: point the README tutorials link at a page that exists",
+   "age_days": 9,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "One-line fix to a broken README link, matching open issue #16598.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 1
+   },
+   "verdict_id": "cc12c56cb4bec7b4",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 16495,
+   "author": "HusseinAdeiza",
+   "title": "fix(mirror): pass --no-snapshot to fork-network init instead of deleting snapshot dirs",
+   "age_days": 29,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Small fix matching open issue #16229, replacing a broken cleanup block with the proper --no-snapshot flag.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 2
+   },
+   "verdict_id": "ef5a21b3f4e9e534",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 16402,
+   "author": "Vastargazing",
+   "title": "test(network): cover peer cleanup after edge expiration",
+   "age_days": 51,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Test-only PR adding a regression test to existing graph tests; CI passes.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 55
+   },
+   "verdict_id": "9e0211855f3f5082",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 16209,
+   "author": "zfaustk",
+   "title": "fix(store): copy child ChunkExtra to cold storage",
+   "age_days": 78,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Fixes assigned issue #16177 with a real code change in cold_storage.rs.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 3,
+    "additions": 49
+   },
+   "verdict_id": "e8801429b70f1edd",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 16207,
+   "author": "SharkHand3",
+   "title": "fix(rpc): query global contract code on tracked shard",
+   "age_days": 78,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "CI passes and no phantom or unresolved symbols are reported.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 3,
+    "additions": 31
+   },
+   "verdict_id": "744d95e3a38b3b4a",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 16170,
+   "author": "SashaMIT",
+   "title": "ci: bind workflow_dispatch release-type via env before shell",
+   "age_days": 85,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Small, correct hardening change that passes the documented workflow_dispatch input via env instead of direct shell interpolation.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 2
+   },
+   "verdict_id": "dadbe80f39ab15ba",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 16005,
+   "author": "kevindeforth",
+   "title": "follower no longer reports `SyncSatus::NoSync` when it is still syncing",
+   "age_days": 121,
+   "verdict": "needs_human",
+   "model_verdict": "refund",
+   "reason": "Small, targeted 9-line change in client_actor.rs addressing open issue #16004.",
+   "facts": {
+    "ci": "failure",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 9
+   },
+   "verdict_id": "7f98a13803f4f9ea",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 15793,
+   "author": "enlightened88",
+   "title": "refactor(utils): remove shell=True, fix injection, add timeout and ca…",
+   "age_days": 160,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "The diff genuinely removes shell=True and replaces grep/awk piping with gcloud --filter/--format flags, fixing the claimed injection risk.",
+   "facts": {
+    "ci": "none",
+    "unbacked_claims": 0,
+    "phantom_symbols": [
+     "lru_cache"
+    ],
+    "malicious": [],
+    "files": 1,
+    "additions": 83
+   },
+   "verdict_id": "9815ab7ae14fb139",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 15496,
+   "author": "zkoppert",
+   "title": "fix: update OSPO action references to canonical org path",
+   "age_days": 212,
+   "verdict": "needs_human",
+   "model_verdict": "refund",
+   "reason": "One-line update of a GitHub Actions reference from a legacy org path to the canonical one, matching the PR description.",
+   "facts": {
+    "ci": "failure",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 1
+   },
+   "verdict_id": "471af16cfc269bc0",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 15064,
+   "author": "vsavchyn-dev",
+   "title": "feat(crypto): verification of `Secp256K1PublicKey` on string parsing",
+   "age_days": 260,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "CI passes and no phantom symbols or malicious patterns are present.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 25
+   },
+   "verdict_id": "66a66b83fe34389e",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14901,
+   "author": "yyhrnk",
+   "title": "chore: remove duplicate hash_borsh test case",
+   "age_days": 283,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Removes a genuinely duplicated test line asserting the same input twice.",
+   "facts": {
+    "ci": "none",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 0
+   },
+   "verdict_id": "48a4e76d9f598a06",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14849,
+   "author": "ANtutov",
+   "title": "refactor: remove unused StakeFirstShardAssignmentItem helper",
+   "age_days": 295,
+   "verdict": "needs_human",
+   "model_verdict": "refund",
+   "reason": "Removes a genuinely unused helper struct and its From impl, matching the claim.",
+   "facts": {
+    "ci": "failure",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 0
+   },
+   "verdict_id": "3b95cf552e17085a",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14848,
+   "author": "kurahin",
+   "title": "docs: clarify network metrics comments",
+   "age_days": 295,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Documentation-only change to comments in metrics.rs with no code changes.",
+   "facts": {
+    "ci": "none",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 4
+   },
+   "verdict_id": "0d59643f6fab3222",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14832,
+   "author": "MoNyAvA",
+   "title": "docs: clarify highest_height_peers and unreliable_peers comments",
+   "age_days": 311,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "Small documentation-only change correcting stale comments in peer_manager_actor.rs.",
+   "facts": {
+    "ci": "none",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 4
+   },
+   "verdict_id": "3c66dcefc946ca29",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14831,
+   "author": "phrwlk",
+   "title": "perf: avoid double iteration over chunk transactions in store validator",
+   "age_days": 312,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "The diff merges the two loops over shard_chunk.to_transactions() into one, exactly as the description claims.",
+   "facts": {
+    "ci": "none",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 0
+   },
+   "verdict_id": "133cb37ef59e9f95",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14814,
+   "author": "phrwlk",
+   "title": "chore: remove unused FirstProtocolVersion enum",
+   "age_days": 316,
+   "verdict": "needs_human",
+   "model_verdict": "refund",
+   "reason": "The diff cleanly removes a dead enum and its FromStr impl, matching the PR description exactly.",
+   "facts": {
+    "ci": "failure",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 0
+   },
+   "verdict_id": "fecb1f5f464fa76b",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14692,
+   "author": "Forostovec",
+   "title": "docs: align AccessKey nonce docs with block-based initialization and bounds",
+   "age_days": 338,
+   "verdict": "needs_human",
+   "model_verdict": "refund",
+   "reason": "Small documentation-only change (1 file, +4/-3) correcting an outdated note about access key nonce behavior.",
+   "facts": {
+    "ci": "failure",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 4
+   },
+   "verdict_id": "a93d355a8ef7ca68",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 14466,
+   "author": "EVODelavega",
+   "title": "Ensure cstdint is included so rocksdb compiles",
+   "age_days": 377,
+   "verdict": "needs_human",
+   "model_verdict": "needs_human",
+   "reason": "Small, well-intentioned build fix with no malicious patterns or phantom symbols.",
+   "facts": {
+    "ci": "none",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 1,
+    "additions": 30
+   },
+   "verdict_id": "d4521f9d10f67788",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  },
+  {
+   "number": 12929,
+   "author": "mrLSD",
+   "title": "Feat: Extend tests for BLS12-381 with json tests from EIP-2537",
+   "age_days": 623,
+   "verdict": "refund",
+   "model_verdict": "refund",
+   "reason": "The PR adds real EIP-2537 JSON test vectors and a test harness for BLS12-381 host functions, matching its description.",
+   "facts": {
+    "ci": "success",
+    "unbacked_claims": 0,
+    "phantom_symbols": [],
+    "malicious": [],
+    "files": 8,
+    "additions": 2940
+   },
+   "verdict_id": "32a96a022ab2b719",
+   "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c"
+  }
+ ]
+}

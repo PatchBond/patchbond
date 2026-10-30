@@ -149,6 +149,10 @@ Honest status on 2026-10-30. Testnet is the reproduce-it-yourself path; mainnet 
 | Sealed security reports | 🧪 Not built |
 | A token, or paying anyone for submitting | ❌ Never |
 
+## Case study: NEAR's own core repo
+
+We ran PatchBond on **[near/nearcore](https://github.com/near/nearcore)**'s open queue (186 PRs) on 2026-10-30. ~161 are NEAR's engineers — exempt, since they have commits in the repo. The **20 from strangers** were judged in NEAR AI's TEE for **$0.0074**: **13 refund, 7 to a maintainer, 0 forfeits** — genuine fixes, waiting a median **236 days** for review. PatchBond's answer there is signed triage, bonds returned as soon as the judge rules, and a priority lane that pays for a timely review. Signed records and write-up: [docs/eval/nearcore](docs/eval/nearcore/README.md).
+
 ## Check our claims
 
 | Claim | Check it |
