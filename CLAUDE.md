@@ -37,7 +37,7 @@ Repo vault in our contract, keyed by GitHub numeric `repo_id`. Maintainer links 
 
 ### NEAR features we use (name them in the README with file paths)
 NEAR AI Cloud verifiable inference + signatures (judge) · NEP-141 USDC + `ft_transfer_call` (bonds, budgets) · Function Call access keys (capped agent wallets) · NEAR Intents 1Click (cross-chain in/out) · meta transactions NEP-366 (gasless contributors) · named/sub-accounts · Sputnik DAO / Trezu (treasury payouts) · NEP-297 events.
-**Candidate:** OutLayer (official partner) — runs WASM in Intel TDX with attestation and resumes a NEAR contract via yield/resume. Could run the facts + judge pipeline so the contract gets its verdict without trusting our server. Evaluate early (docs: https://app.outlayer.ai/docs/getting-started); adopt only if it works within a day.
+**OutLayer (adopted 2026-10-30):** the judge also runs as a wasm program in Intel TDX (`outlayer/judge`, Rust port of `server/src/judge/` with a byte-parity test); the contract calls it via `judge_in_tee` and verifies NEAR AI's signature in the callback (`contract/vault/src/outlayer.rs`). Setup + trust model: `docs/OUTLAYER.md`.
 
 ## Hackathon rules (official FAQ — docs/HACKATHON.md)
 - **Building before 1 Nov is allowed** (Q-001): the window runs from the announcement on 2026-10-19 to 2026-11-14 23:59 UTC; earlier commits are baseline. We started 2026-10-28, so all our commits count. No registration.

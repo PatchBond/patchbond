@@ -103,7 +103,7 @@ Why not just take card deposits? Because the payers are increasingly agents, and
 | "The judge only flags 8 of 15 slop PRs." | Detection isn't the product — the bond is. A spammer must pay *before* any judgement, unpaid PRs close themselves, and a flood raises the price for everyone in it. The judge's job is never to take a good contributor's money: **0 of 15** good PRs forfeited. |
 | "A rich spammer just pays." | Then the maintainer is paid for their time — that's the point. Each forfeit multiplies that account's next bond (×2–×4) and is public on-chain. |
 | "Can PatchBond or the maintainer steal deposits?" | No. Only the linked payout account withdraws; our oracle can't forfeit without NEAR AI's signature; a maintainer's forfeit is a free-to-dispute proposal with a penalty if wrong. |
-| "Can your server feed the model false facts?" | Every verdict publishes the exact request — the diff, CI results and every computed fact — so anyone can check them against GitHub, and any verdict can be challenged. |
+| "Can your server feed the model false facts?" | Every verdict publishes the exact request, so anyone can check it against GitHub. And with **OutLayer** on, the server isn't in the loop at all: anyone calls `judge_in_tee`, an Intel TDX enclave fetches the PR from GitHub itself and asks NEAR AI, and the contract checks NEAR AI's signature in the callback ([docs/OUTLAYER.md](docs/OUTLAYER.md)). |
 | "Isn't this pay-to-contribute, like tea.xyz?" | The opposite: nobody is ever paid for submitting. Spam *costs* money instead of earning it. No token. |
 
 ## Try it in 5 minutes
@@ -120,8 +120,8 @@ cp .env.example .env          # testnet by default; set NEARAI_API_KEY + JUDGE_M
 
 | # | Do | See |
 |---|---|---|
-| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **99 TypeScript tests pass** — judge facts and rules, the malicious-code scan, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 linking, the MCP server over real stdio. |
-| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo test -p patchbond-vault` | **49 contract tests pass** on a local NEAR sandbox with real token transfers — every money path in USDC and NEAR, challenges, maintainer safeguards, a real function-call key, and TEE proofs with **genuine NEAR AI signatures**. |
+| 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **100 TypeScript tests pass** — judge facts and rules, the malicious-code scan, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 linking, the MCP server over real stdio. |
+| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-outlayer/Cargo.toml && cargo test -p patchbond-vault` | **53 contract tests pass** on a local NEAR sandbox with real token transfers — every money path in USDC and NEAR, challenges, maintainer safeguards, a real function-call key, TEE proofs with **genuine NEAR AI signatures**, and the OutLayer callback verifying a real enclave run. |
 | 3 | `bun run --cwd server judge-pr https://github.com/tj/commander.js/pull/2637` | A **refund** with reasons, facts and `"verifies": true`; `…/OWASP/Nettacker/pull/1787` → **needs_human** (failing CI). With a NEAR AI key it's TEE-signed (~$0.0004); without one the same pipeline runs offline with a local key. |
 | 4 | `bun run dev`, open <http://localhost:5317> | Drag the bond curve, **Simulate a spam wave**, ⌘K → judge a PR → **Verify signature** in the browser. |
 | 5 | With test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") or test NEAR from [near-faucet.io](https://near-faucet.io), and a Meteor or Intear wallet: `/pay/1/1?repo=PatchBond/playground&user=YOUR_LOGIN` (or `/pay/2/1?repo=PatchBond/playground-near&user=…` for NEAR) | Pay a real bond into [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) at the live on-chain quote. |
@@ -174,6 +174,7 @@ A refund is automatic only when clear-cut (CI passing, model ≥ 80% sure); doub
 Full threat model: **[SECURITY.md](SECURITY.md)**.
 
 - **Our server can't invent a forfeit** — the contract requires NEAR AI's TEE signature on it (a model's enclave key, or the gateway key bound to one verifiable model, read from the signed request). A stolen oracle key can only refund ([tests](contract/vault/tests/tee_proofs.rs), incl. genuine NEAR AI signatures).
+- **The server can leave the loop entirely** — `judge_in_tee` runs the judge in an OutLayer enclave (Intel TDX) that reads GitHub itself; the contract verifies NEAR AI's signature in the callback, and `exclusive` mode removes the oracle's forfeit power. The enclave program builds **byte-identical prompts** to the server's (parity test over 30 real PRs) — [docs/OUTLAYER.md](docs/OUTLAYER.md).
 - **Nobody takes a vault** except its linked payout account — not the owner, not the oracle; a stolen oracle key can't relink a linked repo.
 - **Maintainers can't keep a bond alone** — 48 h proposal, free dispute, re-judge, penalty if overturned, public record ([tests](contract/vault/tests/maintainer_safeguards.rs)).
 - **Every payout has a callback** that books money back on failure; book-keeping precedes transfers, so nothing is paid twice.
@@ -201,6 +202,10 @@ flowchart LR
   end
   WEB["web/ (React)"] -->|ft_transfer_call| TOK --> VAULT
   BOT -->|settle + TEE proof| VAULT
+  VAULT -->|judge_in_tee| OL["OutLayer TDX<br/>outlayer/judge"]
+  OL -->|GitHub API| PR
+  OL -->|exact bytes| NEARAI
+  OL -->|verdict + NEAR AI signature| VAULT
   AGENT["Coding agent"] -->|MCP| MCP["mcp/"] -->|function-call key| VAULT
 ```
 
@@ -211,6 +216,7 @@ flowchart LR
 | Feature | Where |
 |---|---|
 | **NEAR AI Cloud** verifiable inference + TEE signatures, verified in the browser **and on-chain** (`env::ecrecover`) | [`nearai.ts`](server/src/judge/nearai.ts), [`verify.ts`](shared/src/verify.ts), [`tee.rs`](contract/vault/src/tee.rs) |
+| **OutLayer** (official partner): the judge as a wasm program in Intel TDX, called from the contract via yield/resume; the callback `ecrecover`s NEAR AI's signature | [`outlayer.rs`](contract/vault/src/outlayer.rs), [`outlayer/judge`](outlayer/judge), [docs/OUTLAYER.md](docs/OUTLAYER.md) |
 | Rust contract, NEP-297 events, cross-contract calls with callbacks | [`lib.rs`](contract/vault/src/lib.rs), [`events.rs`](contract/vault/src/events.rs), [`payout.rs`](contract/vault/src/payout.rs) |
 | NEP-141 USDC + `ft_transfer_call` / `ft_on_transfer` | [`deposit.rs`](contract/vault/src/deposit.rs), [`Pay.tsx`](web/src/pages/Pay.tsx) |
 | **wNEAR**: register + wrap + pay in one transaction; withdraw + unwrap | [`deposit.rs`](contract/vault/src/deposit.rs), [`Pay.tsx`](web/src/pages/Pay.tsx), [`Dashboard.tsx`](web/src/pages/Dashboard.tsx) |
@@ -225,9 +231,10 @@ flowchart LR
 | Suite | Count | Command |
 |---|---|---|
 | Contract unit (curve, money-split property test, TEE parsing) | 11 | `cd contract && cargo test -p patchbond-vault --lib` |
-| Contract sandbox: money paths 15 · NEAR bonds 7 · optimistic & agents 8 · maintainer safeguards 4 · TEE proofs 4 | 38 | `cd contract && cargo test -p patchbond-vault` |
+| Contract sandbox: money paths 15 · NEAR bonds 7 · optimistic & agents 8 · maintainer safeguards 4 · TEE proofs 4 · OutLayer 4 | 42 | `cd contract && cargo test -p patchbond-vault` |
 | Contract upgrades (replay each older live build; see the file) | 4 | [`tests/migrate.rs`](contract/vault/tests/migrate.rs) |
-| Server: facts, malicious scan, rules, bot vs fake GitHub, onboarding, spending guard, Intents, relayer | 80 | `cd server && bun test` |
+| Server: facts, malicious scan, rules, bot vs fake GitHub (incl. enclave mode), onboarding, spending guard, Intents, relayer | 81 | `cd server && bun test` |
+| OutLayer program: JS-semantics unit · **byte parity with the TS judge on 30 real PRs** (facts, request bytes, >300 verdicts + hashes) | 2 | `cd outlayer/judge && cargo test` |
 | MCP · shared | 12 · 7 | `cd mcp && bun test` · `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 62 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
 
