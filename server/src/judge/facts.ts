@@ -214,6 +214,8 @@ export interface RepoRules {
   unassignedEffect: "evidence" | "flag";
   /** Close PRs still unpaid after this many hours (they reopen when paid). Off when null. */
   closeUnpaidAfterHours: number | null;
+  /** Close a PR once its forfeit is final (`close_forfeited: off` to leave it open). */
+  closeForfeited: boolean;
   /** Team members GitHub can't tell us about (e.g. outside staff), lower-cased: `exempt: alice, bob`. */
   exempt: string[];
 }
@@ -225,6 +227,7 @@ export const DEFAULT_RULES: RepoRules = {
   assignmentRequired: false,
   unassignedEffect: "flag",
   closeUnpaidAfterHours: DEFAULT_CLOSE_UNPAID_HOURS,
+  closeForfeited: true,
   exempt: [],
 };
 
@@ -242,6 +245,7 @@ export function parseRepoRules(text: string | undefined): RepoRules {
     assignmentRequired: /^(true|yes|on)$/i.test(kv.assignment_required ?? ""),
     unassignedEffect: kv.unassigned_pr === "evidence" ? "evidence" : "flag",
     closeUnpaidAfterHours: closeAfter(kv.close_unpaid_after_hours),
+    closeForfeited: !/^(off|false|no|never)$/i.test(kv.close_forfeited ?? ""),
     exempt: (kv.exempt ?? "").replace(/^\[|\]$/g, "").split(/[\s,]+/).map((u) => u.replace(/^@/, "").toLowerCase()).filter(Boolean),
   };
 }

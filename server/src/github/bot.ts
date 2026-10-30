@@ -166,6 +166,7 @@ export class Bot {
     if (!d) return;
     if (typeof d.status === "object" && "settled" in d.status) {
       this.store.setState(s.repo_id, s.number, "settled");
+      if (d.status.settled.verdict === "forfeit") await this.closeForfeited(s);
       return;
     }
     if (typeof d.status === "object" && "challenged" in d.status) {
@@ -184,6 +185,7 @@ export class Bot {
       await this.chain.finalize(s.repo_id, s.number);
       this.store.setState(s.repo_id, s.number, "settled");
       this.log(`finalized ${s.full_name}#${s.number}: ${verdict}`);
+      if (verdict === "forfeit") await this.closeForfeited(s);
       return;
     }
     if (d.status === "held" && Date.now() - s.updated_at > this.cfg.needsHumanTimeoutMs) {
@@ -261,6 +263,21 @@ export class Bot {
     } catch {
       return false; // 404 (not a member), 302 (we can't see private members), or a user-owned repo
     }
+  }
+
+  /** A final forfeit closes the PR (once), unless the repo opted out; a maintainer can still reopen it. */
+  private async closeForfeited(s: Submission) {
+    if (!(await this.rulesOf(s.repo_id, s.installation_id, s.full_name)).closeForfeited) return;
+    const gh = await this.app.getInstallationOctokit(s.installation_id);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    const { data: pr } = await gh.rest.pulls.get({ owner, repo, pull_number: s.number });
+    if (pr.state !== "open") return;
+    await gh.rest.pulls.update({ owner, repo, pull_number: s.number, state: "closed" });
+    await gh.rest.issues.createComment({
+      owner, repo, issue_number: s.number,
+      body: `${MARKER}\n### 🔒 Closed — the forfeit is final\n\nThe deposit went to the repository's vault. A maintainer can reopen this PR; a new attempt at the same issue is welcome as a new PR.\n\n<sub>Repos can keep forfeited PRs open with \`close_forfeited: off\` in \`.github/patchbond.yml\`.</sub>`,
+    });
+    this.log(`closed forfeited ${s.full_name}#${s.number}`);
   }
 
   private async rulesOf(repoId: number, installationId: number, fullName: string): Promise<RepoRules> {
@@ -398,6 +415,7 @@ export class Bot {
       owner, repo, issue_number: s.number,
       body: `${MARKER}\n### ${overturned ? "🔄 Challenge upheld — verdict overturned" : "⚖️ Challenge rejected — verdict stands"}\n\n${what}\n\n${record.final.reasons.map((r) => `- ${r}`).join("\n")}\n\n<sub>[Signed record — verify it yourself](${this.cfg.webUrl}/v/${record.id})</sub>`,
     });
+    if (verdict === "forfeit") await this.closeForfeited(s);
     this.log(`re-judged ${s.full_name}#${s.number}: ${proposed} → ${verdict}`);
   }
 

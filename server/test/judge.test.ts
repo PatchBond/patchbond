@@ -209,10 +209,11 @@ describe("pre-flight advice", () => {
 describe("assignment check (a fact from GitHub, opt-in per repo)", () => {
   const required = parseRepoRules("# PatchBond rules\nassignment_required: true\nunassigned_pr: evidence\n");
   test("parses .github/patchbond.yml", () => {
-    expect(required).toEqual({ assignmentRequired: true, unassignedEffect: "evidence", closeUnpaidAfterHours: 24, exempt: [] });
-    expect(parseRepoRules(undefined)).toEqual({ assignmentRequired: false, unassignedEffect: "flag", closeUnpaidAfterHours: 24, exempt: [] });
+    expect(required).toEqual({ assignmentRequired: true, unassignedEffect: "evidence", closeUnpaidAfterHours: 24, closeForfeited: true, exempt: [] });
+    expect(parseRepoRules(undefined)).toEqual({ assignmentRequired: false, unassignedEffect: "flag", closeUnpaidAfterHours: 24, closeForfeited: true, exempt: [] });
     expect(parseRepoRules("exempt: [@Alice, bob]  # staff\n")).toMatchObject({ exempt: ["alice", "bob"] });
     expect(parseRepoRules("close_unpaid_after_hours: 48").closeUnpaidAfterHours).toBe(48);
+    expect(parseRepoRules("close_forfeited: off").closeForfeited).toBe(false);
     expect(parseRepoRules("close_unpaid_after_hours: off").closeUnpaidAfterHours).toBeNull();
     expect(parseRepoRules("close_unpaid_after_hours: 0").closeUnpaidAfterHours).toBeNull();
     expect(parseRepoRules("close_unpaid_after_hours: 0.1").closeUnpaidAfterHours).toBe(1);
@@ -241,7 +242,7 @@ describe("assignment check (a fact from GitHub, opt-in per repo)", () => {
       input({ diff: "+  return parse(s);", body: "Fixes #12" }, {
         checkRuns: [{ name: "build", status: "completed", conclusion: "success" }],
         issueLookup: async () => ({ exists: true, open: true, assignees: ["tunde"] }),
-        rules: { assignmentRequired: true, unassignedEffect: "flag", closeUnpaidAfterHours: null, exempt: [] },
+        rules: { assignmentRequired: true, unassignedEffect: "flag", closeUnpaidAfterHours: null, closeForfeited: true, exempt: [] },
       }),
       new MockInference(),
     );

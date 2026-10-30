@@ -134,6 +134,31 @@ describe("GitHub bot", () => {
     expect(comments().at(-1)).toContain("Challenge it");
   });
 
+  test("a forfeit closes the PR only once it is final — not while it can still be challenged", async () => {
+    await deliver("pull_request", prOpened(2));
+    chain.pay(2, "slop.testnet", "slopbot");
+    await bot.tick();
+    await bot.tick();
+    expect(gh.posted(/\/pulls\/2$/)).toEqual([]); // proposed: the window is still open
+    await Bun.sleep(450);
+    await bot.tick();
+    expect(chain.log).toContain(`finalize ${REPO.id}#2`);
+    expect(gh.posted(/\/pulls\/2$/).at(-1)?.body).toEqual({ state: "closed" });
+    expect(comments().at(-1)).toContain("Closed — the forfeit is final");
+  });
+
+  test("with close_forfeited: off, a final forfeit leaves the PR open", async () => {
+    gh.setRules("close_forfeited: off\n");
+    await deliver("pull_request", prOpened(2));
+    chain.pay(2, "slop.testnet", "slopbot");
+    await bot.tick();
+    await bot.tick();
+    await Bun.sleep(450);
+    await bot.tick();
+    expect(chain.log).toContain(`finalize ${REPO.id}#2`);
+    expect(gh.posted(/\/pulls\/2$/)).toEqual([]);
+  });
+
   test("a paid deposit @mentions the maintainer who linked the repo (GitHub emails them, free)", async () => {
     store.setRepoMaintainer(REPO.id, "amaka");
     await deliver("pull_request", prOpened(3));
@@ -263,7 +288,8 @@ describe("GitHub bot", () => {
     chain.deposits.get(`${REPO.id}/1`)!.status = { challenged: { verdict: "forfeit", challenger: "tunde.testnet", stake: "0" } };
     await bot.tick();
     expect(chain.log).toContain(`resolve ${REPO.id}#1 forfeit`);
-    expect(comments().at(-1)).toContain("The forfeit stands");
+    expect(comments().at(-2)).toContain("The forfeit stands");
+    expect(gh.posted(/\/pulls\/1$/).at(-1)?.body).toEqual({ state: "closed" });
   });
 
   test("only the team is exempt: org members (even private) and the team list; past contributors pay", async () => {

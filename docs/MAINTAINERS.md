@@ -61,6 +61,7 @@ Dashboard → your repo → **Bond policy → Edit**:
 ```yaml
 exempt: alice, bob              # people who never pay, beyond org members and collaborators
 close_unpaid_after_hours: 24    # default 24; "off" to never close unpaid PRs
+close_forfeited: on             # default on: a PR closes once its forfeit is final; "off" keeps it open
 assignment_required: true       # contributors must be assigned the issue first
 unassigned_pr: flag             # flag = a maintainer decides; evidence = counts toward a forfeit
 ```
