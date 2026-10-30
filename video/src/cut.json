@@ -6,7 +6,7 @@
       "bars": 2
     },
     {
-      "id": "pain",
+      "id": "threat",
       "bars": 2
     },
     {
@@ -31,10 +31,14 @@
     },
     {
       "id": "attack",
-      "bars": 1
+      "bars": 2
     },
     {
       "id": "verify",
+      "bars": 1
+    },
+    {
+      "id": "outlayer",
       "bars": 2
     },
     {
@@ -42,11 +46,11 @@
       "bars": 2
     },
     {
-      "id": "chain",
+      "id": "nearcore",
       "bars": 2
     },
     {
-      "id": "grid",
+      "id": "chain",
       "bars": 2
     },
     {
@@ -63,13 +67,13 @@
     {
       "scene": "hook",
       "at": 0.25,
-      "text": "A.I. made sending free.",
+      "text": "A.I. made sending pull requests free.",
       "speed": 1.12
     },
     {
-      "scene": "pain",
-      "at": 0.15,
-      "text": "Every pull request still costs a maintainer time.",
+      "scene": "threat",
+      "at": 0.1,
+      "text": "Attacks don't break code. They break tired maintainers.",
       "speed": 1.12
     },
     {
@@ -80,38 +84,44 @@
     },
     {
       "scene": "logo",
-      "at": 0.05,
+      "at": 0.02,
       "text": "So we built PatchBond.",
-      "speed": 1.12
+      "speed": 1.2
     },
     {
       "scene": "bond",
-      "at": 0.0,
+      "at": 0.15,
       "text": "Post a refundable bond. Real work gets it back.",
       "speed": 1.12
     },
     {
       "scene": "spam",
-      "at": 0.1,
+      "at": 0.15,
       "text": "Spam floods? The price climbs.",
       "speed": 1.12
     },
     {
       "scene": "judge",
-      "at": 0.1,
+      "at": 0.15,
       "text": "An A.I. judge checks the code, and every claim.",
       "speed": 1.12
     },
     {
       "scene": "attack",
-      "at": 0.05,
-      "text": "Malware? Forfeited.",
-      "speed": 1.15
+      "at": 0.15,
+      "text": "Hidden backdoor? Forfeited, signed by NEAR A.I.",
+      "speed": 1.12
     },
     {
       "scene": "verify",
+      "at": 0.02,
+      "text": "Anyone can verify it.",
+      "speed": 1.22
+    },
+    {
+      "scene": "outlayer",
       "at": 0.1,
-      "text": "Signed live in a TEE. Anyone can verify it.",
+      "text": "In a sealed enclave, even our server can't touch the money.",
       "speed": 1.12
     },
     {
@@ -121,26 +131,26 @@
       "speed": 1.12
     },
     {
-      "scene": "chain",
+      "scene": "nearcore",
       "at": 0.1,
-      "text": "Slop pays the maintainer, on-chain, on NEAR.",
+      "text": "On nearcore: zero honest pull requests forfeited.",
       "speed": 1.12
     },
     {
-      "scene": "grid",
-      "at": 0.1,
-      "text": "USDC or NEAR. Capped wallets for agents.",
+      "scene": "chain",
+      "at": 0.15,
+      "text": "Slop pays the maintainer, on-chain.",
       "speed": 1.12
     },
     {
       "scene": "near",
-      "at": 0.15,
-      "text": "Every piece is built on NEAR.",
-      "speed": 1.12
+      "at": 0.05,
+      "text": "USDC or NEAR, capped wallets for agents. All on NEAR.",
+      "speed": 1.17
     },
     {
       "scene": "close",
-      "at": 0.3,
+      "at": 0.15,
       "text": "Real work gets its bond back. Slop pays the maintainer. PatchBond.",
       "speed": 1.12
     }
