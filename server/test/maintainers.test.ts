@@ -165,3 +165,15 @@ test("once linked, the oracle path can't relink — only the payout account can 
   expect(r.status).toBe(409);
   expect(((await r.json()) as { error: string }).error).toContain("already pays out to amaka.testnet");
 });
+
+test("an expired or revoked GitHub sign-in ends the session and asks to sign in again", async () => {
+  const req = await signIn();
+  gh.revokeUserTokens();
+  try {
+    const me = (await (await req("/api/me")).json()) as { signed_in: boolean; expired?: boolean };
+    expect(me).toMatchObject({ signed_in: false, expired: true });
+    expect(((await (await req("/api/me")).json()) as { expired?: boolean }).expired).toBeUndefined(); // cookie cleared
+  } finally {
+    gh.revokeUserTokens(false);
+  }
+});

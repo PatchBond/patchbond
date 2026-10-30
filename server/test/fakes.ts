@@ -30,6 +30,8 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
   let rulesFile: string | null = null;
   /** Members of the repo owner's org (private ones included). */
   let orgMembers: string[] = [];
+  /** Simulates GitHub expiring/revoking maintainers' sign-in tokens. */
+  let userTokensRevoked = false;
   let nextId = 1000;
   const full = `${repo.owner}/${repo.name}`;
   const server = Bun.serve({
@@ -44,6 +46,7 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
       // OAuth (user-to-server) — sign-in for maintainers
       if (p === "/login/oauth/access_token") return json((body as { code?: string })?.code === "good" ? { access_token: "ghu_user" } : { error_description: "bad code" });
       if (p === "/user") return json({ login: "amaka", id: 77 });
+      if (userTokensRevoked && p.startsWith("/user/")) return json({ message: "Bad credentials" }, 401);
       if (p === "/user/installations") return json({ total_count: 1, installations: [{ id: 7 }] });
       if (p === "/user/installations/7/repositories") {
         return json({
@@ -88,6 +91,7 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
     stop: () => server.stop(true),
     setRules: (text: string | null) => (rulesFile = text),
     setOrgMembers: (logins: string[]) => (orgMembers = logins),
+    revokeUserTokens: (revoked = true) => (userTokensRevoked = revoked),
     posted: (re: RegExp) => calls.filter((c) => c.method !== "GET" && re.test(c.path)),
   };
 }

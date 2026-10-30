@@ -33,7 +33,7 @@ export interface ActivityItem {
   at: number;
 }
 
-export type Me = { signed_in: false; github_ready: boolean } | { signed_in: true; github_login: string; repos: MaintainerRepo[] };
+export type Me = { signed_in: false; github_ready: boolean; expired?: boolean } | { signed_in: true; github_login: string; repos: MaintainerRepo[] };
 
 /** 502–504 come from the dev proxy or a load balancer while the API restarts — say so. */
 const failure = (status: number, fallback: string) =>

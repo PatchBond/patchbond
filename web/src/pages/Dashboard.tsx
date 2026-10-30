@@ -30,7 +30,7 @@ export function Dashboard() {
   }, []);
   if (loading && !me) return <div className="grid min-h-[50vh] place-items-center"><Spinner /></div>;
   if (error) return <div className="mx-auto max-w-lg px-4 py-24"><Notice tone="error" title="Couldn't load your repositories">{error}</Notice></div>;
-  if (!me?.signed_in) return <SignedOut ready={me?.github_ready ?? false} />;
+  if (!me?.signed_in) return <SignedOut ready={me?.github_ready ?? false} expired={me?.expired ?? false} />;
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -159,7 +159,7 @@ function InstallButton({ className = "", label = "Install the GitHub App" }: { c
   );
 }
 
-function SignedOut({ ready }: { ready: boolean }) {
+function SignedOut({ ready, expired }: { ready: boolean; expired: boolean }) {
   const steps = [
     ["Install the App", "On any repository you administer. GitHub only lets admins install Apps."],
     ["Sign in with GitHub", "We check — with GitHub — that you're an admin of the repo."],
@@ -175,6 +175,13 @@ function SignedOut({ ready }: { ready: boolean }) {
           <p className="mt-5 leading-relaxed text-muted-foreground">
             Forfeited bonds collect in your repository's vault on NEAR — held by a contract, not by us — and wait for you even before you link. Link once, then withdraw whenever you like.
           </p>
+          {expired && (
+            <div className="mt-6">
+              <Notice tone="warn" title="Your GitHub sign-in expired">
+                GitHub ends these sign-ins after a few hours, and whenever the App's permissions change. Sign in again — your linked repos and vaults are untouched.
+              </Notice>
+            </div>
+          )}
           <div className="mt-8 flex flex-wrap gap-3">
             {ready ? (
               <a href="/api/auth/github">

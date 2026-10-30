@@ -96,7 +96,14 @@ export function maintainerRoutes(app: Hono, d: MaintainerDeps) {
       const withChain = await Promise.all(repos.map(async (r) => ({ ...r, onchain: await d.chain.getRepo(r.repo_id) })));
       return c.json({ signed_in: true, github_login: s.github_login, repos: withChain });
     } catch (e) {
-      return c.json({ error: `GitHub didn't list your repositories: ${(e as Error).message}. Sign in again.` }, 502);
+      // GitHub App user tokens expire (8 h) and are revoked when the App's permissions change: end the
+      // session so the dashboard offers "Sign in with GitHub" again instead of a dead end.
+      if ((e as { status?: number }).status === 401) {
+        store.deleteSession(s.id);
+        deleteCookie(c, SESSION, { path: "/" });
+        return c.json({ signed_in: false, github_ready: Boolean(cfg.github.clientId), expired: true });
+      }
+      return c.json({ error: `GitHub didn't list your repositories: ${(e as Error).message}. Try again in a minute.` }, 502);
     }
   });
 
