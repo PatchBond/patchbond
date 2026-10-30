@@ -10,12 +10,13 @@
   <a href="https://patchbond-production.up.railway.app"><img src="https://img.shields.io/badge/live%20demo-patchbond--production.up.railway.app-22C55E" alt="Live demo"></a>
   <a href="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml"><img src="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/NEAR%20AI-TEE%20judge%20live-22C55E" alt="NEAR AI judge live">
+  <a href="docs/OUTLAYER.md"><img src="https://img.shields.io/badge/OutLayer-TDX%20judge%20live%20on%20testnet-22C55E" alt="OutLayer TDX judge live on testnet"></a>
   <img src="https://img.shields.io/badge/license-MIT-ECEAE4" alt="MIT">
 </p>
 
 ---
 
-Strangers attach a small **refundable bond** to their pull request, in USDC or NEAR. An **AI judge in a TEE on NEAR AI Cloud** reviews it after CI. Real work gets **every cent back**; slop is **forfeited to the maintainers whose time it wasted**. The bond follows an on-chain price curve over the repo's queue — **EIP-1559 for open source**: a spam wave prices itself out, a quiet repo costs a newcomer cents. And the AI can't touch the money: **the contract only forfeits a bond if NEAR AI's enclave signed that verdict**, checked on-chain.
+Strangers attach a small **refundable bond** to their pull request, in USDC or NEAR. An **AI judge in a TEE on NEAR AI Cloud** reviews it after CI. Real work gets **every cent back**; slop is **forfeited to the maintainers whose time it wasted**. The bond follows an on-chain price curve over the repo's queue — **EIP-1559 for open source**: a spam wave prices itself out, a quiet repo costs a newcomer cents. And the AI can't touch the money: **the contract only forfeits a bond if NEAR AI's enclave signed that verdict**, checked on-chain. With **OutLayer**, even our server leaves the loop: the contract has the PR judged inside an Intel TDX enclave that reads GitHub itself ([how](docs/OUTLAYER.md)).
 
 <!-- live:start -->
 ### Live now — [patchbond-production.up.railway.app](https://patchbond-production.up.railway.app)
@@ -131,12 +132,13 @@ cp .env.example .env          # testnet by default; set NEARAI_API_KEY + JUDGE_M
 
 ## What's real
 
-Honest status on 2026-10-29. Testnet is the reproduce-it-yourself path; mainnet follows with the team's go-ahead.
+Honest status on 2026-10-30. Testnet is the reproduce-it-yourself path; mainnet follows with the team's go-ahead.
 
 | Part | Status |
 |---|---|
 | Vault contract: USDC or NEAR bonds per repo, curve, refund/forfeit, void, tips, bounties, challenges, maintainer safeguards, agent budgets, reputation, NEP-297 events, link-once, pause, upgrades | ✅ **Live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), 53 tests, full e2e |
 | On-chain check of NEAR AI's TEE signature before any forfeit | ✅ **Live on testnet** with NEAR AI's GLM enclave key and the gateway key bound to Kimi K3 (`get_tee_signers`) |
+| **Judging in OutLayer** (`judge_in_tee`): the judge as a wasm program in Intel TDX — fetches the PR from GitHub itself, asks NEAR AI, the contract verifies the signature in the callback; byte-identical prompts to the server's (parity test, 30 real PRs) | ✅ **Live on testnet** — first run: [tx `GTZM613J…`](https://testnet.nearblocks.io/txns/GTZM613JkwxhDoEafaBsEmX5tFr4SGwEQ3SaVtAh6Hr4) (24.5 s in the enclave, 0.0036 NEAR, NEAR AI's GLM key recovered on-chain); the hosted bot now judges paid PRs this way |
 | AI judge on NEAR AI Cloud (`z-ai/glm-5.3-flash`, re-judges by `moonshotai/kimi-k3`) | ✅ **Live**, TEE-signed, $0.00035 a verdict; 0/15 good PRs forfeited |
 | GitHub App bot: deposit comment + 24 h deadline, labels, check runs, deposit watch, judge after CI, settle, @mention on payment, review → tip, merge → bounty | ✅ **Live** as the [`patchbond` App](https://github.com/apps/patchbond) on Sanctifier — first real PR [#1972](https://github.com/HyperSafeD/Sanctifier/pull/1972) went comment → bond → verdict → settlement |
 | Web app: pay, verdicts with in-browser verification, maintainer dashboard (sign-in, NEP-413 linking, withdraw, policy, activity), agents, ⌘K | ✅ **Live** at the demo URL |
