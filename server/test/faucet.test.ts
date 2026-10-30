@@ -20,7 +20,7 @@ function fakeChain(opts: { near?: Record<string, bigint>; usdc?: Record<string, 
 }
 
 describe("testnet faucet", () => {
-  test("a new wallet gets 0.2 NEAR and 2 USDC (registered for USDC first), once a day", async () => {
+  test("a new wallet gets 0.05 NEAR and 2 USDC (registered for USDC first), once a day", async () => {
     const { chain, sent } = fakeChain();
     let t = 1_000;
     const f = new Faucet(chain, undefined, () => t);

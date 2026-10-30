@@ -37,7 +37,7 @@ export function FaucetDialog({ trigger, open, onOpenChange }: { trigger?: ReactN
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Droplets className="size-5 text-brand" /> Get test funds</DialogTitle>
           <DialogDescription>
-            This is NEAR testnet — nothing here is real money. One click sends your wallet <b className="text-ink">0.2 NEAR</b> for fees (saving a bond policy, linking a repo) and{" "}
+            This is NEAR testnet — nothing here is real money. One click sends your wallet <b className="text-ink">0.05 NEAR</b> — enough for ~15 transactions' fees (saving a bond policy, linking a repo) — and{" "}
             <b className="text-ink">2 test USDC</b> for a bond. Once a day per account; it only tops up what you're missing.
           </DialogDescription>
         </DialogHeader>
@@ -54,7 +54,7 @@ export function FaucetDialog({ trigger, open, onOpenChange }: { trigger?: ReactN
             Or use the official faucets (free):
             <ul className="mt-2 space-y-1.5">
               <li>
-                Test NEAR — <a className="text-brand hover:underline" href="https://near-faucet.io" target="_blank" rel="noreferrer">near-faucet.io</a>
+                Test NEAR (more, e.g. for a bond priced in NEAR) — <a className="text-brand hover:underline" href="https://near-faucet.io" target="_blank" rel="noreferrer">near-faucet.io</a>
               </li>
               <li>
                 Test USDC — <a className="text-brand hover:underline" href="https://faucet.circle.com" target="_blank" rel="noreferrer">faucet.circle.com</a> → USDC → “Near Testnet”

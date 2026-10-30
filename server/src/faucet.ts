@@ -5,8 +5,10 @@
 
 import { Account, JsonRpcProvider, type KeyPairString } from "near-api-js";
 
-export const NEAR_DRIP = 2n * 10n ** 23n; // 0.2 NEAR
-const NEAR_ENOUGH = 5n * 10n ** 23n; // skip NEAR if they already hold 0.5
+// Fees only: a testnet transaction costs well under 0.003 NEAR, and USDC bonds are gasless, so
+// 0.05 NEAR covers a tester's ~15–20 transactions — and stretches the faucet ~4× further.
+export const NEAR_DRIP = 5n * 10n ** 22n; // 0.05 NEAR
+const NEAR_ENOUGH = 10n ** 23n; // skip NEAR if they already hold 0.1
 export const USDC_DRIP = 2_000_000n; // 2 USDC (6 decimals)
 const USDC_STORAGE = 1_250_000_000_000_000_000_000n; // 0.00125 NEAR, NEP-145 registration
 const DAY = 86_400_000;
@@ -63,7 +65,7 @@ export class Faucet {
     let usdcSent = 0n;
     const notes: string[] = [];
     if (near < NEAR_ENOUGH) {
-      if ((await this.chain.faucetNear()) < NEAR_DRIP + 10n ** 24n) notes.push("our NEAR faucet is empty — use near-faucet.io");
+      if ((await this.chain.faucetNear()) < NEAR_DRIP + 5n * 10n ** 23n /* keep 0.5 NEAR for the oracle's own fees */) notes.push("our NEAR faucet is empty — use near-faucet.io");
       else {
         await this.chain.sendNear(id, NEAR_DRIP);
         nearSent = NEAR_DRIP;
