@@ -210,6 +210,7 @@ app.get("/setup", (c) => {
     public: true,
     default_permissions: {
       pull_requests: "write", issues: "write", checks: "write", actions: "write", contents: "read", metadata: "read",
+      members: "read", // org members with private membership never pay
     },
     default_events: ["pull_request", "pull_request_review", "issues", "check_suite", "check_run"],
   };

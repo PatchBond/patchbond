@@ -34,7 +34,7 @@ Strangers attach a small **refundable bond** to their pull request, in USDC or N
 
 ![PatchBond home](docs/media/home.png)
 
-**Contents:** [Why](#why-this-exists) · [How it works](#how-it-works) · [What's different](#what-makes-it-different) · [Why on-chain](#why-on-chain) · [Objections](#objections) · [Try it in 5 minutes](#try-it-in-5-minutes) · [What's real](#whats-real) · [Check our claims](#check-our-claims) · [Judge quality](#judge-quality) · [Security](#security-model) · [Architecture](#architecture) · [NEAR features](#near-features-used) · [Testing](#testing) · [Run your own](#running-your-own)
+**Contents:** [Why](#why-this-exists) · [How it works](#how-it-works) · [What's different](#what-makes-it-different) · [Why on-chain](#why-on-chain) · [Objections](#objections) · [Try it in 5 minutes](#try-it-in-5-minutes) · [What's real](#whats-real) · [Check our claims](#check-our-claims) · [Judge quality](#judge-quality) · [Tracks](#how-it-maps-to-the-tracks) · [Security](#security-model) · [Architecture](#architecture) · [NEAR features](#near-features-used) · [Testing](#testing) · [Run your own](#running-your-own)
 
 ## Why this exists
 
@@ -109,6 +109,8 @@ Why not just take card deposits? Because the payers are increasingly agents, and
 
 ## Try it in 5 minutes
 
+**Maintainers:** try it on your repo in 10 minutes — **[docs/MAINTAINERS.md](docs/MAINTAINERS.md)** (testnet, no real money).
+
 **Fastest:** open the [live demo](https://patchbond-production.up.railway.app), press ⌘K, paste any public PR URL, then **Verify signature** on the verdict.
 
 **The whole money story in one command** — no wallet, no keys, no GitHub (needs Rust + `cargo-near`):
@@ -156,6 +158,17 @@ Honest status on 2026-10-30. Testnet is the reproduce-it-yourself path; mainnet 
 | Payout to a Sputnik DAO / Trezu treasury (`set_payout`) | ✅ Built |
 | Sealed security reports | 🧪 Not built |
 | A token, or paying anyone for submitting | ❌ Never |
+
+## How it maps to the tracks
+
+| Track | What PatchBond does there | Where |
+|---|---|---|
+| **AI Security & Defense** — *"give AI money without giving it the keys"* | The AI never holds keys: the contract forfeits only what NEAR AI's enclave signed (`ecrecover` on-chain); with OutLayer the server leaves the loop and `exclusive` removes the oracle's forfeit power. Agents pay from **function-call keys** with contract-enforced daily caps; the MCP server refuses full-access keys. Prompt-injection and malicious-code scans, maintainer safeguards. | [`tee.rs`](contract/vault/src/tee.rs), [`outlayer.rs`](contract/vault/src/outlayer.rs), [`budget.rs`](contract/vault/src/budget.rs), [`malice.ts`](server/src/judge/malice.ts), [SECURITY.md](SECURITY.md) |
+| **Agent Economy** — *agents that earn and spend* | Coding agents pay for maintainers' attention from capped budgets, declare a **passport** (operator, harness, model), and build a public refund/forfeit record per agent and per harness; an agent's own reputation sets its price like anyone's. 7 MCP tools. | [`mcp/`](mcp/src), [`budget.rs`](contract/vault/src/budget.rs), the app's **Agents** page |
+| **Privacy & Private AI** — *TEE, NEAR AI Cloud* | Verdicts from a verifiable model in a TEE, signed over the exact bytes; the judge itself runs in an Intel TDX enclave via OutLayer with secrets that only the vault can unlock. | [`nearai.ts`](server/src/judge/nearai.ts), [`outlayer/judge`](outlayer/judge), [docs/OUTLAYER.md](docs/OUTLAYER.md) |
+| **Real-world** — *stablecoins, payments* | USDC (NEP-141) or NEAR bonds, gasless payments (NEP-366), payouts to any chain via NEAR Intents 1Click. | [`deposit.rs`](contract/vault/src/deposit.rs), [`relayer.ts`](server/src/relayer.ts), [`intents.ts`](server/src/intents.ts) |
+| **Social Money** — *reputation-based access, Sputnik DAO / Trezu* | Portable on-chain reputation: proven contributors pay $0 everywhere; a repo's vault can pay out to a Sputnik DAO / Trezu treasury; slop on a claimed fix funds a bounty for the real fix. | [`lib.rs`](contract/vault/src/lib.rs), [`settle.rs`](contract/vault/src/settle.rs) |
+| **Open Innovation** | **EIP-1559 for maintainer attention**: the price of a maintainer's time computed on-chain from their own queue. | [`curve.rs`](contract/vault/src/curve.rs) |
 
 ## Case study: NEAR's own core repo
 
@@ -261,6 +274,29 @@ flowchart LR
 | OutLayer program: JS-semantics unit · **byte parity with the TS judge on 30 real PRs** (facts, request bytes, >300 verdicts + hashes) | 2 | `cd outlayer/judge && cargo test` |
 | MCP · shared | 12 · 7 | `cd mcp && bun test` · `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 62 tx | `bun run --cwd server e2e:testnet` → [report](docs/e2e/testnet-report.md) |
+
+## Beyond GitHub
+
+The primitive is an **attention bond**: anyone who wants a busy person's time posts a refundable
+stake; a verifiable judge decides whether the time was wasted. Nothing in the contract is
+GitHub-specific — it keys a deposit by a numeric target id and a number, and settles on a signed
+verdict. GitHub pull requests are the first integration (the bot and the facts fetcher); the same
+vault fits GitLab merge requests, bug-bounty and security reports, issue trackers, and
+agent-to-agent requests (an agent pays to get another agent's — or a human's — attention). Only
+GitHub is built today.
+
+## After the hackathon
+
+1. **Maintainers first** — the trial is open now on testnet ([guide](docs/MAINTAINERS.md)); their
+   feedback decides the defaults.
+2. **Mainnet** with real USDC, the contract's upgrade key moved behind a DAO time-lock, then
+   removed.
+3. **OutLayer by default** — every verdict judged in the enclave, `exclusive` on.
+4. **More targets** — bonds on issues and security reports (sealed, judged in the TEE, visible only
+   to maintainers), then GitLab.
+5. **A bigger public eval** — the labelled set grows with every challenged verdict.
+
+No token, ever, and nobody is ever paid for submitting.
 
 ## Running your own
 
