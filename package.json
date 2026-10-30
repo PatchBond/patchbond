@@ -10,6 +10,7 @@
   "scripts": {
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
-    "dev": "bun scripts/dev.ts"
+    "dev": "bun scripts/dev.ts",
+    "demo": "cd contract && cargo run -q -p patchbond-vault --example demo"
   }
 }

@@ -1,0 +1,31 @@
+PatchBond — local sandbox demo (starting a NEAR sandbox and deploying the vault…)
+  ✓ repo 101 registered; maintainer payout linked to amaka.test.near
+  ✓ contract trusts NEAR AI's GLM enclave key 0x3b753b4406613c5e70ae640508632b600424fa0c (from NEAR AI's attestation report)
+
+── 1 · A real contribution gets every cent back ──
+  ✓ alice opens PR #1 and pays a $0.77 USDC bond — held by the contract, not by us
+  ✓ the judge says refund → alice is back to $100.00 (no proof needed to give money back)
+
+── 2 · Slop pays the maintainer — but only if the enclave signed it ──
+  ✓ bob opens slop PR #2 and pays $0.77
+  ✗ PatchBond's own server tries to forfeit with no signature → "A forfeit needs the NEAR AI TEE proof (proof: model, request_sha256, response, signature)"
+  ✗ …with one byte of the signed answer changed: the signature now recovers to a stranger's key → "TEE proof rejected: 0x9467dfbf2fb63f1691f6f7c91e1e75f09a489a92 isn't a registered NEAR AI enclave key"
+  ✗ …with a genuine NEAR AI signature on a *refund* → "TEE proof rejected: the model said 'refund', not 'forfeit'"
+  ✓ with NEAR AI's enclave-signed forfeit ("pipes a remote script into a shell… none of the claimed work", confidence 0.99): $0.70 to the repo's vault, $0.07 to PatchBond
+  ✓ bob's record is on-chain: his next bond here costs $1.55 (was $0.77)
+
+── 3 · Only the maintainer can take the money ──
+  ✗ the oracle tries to withdraw the vault → "Only the repo's linked payout account can withdraw its vault"
+  ✓ amaka (the linked maintainer) withdraws $0.70 — her wallet now holds $0.70
+
+── 4 · A spam wave prices itself out (EIP-1559 for attention) ──
+  ✓ 16 PRs in a row, each priced on-chain by the open queue: $0.77 → $0.87 → $0.98 → $1.10 → $1.24 → $1.40 → $1.58 → $1.77 → $2.00 → $2.25 → $2.53 → $2.84 → $3.20 → $3.60 → $4.05 → $4.56
+  ✓ and a newcomer arriving now would pay $5.13
+
+── 5 · Judged in an OutLayer enclave: our server leaves the loop ──
+  ✓ anyone (here: bob) asks the contract to judge alice's PR #3 in OutLayer
+  ✓ the enclave's answer — a real run on tcpdump#1471 — carries NEAR AI's signature; the contract recovered 0x3b753b4406613c5e70ae640508632b600424fa0c on-chain: ✓ genuine
+  ✓ verdict refund → alice holds $100.00 again
+  ✗ bob pays $10.26 on PR #4; with `exclusive` on, even a signed forfeit from our server is refused → "Forfeits on this contract come only from the OutLayer enclave (judge_in_tee); the oracle can only refund"
+
+Done. Every line above was a real transaction on a local NEAR node. Tests: `cargo test -p patchbond-vault`.

@@ -111,6 +111,14 @@ Why not just take card deposits? Because the payers are increasingly agents, and
 
 **Fastest:** open the [live demo](https://patchbond-production.up.railway.app), press ⌘K, paste any public PR URL, then **Verify signature** on the verdict.
 
+**The whole money story in one command** — no wallet, no keys, no GitHub (needs Rust + `cargo-near`):
+
+```bash
+git clone https://github.com/PatchBond/patchbond && cd patchbond && bun run demo
+```
+
+A local NEAR sandbox runs the real contract with real token transfers: a real PR's bond refunded; our own server **refused** a forfeit with no signature, a tampered one, and a genuine NEAR AI signature on a *refund*; then **NEAR AI's own enclave-signed forfeit** pays the maintainer 90%; the oracle can't withdraw the vault, the maintainer can; a 16-PR spam wave prices itself from $0.77 to $5.13; and an OutLayer enclave verdict recovered on-chain to NEAR AI's GLM key. [Sample output](docs/demo-output.txt).
+
 From a clean clone (macOS or Linux). **Prerequisites:** [Bun](https://bun.sh) ≥ 1.4, Rust stable with `wasm32-unknown-unknown`, [`cargo-near`](https://github.com/near/cargo-near) ≥ 0.22; optionally `near-cli-rs` and `gh`.
 
 ```bash
@@ -122,7 +130,7 @@ cp .env.example .env          # testnet by default; set NEARAI_API_KEY + JUDGE_M
 | # | Do | See |
 |---|---|---|
 | 1 | `bun run typecheck && (cd shared && bun test) && (cd server && bun test) && (cd mcp && bun test)` | **100 TypeScript tests pass** — judge facts and rules, the malicious-code scan, the GitHub bot against a fake GitHub, maintainer sign-in and NEP-413 linking, the MCP server over real stdio. |
-| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-outlayer/Cargo.toml && cargo test -p patchbond-vault` | **53 contract tests pass** on a local NEAR sandbox with real token transfers — every money path in USDC and NEAR, challenges, maintainer safeguards, a real function-call key, TEE proofs with **genuine NEAR AI signatures**, and the OutLayer callback verifying a real enclave run. |
+| 2 | `cd contract && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml && cargo near build non-reproducible-wasm --manifest-path mock-outlayer/Cargo.toml && cargo test -p patchbond-vault` | **54 contract tests pass** on a local NEAR sandbox with real token transfers — every money path in USDC and NEAR, challenges, maintainer safeguards, a real function-call key, TEE proofs with **genuine NEAR AI signatures**, and the OutLayer callback verifying a real enclave run. |
 | 3 | `bun run --cwd server judge-pr https://github.com/tj/commander.js/pull/2637` | A **refund** with reasons, facts and `"verifies": true`; `…/OWASP/Nettacker/pull/1787` → **needs_human** (failing CI). With a NEAR AI key it's TEE-signed (~$0.0004); without one the same pipeline runs offline with a local key. |
 | 4 | `bun run dev`, open <http://localhost:5317> | Drag the bond curve, **Simulate a spam wave**, ⌘K → judge a PR → **Verify signature** in the browser. |
 | 5 | With test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") or test NEAR from [near-faucet.io](https://near-faucet.io), and a Meteor or Intear wallet: `/pay/1/1?repo=PatchBond/playground&user=YOUR_LOGIN` (or `/pay/2/1?repo=PatchBond/playground-near&user=…` for NEAR) | Pay a real bond into [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) at the live on-chain quote. |
@@ -136,7 +144,7 @@ Honest status on 2026-10-30. Testnet is the reproduce-it-yourself path; mainnet 
 
 | Part | Status |
 |---|---|
-| Vault contract: USDC or NEAR bonds per repo, curve, refund/forfeit, void, tips, bounties, challenges, maintainer safeguards, agent budgets, reputation, NEP-297 events, link-once, pause, upgrades | ✅ **Live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), 53 tests, full e2e |
+| Vault contract: USDC or NEAR bonds per repo, curve, refund/forfeit, void, tips, bounties, challenges, maintainer safeguards, agent budgets, reputation, NEP-297 events, link-once, pause, upgrades | ✅ **Live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), 54 tests, full e2e |
 | On-chain check of NEAR AI's TEE signature before any forfeit | ✅ **Live on testnet** with NEAR AI's GLM enclave key and the gateway key bound to Kimi K3 (`get_tee_signers`) |
 | **Judging in OutLayer** (`judge_in_tee`): the judge as a wasm program in Intel TDX — fetches the PR from GitHub itself, asks NEAR AI, the contract verifies the signature in the callback; byte-identical prompts to the server's (parity test, 30 real PRs) | ✅ **Live on testnet** — first run: [tx `GTZM613J…`](https://testnet.nearblocks.io/txns/GTZM613JkwxhDoEafaBsEmX5tFr4SGwEQ3SaVtAh6Hr4) (24.5 s in the enclave, 0.0036 NEAR, NEAR AI's GLM key recovered on-chain); the hosted bot now judges paid PRs this way |
 | AI judge on NEAR AI Cloud (`z-ai/glm-5.3-flash`, re-judges by `moonshotai/kimi-k3`) | ✅ **Live**, TEE-signed, $0.00035 a verdict; 0/15 good PRs forfeited |
@@ -164,16 +172,26 @@ We ran PatchBond on **[near/nearcore](https://github.com/near/nearcore)**'s open
 | Money moved on-chain | [`docs/e2e/testnet-report.md`](docs/e2e/testnet-report.md): 62 transactions, one explorer link each |
 | Built during the hackathon | First commit 2026-10-28 (window: 2026-10-19 → 11-14); see the commit history |
 
-## Judge accuracy
+## Judge quality
 
-On 30 real PRs ([`docs/eval/candidates.json`](docs/eval/candidates.json): slop = closed PRs maintainers labelled AI slop; good = authors' first merged PRs). `bun run --cwd server eval`.
+The judge is built for **precision, not recall**: it must never take a genuine contributor's money. Spam is stopped first by the bond itself — pay or the PR closes in 24 h, and a wave prices itself out — so the judge only has to be right about who gets their money back.
 
-| Judge | Good PRs forfeited | Good PRs refunded automatically | Slop not waved through (forfeit or to a human) | Invalid answers | Cost / verdict |
-|---|---|---|---|---|---|
-| **NEAR AI `glm-5.3-flash`** (TEE-signed) | **0 / 15** | **14 / 15** | **8 / 15** | 0 | **$0.00035** |
-| Facts layer alone (no model) | 0 / 15 | 13 / 15 | 3 / 15 | — | free |
+| Real PRs | Genuine work forfeited | Refunded automatically | To a maintainer | Forfeited |
+|---|---|---|---|---|
+| 15 good first PRs (authors' first merged PR) | **0** | 14 | 1 | 0 |
+| 15 slop PRs (closed and labelled AI slop by maintainers) | — | 7 | 8 | 0 |
+| 20 open stranger PRs on [near/nearcore](docs/eval/nearcore/README.md) | **0** | 13 | 7 | 0 |
 
-A refund is automatic only when clear-cut (CI passing, model ≥ 80% sure); doubtful PRs go to the maintainer and are refunded after 14 days if nobody decides. Honest limits: 30 PRs is small and the 0.8 threshold was chosen on it. Results: [`results-z-ai-glm-5-3-flash.json`](docs/eval/results-z-ai-glm-5-3-flash.json), [`results-facts-only.json`](docs/eval/results-facts-only.json).
+**0 of 35 genuine contributions forfeited.** Honest limits: on the labelled slop the model sent 8 of 15 to a human and refunded 7 (these slop PRs are mostly plausible-looking code — the kind a human closes on taste); it forfeits only with confidence ≥ the repo's threshold, evidence, and a hard fact (failing CI, phantom code, claims missing from the diff, malicious code…). 50 PRs is small; the thresholds were set on the first 30. Cost: **$0.00035 a verdict** (`glm-5.3-flash`, TEE-signed). Reproduce: `bun run --cwd server eval`; results [here](docs/eval/results-z-ai-glm-5-3-flash.json).
+
+**See for yourself** — real records, every one signed by NEAR AI's GLM enclave key `0x3b75…fa0c`; check them offline with `bun scripts/verify-record.ts docs/eval/examples/*.json` (the same six checks as the verdict page):
+
+| PR | Verdict | Why | Record |
+|---|---|---|---|
+| tj/commander.js#2636 | ✅ refund | "Small, focused fix extending the inspector-port regex to bracketed IPv6 hosts… CI passes." | [json](docs/eval/examples/refund-commander-2636.json) · [live page](https://patchbond-production.up.railway.app/v/7873cde589d23154) |
+| microg/GmsCore#3922 "[BOUNTY] RCS Support [14999$]" | 🟡 to a maintainer | Model leaned refund at 0.7 — below the 0.8 bar for an automatic refund, so a human decides. | [json](docs/eval/examples/to-a-human-gmscore-3922-bounty.json) |
+| OWASP/Nettacker#1787 | 🟡 to a maintainer | Model said *forfeit* at 0.65 — below the repo's 0.85 threshold, so it can't take the money. | [json](docs/eval/examples/model-said-forfeit-too-unsure-nettacker-1787.json) |
+| constructed slop (not a real PR) | 🔴 forfeit, 0.99 | "Adds a postinstall hook that pipes a remote script into a shell… none of the claimed work: no tests, no src/queue.ts change." The contract accepts this signature on-chain ([test](contract/vault/tests/tee_proofs.rs), `bun run demo`). | [json](docs/eval/examples/constructed-slop-forfeit.json) |
 
 ## Security model
 
@@ -237,7 +255,7 @@ flowchart LR
 | Suite | Count | Command |
 |---|---|---|
 | Contract unit (curve, money-split property test, TEE parsing) | 11 | `cd contract && cargo test -p patchbond-vault --lib` |
-| Contract sandbox: money paths 15 · NEAR bonds 7 · optimistic & agents 8 · maintainer safeguards 4 · TEE proofs 4 · OutLayer 4 | 42 | `cd contract && cargo test -p patchbond-vault` |
+| Contract sandbox: money paths 15 · NEAR bonds 7 · optimistic & agents 8 · maintainer safeguards 4 · TEE proofs 5 · OutLayer 4 | 43 | `cd contract && cargo test -p patchbond-vault` |
 | Contract upgrades (replay each older live build; see the file) | 4 | [`tests/migrate.rs`](contract/vault/tests/migrate.rs) |
 | Server: facts, malicious scan, rules, bot vs fake GitHub (incl. enclave mode), onboarding, spending guard, Intents, relayer | 81 | `cd server && bun test` |
 | OutLayer program: JS-semantics unit · **byte parity with the TS judge on 30 real PRs** (facts, request bytes, >300 verdicts + hashes) | 2 | `cd outlayer/judge && cargo test` |

@@ -129,3 +129,19 @@ async fn a_gateway_key_counts_only_for_the_model_it_was_registered_with() -> any
     assert_eq!(e.view("get_tee_signers", json!({})).await?, json!([kimi, live_gateway]));
     Ok(())
 }
+
+#[tokio::test]
+async fn a_forfeit_genuinely_signed_by_near_ai_settles_on_chain() -> anyhow::Result<()> {
+    // NEAR AI's GLM enclave judged a constructed slop PR (server/scripts/make-forfeit-example.ts):
+    // claims not in the diff + a postinstall piping a download into a shell → forfeit, 0.99.
+    let e = setup().await?;
+    let fx = fixtures();
+    set_signers(&e, &e.owner, &[fx["live"]["signer"].as_str().unwrap()]).await?.into_result()?;
+    bond(&e, 1).await?;
+    let proof: Value = serde_json::from_str(include_str!("fixtures/genuine_forfeit.json"))?;
+    let r = forfeit_with(&e, 1, Some(&proof)).await?;
+    assert!(r.is_success(), "{}", failure_text(&r));
+    assert!(r.logs().iter().any(|l| l.contains("tee_verified") && l.contains("3b753b4406613c5e70ae640508632b600424fa0c")));
+    assert_eq!(e.view("get_deposit", json!({ "repo_id": REPO, "number": 1 })).await?["status"]["settled"]["verdict"], "forfeit");
+    Ok(())
+}
