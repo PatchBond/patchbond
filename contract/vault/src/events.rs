@@ -151,3 +151,18 @@ pub fn tee_signers(signers: &[String]) {
 pub fn tee_verified(repo_id: RepoId, number: Number, signer: &str, model: &str) {
     emit("tee_verified", json!({ "repo_id": repo_id, "number": number, "signer": format!("0x{signer}"), "model": model }));
 }
+
+/// The OutLayer enclave judge was configured (or turned off).
+pub fn outlayer(config: Option<&crate::outlayer::OutlayerConfig>) {
+    emit("outlayer", json!({ "config": config }));
+}
+
+pub fn tee_requested(repo_id: RepoId, number: Number, by: &AccountId) {
+    emit("tee_requested", json!({ "repo_id": repo_id, "number": number, "by": by }));
+}
+
+/// What the enclave's answer did: refund / forfeit (proposed or settled), needs_human,
+/// already_decided — or not_judged with the reason.
+pub fn tee_result(repo_id: RepoId, number: Number, outcome: &str, detail: &str) {
+    emit("tee_result", json!({ "repo_id": repo_id, "number": number, "outcome": outcome, "detail": detail }));
+}

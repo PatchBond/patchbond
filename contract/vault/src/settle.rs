@@ -50,7 +50,6 @@ impl PatchBond {
             caller == self.oracle || is_maintainer,
             "Only the PatchBond oracle or the repo's linked payout account can settle a deposit"
         );
-        let window_ms = repo.policy.challenge_window_sec * 1000;
         let now = env::block_timestamp_ms();
         let status = self.unsettled_mut(repo_id, number).status.clone();
 
@@ -82,17 +81,10 @@ impl PatchBond {
             format!("#{number} on repo {repo_id} already has a verdict; challenge it instead")
         );
         if verdict == Verdict::Forfeit {
+            self.assert_oracle_may_forfeit();
             self.assert_tee_forfeit(repo_id, number, proof.as_ref());
         }
-        if window_ms == 0 {
-            return self.finish(repo_id, number, verdict, verdict_hash, status);
-        }
-        self.leave_queue(repo_id);
-        let deadline = now + window_ms;
-        let d = self.unsettled_mut(repo_id, number);
-        d.verdict_hash = Some(verdict_hash.clone());
-        d.status = DepositStatus::Proposed { verdict, deadline };
-        events::proposed(repo_id, number, verdict, &verdict_hash, deadline);
+        self.propose_ai_verdict(repo_id, number, verdict, verdict_hash);
     }
 
     /// Anyone: the challenge window passed without a challenge, so the proposed verdict stands.
@@ -124,6 +116,7 @@ impl PatchBond {
         );
         assert_hash(&verdict_hash);
         if verdict == Verdict::Forfeit {
+            self.assert_oracle_may_forfeit();
             self.assert_tee_forfeit(repo_id, number, proof.as_ref());
         }
         let status = self.unsettled_mut(repo_id, number).status.clone();
@@ -170,6 +163,23 @@ impl PatchBond {
 }
 
 impl PatchBond {
+    /// An AI verdict on a held deposit: proposed for the repo's challenge window, or settled at once
+    /// if the window is 0. Callers have already checked who may post it and, for a forfeit, the proof.
+    pub(crate) fn propose_ai_verdict(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String) {
+        let window_ms = self.repo(repo_id).policy.challenge_window_sec * 1000;
+        let status = self.unsettled_mut(repo_id, number).status.clone();
+        require!(status == DepositStatus::Held, format!("#{number} on repo {repo_id} already has a verdict; challenge it instead"));
+        if window_ms == 0 {
+            return self.finish(repo_id, number, verdict, verdict_hash, status);
+        }
+        self.leave_queue(repo_id);
+        let deadline = env::block_timestamp_ms() + window_ms;
+        let d = self.unsettled_mut(repo_id, number);
+        d.verdict_hash = Some(verdict_hash.clone());
+        d.status = DepositStatus::Proposed { verdict, deadline };
+        events::proposed(repo_id, number, verdict, &verdict_hash, deadline);
+    }
+
     /// Once TEE signers are registered, the oracle can only forfeit what a registered NEAR AI enclave
     /// signed as a forfeit — with the repo's confidence threshold and at least one piece of evidence.
     /// A compromised server can still refund (harmless), but can no longer invent a forfeit.

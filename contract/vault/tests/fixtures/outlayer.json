@@ -1,0 +1,65 @@
+{
+  "note": "genuine: a real outlayer/judge run (tcpdump#1471), signed by NEAR AI's GLM enclave key. Others: synthetic, signed by test_signer (or by a stranger key).",
+  "model": "z-ai/glm-5.3-flash",
+  "genuine_signer": "0x3b753b4406613c5e70ae640508632b600424fa0c",
+  "genuine": {
+    "repo_id": 9435882,
+    "number": 1471,
+    "status": "judged",
+    "verdict": "refund",
+    "model_verdict": "refund",
+    "confidence_bps": 8500,
+    "evidence": 4,
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "5eb07da4c56860624fe01aa414191bd8209112348aa4b26e0b967882a6200eee",
+    "response_sha256": "50bf30cb9c3c0d0540946485e4044e19ba1052e06c9970cd06144d93beb7c950",
+    "signature": "0xb2cb7701af59091a85acb72b8a96b5acf7b9f7b51bf9015a5b0a5cd30379d42a1522157c00d3e78f1a9bbf07e89fff1882d71c24ee7dc6ff15e624dd658ba6de1b",
+    "verdict_hash": "dbe491385844d333e0231bea0b01224851b0216ab9ec17183a8b7effe24755a9"
+  },
+  "genuine_verdict_hash": "f68468a74c701e66c7b41efa33849ae8f72e23d09c6af97ea1f916c2e9050db5",
+  "test_signer": "0x211e267a81d5b9379c1b049880d54b1ce475b2ac",
+  "forfeit": {
+    "status": "judged",
+    "verdict": "forfeit",
+    "model_verdict": "forfeit",
+    "confidence_bps": 9500,
+    "evidence": 2,
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "b05752f7c65b6a65e19396db5dd320ec601635aff6bd1982d7ee11fc55da06e5",
+    "response_sha256": "cf688856244e203d9594e7a1f9dd9f4b599c528442ffa4b1c3c94dfd6d626254",
+    "signature": "0xe1aa736046651c3a2e28a8c485cedc941e0a51090e3b3c214f297ac9ce4966212876d12018c40cef8bd617cd0bc6ed65af0cda8a16e2c4afa67a16c0166f49fc1b"
+  },
+  "rules_only_forfeit": {
+    "status": "judged",
+    "verdict": "forfeit",
+    "model_verdict": "refund",
+    "confidence_bps": 9000,
+    "evidence": 1,
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "1bb3a4c26a3209fa6e5a7af54f3223d02a7c05d062bfe84f94ce963c49c241af",
+    "response_sha256": "32ddce7652d2256f977fcbb96a4e951d2d3232851b8872761b62110f7bafd1a4",
+    "signature": "0x748071f2b55227c7247660f5f3fe915f2ff903b93e1f6ecbc2e84f274106042c225121892f95596ccc03d215db8b22b831052e4ac463a65c56afbd11172ce4491c"
+  },
+  "weak_forfeit": {
+    "status": "judged",
+    "verdict": "forfeit",
+    "model_verdict": "forfeit",
+    "confidence_bps": 7000,
+    "evidence": 1,
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "6120bb3856bbfa6fb2d4dd56c15a3ec465d45df4a5ccfb5e3cb160edfa4f5f6f",
+    "response_sha256": "63ddac4a700ab66f078ab8cf153a0d153d3129095b6a11f39c9ef50306c630c7",
+    "signature": "0x0dad74ba7e6748ae3b2c4ee3ed28ba3d37a121f6c7758df0fa2e83099ca5e1946dacab390a764af4e825e27f7a5ee3616f54416a367ed4b237bfda215e3a793a1c"
+  },
+  "stranger_forfeit": {
+    "status": "judged",
+    "verdict": "forfeit",
+    "model_verdict": "forfeit",
+    "confidence_bps": 9500,
+    "evidence": 2,
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "9e37bc19e1e4da67e52b2b27a2fb05eaf6f299e5c102192f8f6f6e72ab1d1f44",
+    "response_sha256": "c456736ed37310c8556a8f9a10df9739517a6ecf368e733b9920e02c4aa69549",
+    "signature": "0xcfba357672d1360afefa3a8e071dde2ff967fdd00a745ad326022033355f51bc5fb382ff69f3d8187d9ec82813b2a2680fdc25909ca7e2fbd3336a20d9815de91c"
+  }
+}

@@ -14,6 +14,7 @@ mod budget;
 mod curve;
 mod deposit;
 mod events;
+mod outlayer;
 mod payout;
 mod settle;
 pub mod tee;

@@ -81,7 +81,7 @@ pub fn verify(proof: &TeeProof) -> Result<SignedVerdict, String> {
 }
 
 /// EIP-191 `personal_sign` recovery: returns the lower-case hex address (no 0x).
-fn recover_eip191(text: &str, signature_hex: &str) -> Result<String, String> {
+pub(crate) fn recover_eip191(text: &str, signature_hex: &str) -> Result<String, String> {
     let sig = from_hex(signature_hex.trim_start_matches("0x")).filter(|s| s.len() == 65).ok_or("signature must be 65 bytes of hex")?;
     let prefixed = format!("\x19Ethereum Signed Message:\n{}{}", text.len(), text);
     let hash = env::keccak256_array(prefixed.as_bytes());
