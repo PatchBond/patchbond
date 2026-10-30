@@ -3,6 +3,10 @@
 //! Mike funds a budget for his agent's account and gives the agent a function-call key limited
 //! to `deposit_from_budget`. Function-call keys can't attach tokens, so the agent can only spend
 //! what's in the budget, on bonds, under the daily cap — enforced here, not by the agent.
+//!
+//! On top of the cap, the owner can set a spending policy: a most-per-bond, a list of repos the
+//! agent may pay into, and a freeze switch. Kept under its own storage key (`bp:<agent>`), so
+//! adding it needed no state migration.
 
 use near_sdk::json_types::U128;
 use near_sdk::{assert_one_yocto, env, near, require, AccountId, Promise};
@@ -35,6 +39,23 @@ impl PatchBond {
             format!("Repo {repo_id} takes NEAR bonds and agent budgets hold USDC: pay this bond directly")
         );
         let bond = self.price_for(&agent, repo_id, number, &github_user, fixes_issue);
+        if let Some(p) = budget_policy(&agent) {
+            require!(!p.frozen, "This agent's budget is frozen by its owner: no new bonds until they unfreeze it");
+            require!(
+                p.repos.is_empty() || p.repos.contains(&repo_id),
+                format!("Repo {repo_id} isn't on this agent's allowed list; ask its owner to add it")
+            );
+            if let Some(max) = p.max_bond {
+                require!(
+                    bond <= max.0,
+                    format!(
+                        "This bond is {} USDC, above the agent's limit of {} USDC per bond. Ask its owner to raise it",
+                        crate::deposit::fmt_usdc(bond),
+                        crate::deposit::fmt_usdc(max.0)
+                    )
+                );
+            }
+        }
         let today = env::block_timestamp_ms() / DAY_MS;
         let mut b = self.budgets.get(&agent).cloned().unwrap_or_else(|| {
             env::panic_str(&format!("{agent} has no PatchBond budget; its owner needs to fund one first"))
@@ -83,6 +104,27 @@ impl PatchBond {
     pub fn set_budget_cap(&mut self, agent: AccountId, daily_cap: U128) {
         let b = self.owned_budget_mut(&agent);
         b.daily_cap = daily_cap;
+    }
+
+    /// Owner sets the agent's spending policy: the most it may pay for one bond (`None` = no
+    /// limit beyond the daily cap), the repos it may pay into (empty = any), and a freeze switch.
+    pub fn set_budget_policy(&mut self, agent: AccountId, max_bond: Option<U128>, repos: Vec<RepoId>, frozen: bool) {
+        let b = self.owned_budget_mut(&agent);
+        require!(repos.len() <= MAX_POLICY_REPOS, format!("At most {MAX_POLICY_REPOS} repos per agent"));
+        let owner = b.owner.clone();
+        let p = BudgetPolicy { max_bond, repos, frozen };
+        env::storage_write(&policy_key(&agent), &near_sdk::serde_json::to_vec(&p).expect("policy serializes"));
+        events::budget_policy(&agent, &owner, &p);
+    }
+
+    /// Owner freezes or unfreezes the agent's spending, keeping the rest of its policy.
+    pub fn freeze_budget(&mut self, agent: AccountId, frozen: bool) {
+        let p = budget_policy(&agent).unwrap_or_default();
+        self.set_budget_policy(agent, p.max_bond, p.repos, frozen);
+    }
+
+    pub fn get_budget_policy(&self, agent: AccountId) -> Option<BudgetPolicy> {
+        budget_policy(&agent)
     }
 
     /// Owner takes money back out of the agent's budget.
@@ -188,6 +230,16 @@ impl PatchBond {
         require!(b.owner == caller, "Only the budget's owner can do this");
         b
     }
+}
+
+const MAX_POLICY_REPOS: usize = 50;
+
+fn policy_key(agent: &AccountId) -> Vec<u8> {
+    format!("bp:{agent}").into_bytes()
+}
+
+fn budget_policy(agent: &AccountId) -> Option<BudgetPolicy> {
+    env::storage_read(&policy_key(agent)).and_then(|v| near_sdk::serde_json::from_slice(&v).ok())
 }
 
 /// Harness records share the map with agent accounts; "#" can't appear in an account id.

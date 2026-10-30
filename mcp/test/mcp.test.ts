@@ -45,6 +45,17 @@ describe("client", () => {
     expect(await client().policy("acme/quiet")).toMatchObject({ uses_patchbond: false });
   });
 
+  test("budget: shows the owner's policy; a frozen budget or a repo off the list is refused before any transaction", async () => {
+    world.repos[42] = defaultWorld().repos[42];
+    expect((await client().budget()).policy).toEqual({ frozen: false, max_per_bond_usdc: null, allowed_repos: "any" });
+    world.budgetPolicy = { max_bond: "3000000", repos: [7], frozen: false };
+    expect((await client().budget()).policy).toEqual({ frozen: false, max_per_bond_usdc: "3.00", allowed_repos: [7] });
+    await expect(client().deposit("https://github.com/acme/widget/pull/7")).rejects.toThrow("isn't on your allowed list");
+    world.budgetPolicy = { max_bond: null, repos: [], frozen: true };
+    await expect(client().deposit("https://github.com/acme/widget/pull/7")).rejects.toThrow("frozen by its owner");
+    world.budgetPolicy = null;
+  });
+
   test("budget: what's left today is min(cap − spent, balance)", async () => {
     expect(await client().budget()).toMatchObject({ balance_usdc: "10.00", daily_cap_usdc: "2.50", spent_today_usdc: "1.00", left_today_usdc: "1.50" });
   });

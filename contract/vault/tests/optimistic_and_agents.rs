@@ -333,3 +333,54 @@ async fn only_the_owner_controls_the_budget() -> anyhow::Result<()> {
     assert_eq!(u(&e.view("get_budget", json!({ "agent": agent.id() })).await?["balance"]), 6 * USDC);
     Ok(())
 }
+
+/// The owner's policy on top of the cap: a most-per-bond, an allowed-repo list, and a freeze
+/// switch — each refused by the contract, with the reason, whatever the agent tries.
+#[tokio::test]
+async fn the_owners_policy_limits_what_the_agent_can_pay_for() -> anyhow::Result<()> {
+    let (e, mike, agent) = agent_setup().await?;
+    let set = |max_bond: Option<&str>, repos: Vec<u64>, frozen: bool| {
+        let max_bond = max_bond.map(str::to_string);
+        mike.call(e.pb.id(), "set_budget_policy")
+            .args_json(json!({ "agent": agent.id(), "max_bond": max_bond, "repos": repos, "frozen": frozen }))
+            .transact()
+    };
+
+    // A limit below the $1 bond refuses it.
+    set(Some("500000"), vec![], false).await?.into_result()?;
+    let over = agent_deposit(&e, &agent, &mike, 1).await?;
+    assert!(failure_text(&over).contains("above the agent's limit of 0.50 USDC per bond"), "{}", failure_text(&over));
+
+    // An allowed list without this repo refuses it.
+    set(None, vec![FLAT + 1], false).await?.into_result()?;
+    let elsewhere = agent_deposit(&e, &agent, &mike, 1).await?;
+    assert!(failure_text(&elsewhere).contains("isn't on this agent's allowed list"), "{}", failure_text(&elsewhere));
+
+    // With the repo allowed and the limit above the bond, it pays.
+    set(Some("1000000"), vec![FLAT], false).await?.into_result()?;
+    agent_deposit(&e, &agent, &mike, 1).await?.into_result()?;
+
+    // Freezing stops new bonds but keeps the rest of the policy; a refund still comes back.
+    mike.call(e.pb.id(), "freeze_budget").args_json(json!({ "agent": agent.id(), "frozen": true })).transact().await?.into_result()?;
+    let frozen = agent_deposit(&e, &agent, &mike, 2).await?;
+    assert!(failure_text(&frozen).contains("frozen by its owner"), "{}", failure_text(&frozen));
+    assert_eq!(
+        e.view("get_budget_policy", json!({ "agent": agent.id() })).await?,
+        json!({ "max_bond": "1000000", "repos": [FLAT], "frozen": true })
+    );
+    e.settle(FLAT, 1, "refund").await?.into_result()?;
+    assert_eq!(u(&e.view("get_budget", json!({ "agent": agent.id() })).await?["balance"]), 10 * USDC);
+
+    // Only the owner sets the policy — not the agent, not anyone else.
+    for who in [&agent, &e.alice] {
+        let r = who
+            .call(e.pb.id(), "freeze_budget")
+            .args_json(json!({ "agent": agent.id(), "frozen": false }))
+            .transact()
+            .await?;
+        assert!(failure_text(&r).contains("Only the budget's owner"), "{}", failure_text(&r));
+    }
+    mike.call(e.pb.id(), "freeze_budget").args_json(json!({ "agent": agent.id(), "frozen": false })).transact().await?.into_result()?;
+    agent_deposit(&e, &agent, &mike, 2).await?.into_result()?;
+    Ok(())
+}

@@ -257,6 +257,18 @@ pub struct Budget {
     pub day: u64,
 }
 
+/// The owner's rules for what an agent may spend its budget on (on top of the daily cap).
+#[near(serializers = [json])]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BudgetPolicy {
+    /// The most the agent may pay for one bond; `None` = only the daily cap applies.
+    pub max_bond: Option<U128>,
+    /// Repos the agent may pay into; empty = any repo.
+    pub repos: Vec<RepoId>,
+    /// No new bonds while frozen (refunds still flow back into the budget).
+    pub frozen: bool,
+}
+
 pub const DAY_MS: u64 = 24 * 3600 * 1000;
 /// Smallest amount that opens a new agent budget (storage-griefing floor).
 pub const MIN_BUDGET: u128 = USDC;

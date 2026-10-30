@@ -5,7 +5,7 @@ use near_sdk::json_types::U128;
 use near_sdk::serde_json::{json, Value};
 use near_sdk::{env, AccountId};
 
-use crate::types::{Currency, Kind, Number, Passport, RepoId, TimestampMs, Verdict};
+use crate::types::{BudgetPolicy, Currency, Kind, Number, Passport, RepoId, TimestampMs, Verdict};
 
 fn emit(event: &str, data: Value) {
     let log = json!({
@@ -133,6 +133,10 @@ pub fn budget(agent: &AccountId, owner: &AccountId, balance: u128, daily_cap: u1
         "budget",
         json!({ "agent": agent, "owner": owner, "balance": U128(balance), "daily_cap": U128(daily_cap) }),
     );
+}
+
+pub fn budget_policy(agent: &AccountId, owner: &AccountId, p: &BudgetPolicy) {
+    emit("budget_policy", json!({ "agent": agent, "owner": owner, "policy": p }));
 }
 
 pub fn passport(agent: &AccountId, passport: &Passport) {

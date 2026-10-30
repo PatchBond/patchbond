@@ -101,7 +101,7 @@ server.registerTool(
   "patchbond_budget",
   {
     title: "Your budget",
-    description: "Your agent budget: balance, daily cap, spent today, what's left today and when it resets.",
+    description: "Your agent budget: balance, daily cap, spent today, what's left today, when it resets, and your owner's policy (most per bond, allowed repos, frozen).",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: true },
   },

@@ -11,5 +11,5 @@
   "wnear": "wrap.testnet",
   "deployed_at": "2026-10-28",
   "deploy_tx": "Azc5Frjk6bukbTKE2jueAViNJVhoqs81DDAaTHjkSiPw",
-  "upgraded_at": "2026-10-28 (v0.3: NEAR bonds)"
+  "upgraded_at": "2026-10-30 (agent spending policy: set_budget_policy, freeze_budget \u2014 tx GBGeC9mVXeY2PJn6EpkTumZS8ZQghTkn7DUmo4dFWKfP)"
 }

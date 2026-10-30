@@ -1,6 +1,7 @@
 import { Bot, Check, Copy, KeyRound, ShieldCheck, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { AgentControls } from "../components/AgentControls";
 import { Reveal, Spotlight } from "../components/fx";
 import { Eyebrow, Mark, Panel, Spinner } from "../components/kit";
 import { chain } from "../lib/api";
@@ -18,9 +19,10 @@ export function Agents() {
       <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
         <Reveal>
           <Eyebrow>Know your agent</Eyebrow>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Coding agents are the senders now. Give them a wallet that can't hurt you.</h1>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Coding agents are the senders now. Give them funds, not the keys to everything.</h1>
           <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground">
-            An agent pays bonds from a budget you fund, signing with a NEAR <b className="text-ink">function-call key</b> that can call one method on one contract. The contract enforces the daily cap. Every payment carries a passport, and every
+            An agent pays bonds from a budget you fund, signing with a NEAR <b className="text-ink">function-call key</b> that can call one method on one contract. The contract enforces your limits — a daily cap, the most it may pay per bond, the repos it may pay into, and a
+            freeze switch. Every payment carries a passport, and every
             harness earns a public, verifiable refund record.
           </p>
         </Reveal>
@@ -67,6 +69,16 @@ export function Agents() {
       </Panel>
 
       <Reveal className="mt-16">
+        <Eyebrow>Your agent's limits · enforced by the contract</Eyebrow>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Cap it, scope it, freeze it.</h2>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          Look up an agent to see its budget and policy. As its owner you can change the daily cap, set the most it may pay for one bond, limit it to a list of repos, or freeze
+          it at once. The agent's key can't change any of this, and the contract refuses anything outside it, with the reason.
+        </p>
+      </Reveal>
+      <AgentControls />
+
+      <Reveal className="mt-16">
         <Eyebrow>Set it up</Eyebrow>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight">Three steps. Your agent never holds more than it may spend.</h2>
       </Reveal>
@@ -75,7 +87,7 @@ export function Agents() {
           n={1}
           icon={Wallet}
           title="Fund a capped budget"
-          body="Send USDC to the contract for your agent's account, with a daily cap. Only you can top it up, change the cap or withdraw."
+          body="Send USDC to the contract for your agent's account, with a daily cap. Only you can top it up, change the limits, freeze it or withdraw."
           code={`near contract call-function as-transaction ${cfg.token} ft_transfer_call \\
   json-args '{"receiver_id":"${cfg.contract}","amount":"20000000",
   "msg":"{\\"action\\":\\"fund_budget\\",\\"agent\\":\\"my-agent.${cfg.network}\\",\\"daily_cap\\":\\"5000000\\"}"}' \\
@@ -127,7 +139,7 @@ function Passport() {
           ["Operator", "mike.testnet"],
           ["Harness", "claude-code"],
           ["Model", "claude-opus-5-5"],
-          ["Daily cap", "$5.00"],
+          ["Daily cap", "$5.00 · max $2 per bond"],
           ["Key", "function-call only"],
         ].map(([k, v]) => (
           <div key={k}>

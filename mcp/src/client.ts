@@ -185,6 +185,12 @@ export class PatchBond {
         `${pr.owner}/${pr.name} takes bonds in NEAR and agent budgets hold USDC, so this budget can't pay. Ask your operator to pay from a NEAR wallet: ${this.webUrl()}/pay/${pr.id}/${pr.number}?user=${pr.author}`,
       );
     }
+    // The contract enforces the owner's policy anyway; checking first saves the gas of a refused call.
+    const policy = await this.budgetPolicy(agent.accountId);
+    if (policy?.frozen) throw new PatchBondError(`Your budget is frozen by its owner; no new bonds until they unfreeze it.`);
+    if (policy && policy.repos.length && !policy.repos.includes(pr.id)) {
+      throw new PatchBondError(`${pr.owner}/${pr.name} (repo ${pr.id}) isn't on your allowed list; ask your operator to add it.`);
+    }
     const account = new Account(agent.accountId, this.provider!, agent.key as KeyPairString);
     const raw = (await account
       .callFunctionRaw({
@@ -248,6 +254,7 @@ export class PatchBond {
     const spent = b.day === today ? BigInt(b.spent_today) : 0n;
     const left = BigInt(b.daily_cap) - spent;
     const leftToday = left < BigInt(b.balance) ? left : BigInt(b.balance);
+    const policy = await this.budgetPolicy(agent.accountId);
     return {
       agent: agent.accountId,
       owner: b.owner,
@@ -256,7 +263,17 @@ export class PatchBond {
       spent_today_usdc: formatUsdc(spent),
       left_today_usdc: formatUsdc(leftToday > 0n ? leftToday : 0n),
       resets_at: new Date((today + 1) * 86_400_000).toISOString(),
+      // The owner's limits on top of the cap (set_budget_policy); the contract refuses anything outside them.
+      policy: {
+        frozen: policy?.frozen ?? false,
+        max_per_bond_usdc: policy?.max_bond ? formatUsdc(policy.max_bond) : null,
+        allowed_repos: policy?.repos.length ? policy.repos : "any",
+      },
     };
+  }
+
+  private budgetPolicy(agent: string) {
+    return this.view<{ max_bond: string | null; repos: number[]; frozen: boolean } | null>("get_budget_policy", { agent });
   }
 
   async reputation(who?: string) {

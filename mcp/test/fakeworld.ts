@@ -6,6 +6,7 @@ export interface World {
   quote: string;
   exempt: boolean;
   budget: unknown;
+  budgetPolicy: unknown;
   deposits: Record<string, unknown>;
 }
 
@@ -23,6 +24,7 @@ export function defaultWorld(): World {
     quote: "2250000",
     exempt: false,
     budget: { owner: "mike.testnet", balance: "10000000", daily_cap: "2500000", spent_today: "1000000", day: Math.floor(Date.now() / 86_400_000) },
+    budgetPolicy: null,
     deposits: {},
   };
 }
@@ -57,6 +59,7 @@ export function startFakeWorld(world: World) {
           quote_bond: () => world.quote,
           is_exempt: () => world.exempt,
           get_budget: () => world.budget,
+          get_budget_policy: () => world.budgetPolicy,
           get_deposit: () => world.deposits[`${args.repo_id}/${args.number}`] ?? null,
           get_reputation: () => ({ refunds: 1, forfeits: 0, last_forfeit_at: null, refund_repos: [42] }),
           get_agent_stats: () => ({ deposits: 1, refunds: 1, forfeits: 0 }),

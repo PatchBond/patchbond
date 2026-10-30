@@ -177,7 +177,22 @@ export interface SealedReportSummary {
   };
 }
 
+export interface Budget {
+  owner: string;
+  balance: string;
+  daily_cap: string;
+  spent_today: string;
+  day: number;
+}
+export interface BudgetPolicy {
+  max_bond: string | null;
+  repos: number[];
+  frozen: boolean;
+}
+
 export const chain = {
+  budget: (cfg: AppConfig, agent: string) => view<Budget | null>(cfg, "get_budget", { agent }),
+  budgetPolicy: (cfg: AppConfig, agent: string) => view<BudgetPolicy | null>(cfg, "get_budget_policy", { agent }),
   reportKey: (cfg: AppConfig, repo_id: number) => view<string | null>(cfg, "get_report_key", { repo_id }),
   enclaveKey: (cfg: AppConfig) => view<string | null>(cfg, "get_enclave_key", {}),
   repo: (cfg: AppConfig, repo_id: number) => view<Repo | null>(cfg, "get_repo", { repo_id }),
