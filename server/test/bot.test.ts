@@ -249,6 +249,23 @@ describe("GitHub bot", () => {
     expect(store.submission(REPO.id, 2)?.state).toBe("settled");
   });
 
+  test("a disputed maintainer forfeit stands when the stronger model also signs forfeit — even with no hard fact", async () => {
+    // Live case (CivicLedger #61): a README period "closing" a contract bug. GLM said forfeit at 0.75,
+    // the maintainer forfeited, the contributor disputed, Kimi said forfeit at 0.97 — and it was refunded.
+    const strong = new MockInference(undefined, () =>
+      JSON.stringify({ verdict: "forfeit", confidence: 0.97, category: "does_not_work", reasons: ["Claims to close a contract bug; only adds a period to the README."], evidence: [{ file: "README.md", line: 17, note: "only change" }] }),
+    );
+    bot = new Bot(loadConfig(), chain, store, new MockInference(), strong, () => {});
+    await deliver("pull_request", prOpened(1));
+    chain.pay(1, "tunde.testnet", "tunde");
+    await bot.tick();
+    // The maintainer's 48 h forfeit, disputed for free (stake 0).
+    chain.deposits.get(`${REPO.id}/1`)!.status = { challenged: { verdict: "forfeit", challenger: "tunde.testnet", stake: "0" } };
+    await bot.tick();
+    expect(chain.log).toContain(`resolve ${REPO.id}#1 forfeit`);
+    expect(comments().at(-1)).toContain("The forfeit stands");
+  });
+
   test("only the team is exempt: org members (even private) and the team list; past contributors pay", async () => {
     // Someone with merged PRs before (CONTRIBUTOR) still pays.
     await deliver("pull_request", prOpened(1, "CONTRIBUTOR"));

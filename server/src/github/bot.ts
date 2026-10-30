@@ -374,7 +374,11 @@ export class Bot {
       this.store.saveVerdict(record);
     }
     // A forfeit needs the stronger model's own TEE-signed forfeit; anything less resolves as a refund.
-    let verdict: "refund" | "forfeit" = record.final.verdict === "forfeit" && record.model_verdict?.verdict === "forfeit" ? "forfeit" : "refund";
+    // For a disputed *maintainer* forfeit, a human already decided: it stands when the stronger model
+    // also signs a forfeit, without the server's hard-fact rule (that rule stops the AI acting alone).
+    // The contract still requires the model's signed forfeit above the repo's threshold, with evidence.
+    const modelForfeit = record.model_verdict?.verdict === "forfeit";
+    let verdict: "refund" | "forfeit" = (freeDispute ? modelForfeit : record.final.verdict === "forfeit" && modelForfeit) ? "forfeit" : "refund";
     try {
       await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash, verdict === "forfeit" ? teeProof(record) : undefined);
     } catch (e) {
