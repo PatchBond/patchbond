@@ -28,7 +28,7 @@ Strangers attach a small **refundable bond** to their pull request, in USDC or N
 | Unpaid PRs closed after their 24 h notice | **0** |
 | TEE-signed verdicts on the hosted service | **2** (PRs handled there: 0) · the contract trusts 2 NEAR AI keys |
 
-<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-10-29 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service</sub>
+<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-10-30 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service</sub>
 <!-- live:end -->
 
 ![PatchBond home](docs/media/home.png)
