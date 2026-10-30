@@ -214,12 +214,25 @@ export interface RepoRules {
   unassignedEffect: "evidence" | "flag";
   /** Close PRs still unpaid after this many hours (they reopen when paid). Off when null. */
   closeUnpaidAfterHours: number | null;
+  /**
+   * People who already have commits in the repo (GitHub's `CONTRIBUTOR`) pay nothing unless the repo
+   * says `contributors_pay: true`. Teams with private org membership show up as CONTRIBUTOR, not MEMBER.
+   */
+  contributorsPay: boolean;
+  /** GitHub logins that never pay (`exempt: alice, bob`), lower-cased. */
+  exempt: string[];
 }
 
 /** Unpaid PRs close after a day unless the repo says otherwise (`close_unpaid_after_hours: off`). */
 export const DEFAULT_CLOSE_UNPAID_HOURS = 24;
 
-export const DEFAULT_RULES: RepoRules = { assignmentRequired: false, unassignedEffect: "flag", closeUnpaidAfterHours: DEFAULT_CLOSE_UNPAID_HOURS };
+export const DEFAULT_RULES: RepoRules = {
+  assignmentRequired: false,
+  unassignedEffect: "flag",
+  closeUnpaidAfterHours: DEFAULT_CLOSE_UNPAID_HOURS,
+  contributorsPay: false,
+  exempt: [],
+};
 
 /** Parses `.github/patchbond.yml` (flat `key: value` lines; unknown keys ignored). */
 export function parseRepoRules(text: string | undefined): RepoRules {
@@ -235,6 +248,8 @@ export function parseRepoRules(text: string | undefined): RepoRules {
     assignmentRequired: /^(true|yes|on)$/i.test(kv.assignment_required ?? ""),
     unassignedEffect: kv.unassigned_pr === "evidence" ? "evidence" : "flag",
     closeUnpaidAfterHours: closeAfter(kv.close_unpaid_after_hours),
+    contributorsPay: /^(true|yes|on)$/i.test(kv.contributors_pay ?? ""),
+    exempt: (kv.exempt ?? "").replace(/^\[|\]$/g, "").split(/[\s,]+/).map((u) => u.replace(/^@/, "").toLowerCase()).filter(Boolean),
   };
 }
 

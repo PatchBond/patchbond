@@ -109,11 +109,16 @@ export class Bot {
     if (!onChain?.policy.enabled) return;
 
     const known = this.store.nearAccountOf(author);
+    const rules = await this.rulesOf(repo.id, installationId, repo.full_name);
     const exemptReason = MAINTAINER.has(pr.author_association)
       ? "Maintainers and collaborators don't pay deposits."
-      : known && (await this.chain.isExempt(known))
-        ? `@${author} is a proven contributor (${known}: 3+ refunds on 2+ repos, no recent forfeits).`
-        : null;
+      : pr.author_association === "CONTRIBUTOR" && !rules.contributorsPay
+        ? `@${author} already has commits in this repository.`
+        : rules.exempt.includes(author.toLowerCase())
+          ? `@${author} is on this repo's exempt list (.github/patchbond.yml).`
+          : known && (await this.chain.isExempt(known))
+            ? `@${author} is a proven contributor (${known}: 3+ refunds on 2+ repos, no recent forfeits).`
+            : null;
     if (exemptReason) {
       const check = await this.check(gh, repo, pr.head.sha, "completed", "success", checkSummary("exempt", exemptReason));
       this.store.upsertSubmission({ ...base, check_run_id: check, state: "exempt" });
@@ -123,7 +128,7 @@ export class Bot {
     const bond = (await this.chain.quote(repo.id, known ?? undefined)) ?? onChain.policy.base_bond;
     const link = payLink(this.cfg.webUrl, repo.id, pr.number, repo.full_name, author);
     // The deadline is announced here, up front; a PR is never closed on a deadline it wasn't told.
-    const hours = (await this.rulesOf(repo.id, installationId, repo.full_name)).closeUnpaidAfterHours;
+    const hours = rules.closeUnpaidAfterHours;
     const closeAt = hours ? Date.now() + hours * 3_600_000 : null;
     const check = await this.check(gh, repo, pr.head.sha, "in_progress", null, checkSummary("awaiting", `Pay the refundable deposit: ${link}${closeAt ? `\n\nUnpaid PRs close at ${utc(closeAt)}; paying later reopens it.` : ""}`));
     const { data: comment } = await gh.rest.issues.createComment({

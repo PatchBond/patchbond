@@ -249,6 +249,26 @@ describe("GitHub bot", () => {
     expect(store.submission(REPO.id, 2)?.state).toBe("settled");
   });
 
+  test("people with commits in the repo, or on its exempt list, don't pay; contributors_pay charges them", async () => {
+    // Teams with private org membership (e.g. nearcore's engineers) show up as CONTRIBUTOR, not MEMBER.
+    await deliver("pull_request", prOpened(1, "CONTRIBUTOR"));
+    let check = gh.posted(/\/check-runs$/).at(-1)!.body as { conclusion: string; output: { summary: string } };
+    expect(check.conclusion).toBe("success");
+    expect(check.output.summary).toContain("already has commits in this repository");
+
+    gh.setRules("exempt: @SlopBot, someone-else\n");
+    bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, () => {}); // fresh rules cache
+    await deliver("pull_request", prOpened(2));
+    check = gh.posted(/\/check-runs$/).at(-1)!.body as { conclusion: string; output: { summary: string } };
+    expect(check.output.summary).toContain("exempt list");
+
+    gh.setRules("contributors_pay: true\n");
+    bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, () => {});
+    await deliver("pull_request", prOpened(3, "CONTRIBUTOR"));
+    expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit");
+    expect(comments().at(-1)).toContain("deposit");
+  });
+
   test("a forged webhook is rejected", async () => {
     await expect(
       bot.app.webhooks.verifyAndReceive({ id: "x", name: "pull_request", payload: JSON.stringify(prOpened(1)), signature: "sha256=deadbeef" }),
