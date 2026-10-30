@@ -2,6 +2,7 @@ import { parseAmount, SYMBOL } from "@patchbond/shared";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
+import { FaucetDialog } from "../components/Faucet";
 import { Button, Eyebrow, Notice, Panel, Spinner } from "../components/kit";
 import { api, chain, explorerTx, money } from "../lib/api";
 import { useConfig } from "../lib/config";
@@ -235,14 +236,11 @@ export function Pay() {
             {wallet.accountId && balance !== null && (
               <p className={`mt-2 text-center text-xs ${short ? "text-danger" : "text-faint"}`}>
                 Balance {money(balance, currency)}{near ? "" : " USDC"}
-                {short && near && " — not enough NEAR (keep ~0.02 extra for gas)."}
-                {short && !near && cfg.network === "testnet" && (
+                {short && near && cfg.network === "mainnet" && " — not enough NEAR (keep ~0.02 extra for gas)."}
+                {short && cfg.network === "testnet" && (
                   <>
-                    {" "}— not enough. Get test USDC at{" "}
-                    <a className="underline" href="https://faucet.circle.com" target="_blank" rel="noreferrer">
-                      faucet.circle.com
-                    </a>
-                    .
+                    {" "}— not enough.{" "}
+                    <FaucetDialog trigger={<button className="font-medium underline">Get free test funds</button>} />
                   </>
                 )}
                 {short && !near && cfg.network === "mainnet" && " — not enough USDC on NEAR."}

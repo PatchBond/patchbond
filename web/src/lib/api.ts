@@ -56,6 +56,8 @@ async function post<T>(path: string, body: object = {}): Promise<T> {
 export const api = {
   me: () => get<Me>("/api/me"),
   logout: () => post<{ ok: true }>("/api/auth/logout"),
+  /** Testnet only: a little NEAR for fees and test USDC for a bond, from PatchBond's faucet. */
+  faucet: (account_id: string) => post<{ account_id: string; near: string; usdc: string; note: string }>("/api/faucet", { account_id }),
   linkChallenge: (repo_id: number, account_id: string) => post<{ message: string; recipient: string; nonce: string }>("/api/link/challenge", { repo_id, account_id }),
   linkConfirm: (b: { nonce: string; account_id: string; public_key: string; signature: string }) => post<{ ok: true }>("/api/link/confirm", b),
   config: () => get<AppConfig>("/api/config"),

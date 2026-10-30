@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
+import { FaucetDialog } from "../components/Faucet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttentionMeter } from "../components/AttentionMeter";
 import { AnimatedNumber, Reveal } from "../components/fx";
@@ -300,6 +301,7 @@ function Mini({ label, value }: { label: string; value: React.ReactNode }) {
 
 function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => void }) {
   const wallet = useWallet();
+  const cfg = useConfig();
   const [busy, setBusy] = useState(false);
   const payout = repo.onchain?.payout;
   async function link() {
@@ -345,6 +347,12 @@ function LinkPanel({ repo, onLinked }: { repo: MaintainerRepo; onLinked: () => v
       <div className="flex flex-wrap items-center justify-between gap-4">
       <p className="max-w-xl text-sm text-muted-foreground">
         Link this repository to your NEAR account first: the bond settings unlock here once it's linked, because only that account can change them on-chain — not PatchBond. Until then nobody is asked for a deposit.
+        {cfg.network === "testnet" && (
+          <>
+            {" "}Saving the bond needs a tiny testnet fee —{" "}
+            <FaucetDialog trigger={<button className="font-medium text-brand hover:underline">get free test funds</button>} />.
+          </>
+        )}
       </p>
       {wallet.accountId ? (
         <Button onClick={() => void link()} disabled={busy}>

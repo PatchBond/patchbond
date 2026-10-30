@@ -19,6 +19,7 @@ import { maintainerRoutes } from "./maintainers";
 import { dryQuote, IntentsError, type PayoutQuoteRequest } from "./intents";
 import { Relayer, RelayError } from "./relayer";
 import { TeeRecords } from "./teeRecords";
+import { Faucet, FaucetError, nearFaucetChain } from "./faucet";
 
 const cfg = loadConfig();
 const chain = new Chain(cfg);
@@ -162,6 +163,21 @@ app.post("/api/relay", async (c) => {
   } catch (e) {
     const msg = (e as Error).message;
     return c.json({ error: e instanceof RelayError ? msg : `The relayer couldn't submit it: ${msg.slice(0, 300)}` }, 400);
+  }
+});
+
+// Testnet faucet: a little NEAR for fees and a little test USDC for a bond, from our faucet account.
+let faucet: Faucet | null = null;
+app.post("/api/faucet", async (c) => {
+  if (cfg.deployment.network !== "testnet") return c.json({ error: "The faucet only exists on testnet." }, 404);
+  try {
+    const account = process.env.FAUCET_ACCOUNT || cfg.deployment.oracle;
+    faucet ??= new Faucet(nearFaucetChain(cfg.deployment.rpc, account, process.env.FAUCET_PRIVATE_KEY || cfg.oracleKey(), cfg.deployment.token));
+    const { account_id } = await c.req.json<{ account_id: string }>();
+    return c.json(await faucet.drip(account_id ?? "", visitorOf(c.req.header("x-forwarded-for"))));
+  } catch (e) {
+    const msg = (e as Error).message;
+    return c.json({ error: e instanceof FaucetError ? msg : `The faucet couldn't send: ${msg.slice(0, 200)}. Use the faucets below.` }, 400);
   }
 });
 
