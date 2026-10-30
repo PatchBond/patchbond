@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
+import { BadgeSnippet } from "../components/BadgeSnippet";
 import { FaucetDialog } from "../components/Faucet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttentionMeter } from "../components/AttentionMeter";
@@ -281,7 +282,10 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
               <CrossChain repo={repo} />
               <HandOver repo={repo} onDone={onChange} />
             </TabsContent>
-            <TabsContent value="policy" className="pt-4"><PolicyTab repo={repo} onSaved={onChange} /></TabsContent>
+            <TabsContent value="policy" className="space-y-4 pt-4">
+              <PolicyTab repo={repo} onSaved={onChange} />
+              <BadgeSnippet repoId={repo.repo_id} />
+            </TabsContent>
             <TabsContent value="queue" className="pt-4"><Queue repo={repo} /></TabsContent>
           </Tabs>
         )}

@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router";
 import { AttentionMeter } from "../components/AttentionMeter";
+import { BadgeSnippet } from "../components/BadgeSnippet";
 import { Eyebrow, Notice, Panel, Spinner, Stat, VerdictBadge } from "../components/kit";
 import { api, chain, money } from "../lib/api";
 import { useConfig } from "../lib/config";
@@ -23,9 +24,12 @@ export function RepoPage() {
         {!repo.policy.enabled && " · PatchBond is off"}
       </p>
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <Panel className="p-6">
-          <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} currency={repo.currency} />
-        </Panel>
+        <div className="space-y-4">
+          <Panel className="p-6">
+            <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} currency={repo.currency} />
+          </Panel>
+          <BadgeSnippet repoId={repoId} compact />
+        </div>
         <Panel className="grid grid-cols-2 gap-6 p-6">
           <Stat label="Vault" value={money(repo.vault, repo.currency)} sub="withdrawable by the maintainer" />
           <Stat label="Paid by slop" value={money(repo.stats.forfeited_total, repo.currency)} />

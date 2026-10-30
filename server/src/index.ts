@@ -20,6 +20,7 @@ import { dryQuote, IntentsError, type PayoutQuoteRequest } from "./intents";
 import { Relayer, RelayError } from "./relayer";
 import { TeeRecords } from "./teeRecords";
 import { Faucet, FaucetError, nearFaucetChain } from "./faucet";
+import { badgeFor, badgeSvg } from "./badge";
 
 const cfg = loadConfig();
 const chain = new Chain(cfg);
@@ -164,6 +165,17 @@ app.post("/api/relay", async (c) => {
     const msg = (e as Error).message;
     return c.json({ error: e instanceof RelayError ? msg : `The relayer couldn't submit it: ${msg.slice(0, 300)}` }, 400);
   }
+});
+
+// README badge: "PatchBond · bond $0.50 · 3 refunded", live from the contract.
+app.get("/badge/:repo{[0-9]+\\.svg}", async (c) => {
+  const id = Number(c.req.param("repo").replace(/\.svg$/, ""));
+  const [repo, quote] = await Promise.all([chain.getRepo(id).catch(() => null), chain.quote(id).catch(() => undefined)]);
+  const { message, color } = badgeFor(repo, quote);
+  return c.body(badgeSvg("PatchBond", message, color), 200, {
+    "content-type": "image/svg+xml; charset=utf-8",
+    "cache-control": "public, max-age=300",
+  });
 });
 
 // Testnet faucet: a little NEAR for fees and a little test USDC for a bond, from our faucet account.
