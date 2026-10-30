@@ -249,24 +249,23 @@ describe("GitHub bot", () => {
     expect(store.submission(REPO.id, 2)?.state).toBe("settled");
   });
 
-  test("people with commits in the repo, or on its exempt list, don't pay; contributors_pay charges them", async () => {
-    // Teams with private org membership (e.g. nearcore's engineers) show up as CONTRIBUTOR, not MEMBER.
+  test("only the team is exempt: org members (even private) and the team list; past contributors pay", async () => {
+    // Someone with merged PRs before (CONTRIBUTOR) still pays.
     await deliver("pull_request", prOpened(1, "CONTRIBUTOR"));
+    expect(store.submission(REPO.id, 1)?.state).toBe("awaiting_deposit");
+
+    // A member of the org whose membership is private also shows up as CONTRIBUTOR — exempt.
+    gh.setOrgMembers(["slopbot"]);
+    await deliver("pull_request", prOpened(2, "CONTRIBUTOR"));
     let check = gh.posted(/\/check-runs$/).at(-1)!.body as { conclusion: string; output: { summary: string } };
     expect(check.conclusion).toBe("success");
-    expect(check.output.summary).toContain("already has commits in this repository");
+    expect(check.output.summary).toContain(`member of @${REPO.owner}`);
 
-    gh.setRules("exempt: @SlopBot, someone-else\n");
+    gh.setRules("exempt: @Kenji, someone-else\n");
     bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, () => {}); // fresh rules cache
-    await deliver("pull_request", prOpened(2));
-    check = gh.posted(/\/check-runs$/).at(-1)!.body as { conclusion: string; output: { summary: string } };
-    expect(check.output.summary).toContain("exempt list");
-
-    gh.setRules("contributors_pay: true\n");
-    bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, () => {});
     await deliver("pull_request", prOpened(3, "CONTRIBUTOR"));
-    expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit");
-    expect(comments().at(-1)).toContain("deposit");
+    check = gh.posted(/\/check-runs$/).at(-1)!.body as { conclusion: string; output: { summary: string } };
+    expect(check.output.summary).toContain("team list");
   });
 
   test("a forged webhook is rejected", async () => {

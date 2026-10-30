@@ -28,6 +28,8 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
   const calls: Call[] = [];
   /** The repo's `.github/patchbond.yml`, if any. */
   let rulesFile: string | null = null;
+  /** Members of the repo owner's org (private ones included). */
+  let orgMembers: string[] = [];
   let nextId = 1000;
   const full = `${repo.owner}/${repo.name}`;
   const server = Bun.serve({
@@ -72,6 +74,8 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
       if (p.startsWith(`/repos/${full}/check-runs/`) && req.method === "PATCH") return json({ id: Number(p.split("/").pop()) });
       if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/comments$`)) && req.method === "POST") return json({ id: nextId++ }, 201);
       if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/labels(/.+)?$`))) return json([{ name: "patchbond:forfeit" }]);
+      const member = p.match(new RegExp(`^/orgs/${repo.owner}/members/([^/]+)$`));
+      if (member) return orgMembers.includes(member[1]!) ? new Response(null, { status: 204 }) : json({ message: "Not Found" }, 404);
       if (decodeURIComponent(p) === `/repos/${full}/contents/.github/patchbond.yml`) {
         return rulesFile === null ? json({ message: "Not Found" }, 404) : new Response(rulesFile, { headers: { "content-type": "text/plain" } });
       }
@@ -83,6 +87,7 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
     calls,
     stop: () => server.stop(true),
     setRules: (text: string | null) => (rulesFile = text),
+    setOrgMembers: (logins: string[]) => (orgMembers = logins),
     posted: (re: RegExp) => calls.filter((c) => c.method !== "GET" && re.test(c.path)),
   };
 }

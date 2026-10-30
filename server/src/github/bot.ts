@@ -110,12 +110,13 @@ export class Bot {
 
     const known = this.store.nearAccountOf(author);
     const rules = await this.rulesOf(repo.id, installationId, repo.full_name);
+    // Only the team is waved through. Having merged PRs before doesn't exempt anyone.
     const exemptReason = MAINTAINER.has(pr.author_association)
       ? "Maintainers and collaborators don't pay deposits."
-      : pr.author_association === "CONTRIBUTOR" && !rules.contributorsPay
-        ? `@${author} already has commits in this repository.`
-        : rules.exempt.includes(author.toLowerCase())
-          ? `@${author} is on this repo's exempt list (.github/patchbond.yml).`
+      : rules.exempt.includes(author.toLowerCase())
+        ? `@${author} is on this repo's team list (.github/patchbond.yml).`
+        : (await this.isOrgMember(gh, repo.owner.login, author))
+          ? `@${author} is a member of @${repo.owner.login}.`
           : known && (await this.chain.isExempt(known))
             ? `@${author} is a proven contributor (${known}: 3+ refunds on 2+ repos, no recent forfeits).`
             : null;
@@ -247,6 +248,19 @@ export class Bot {
     await gh.rest.pulls.update({ owner, repo, pull_number: s.number, state: "closed" });
     this.store.setState(s.repo_id, s.number, "closed_unpaid");
     this.log(`closed unpaid ${s.full_name}#${s.number}`);
+  }
+
+  /**
+   * Org members whose membership is private show up as CONTRIBUTOR, not MEMBER. Seeing private
+   * members needs the App's "Members: read" permission; without it only public members count.
+   */
+  private async isOrgMember(gh: Octokit, org: string, login: string): Promise<boolean> {
+    try {
+      const r = await gh.request("GET /orgs/{org}/members/{username}", { org, username: login, request: { redirect: "manual" } });
+      return Number(r.status) === 204;
+    } catch {
+      return false; // 404 (not a member), 302 (we can't see private members), or a user-owned repo
+    }
   }
 
   private async rulesOf(repoId: number, installationId: number, fullName: string): Promise<RepoRules> {

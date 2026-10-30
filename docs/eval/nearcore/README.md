@@ -8,7 +8,7 @@ What PatchBond would do on NEAR's own core repo today. Run:
 | | |
 |---|---|
 | Open PRs | **186** (101 drafts) |
-| From NEAR's own engineers | ~161 — GitHub labels them `CONTRIBUTOR` because their org membership is private. **PatchBond never charges them** (people with commits in the repo are exempt by default). |
+| From NEAR's own engineers | ~161 — GitHub labels them `CONTRIBUTOR` because their org membership is private. **PatchBond never charges them**: the bot checks membership of the `near` org directly (or they can be listed under `exempt:`). |
 | From strangers (`NONE` / first-timers) | **20** — the only PRs that would be asked for a bond |
 | How long those 20 have waited | median **236 days**, oldest **623** |
 
@@ -41,7 +41,7 @@ fixes go unanswered for months. PatchBond helps with that even when nobody is sp
   within the promised window — a reason to answer in days, not 236.
 - **Ready for the flood.** When AI agents start opening PRs in bulk (hackathons, bounty farms), the
   bond curve prices the wave out and unpaid PRs close themselves after 24 h — while NEAR's own
-  engineers, with commits in the repo, never see a bond.
+  engineers, as `near` org members, never see a bond.
 
 Settings that fit nearcore (`.github/patchbond.yml`):
 

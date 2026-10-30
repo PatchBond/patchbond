@@ -214,12 +214,7 @@ export interface RepoRules {
   unassignedEffect: "evidence" | "flag";
   /** Close PRs still unpaid after this many hours (they reopen when paid). Off when null. */
   closeUnpaidAfterHours: number | null;
-  /**
-   * People who already have commits in the repo (GitHub's `CONTRIBUTOR`) pay nothing unless the repo
-   * says `contributors_pay: true`. Teams with private org membership show up as CONTRIBUTOR, not MEMBER.
-   */
-  contributorsPay: boolean;
-  /** GitHub logins that never pay (`exempt: alice, bob`), lower-cased. */
+  /** Team members GitHub can't tell us about (e.g. outside staff), lower-cased: `exempt: alice, bob`. */
   exempt: string[];
 }
 
@@ -230,7 +225,6 @@ export const DEFAULT_RULES: RepoRules = {
   assignmentRequired: false,
   unassignedEffect: "flag",
   closeUnpaidAfterHours: DEFAULT_CLOSE_UNPAID_HOURS,
-  contributorsPay: false,
   exempt: [],
 };
 
@@ -248,7 +242,6 @@ export function parseRepoRules(text: string | undefined): RepoRules {
     assignmentRequired: /^(true|yes|on)$/i.test(kv.assignment_required ?? ""),
     unassignedEffect: kv.unassigned_pr === "evidence" ? "evidence" : "flag",
     closeUnpaidAfterHours: closeAfter(kv.close_unpaid_after_hours),
-    contributorsPay: /^(true|yes|on)$/i.test(kv.contributors_pay ?? ""),
     exempt: (kv.exempt ?? "").replace(/^\[|\]$/g, "").split(/[\s,]+/).map((u) => u.replace(/^@/, "").toLowerCase()).filter(Boolean),
   };
 }
