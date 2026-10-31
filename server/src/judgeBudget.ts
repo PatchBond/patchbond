@@ -53,7 +53,11 @@ export class JudgeBudget {
   }
 }
 
-/** The client's address behind a proxy (first hop of X-Forwarded-For), or "local". */
+/**
+ * The client's address behind our one proxy (Railway's edge), or "local". The proxy appends the
+ * address it saw to X-Forwarded-For, so the last entry is the only one a client can't forge; the
+ * first is whatever the client sent (found by a sealed security report, 2026-10-31).
+ */
 export function visitorOf(forwardedFor: string | undefined): string {
-  return forwardedFor?.split(",")[0]?.trim() || "local";
+  return forwardedFor?.split(",").at(-1)?.trim() || "local";
 }

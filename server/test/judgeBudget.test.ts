@@ -29,7 +29,10 @@ describe("public judge spending guard", () => {
   });
 
   test("the visitor is the first X-Forwarded-For hop", () => {
-    expect(visitorOf("203.0.113.7, 10.0.0.1")).toBe("203.0.113.7");
+    // The client can put anything in front; only the proxy-appended last entry counts.
+    expect(visitorOf("1.1.1.1, 203.0.113.7")).toBe("203.0.113.7");
+    expect(visitorOf("1.1.1.2, 203.0.113.7")).toBe(visitorOf("1.1.1.1, 203.0.113.7"));
+    expect(visitorOf("203.0.113.7")).toBe("203.0.113.7");
     expect(visitorOf(undefined)).toBe("local");
   });
 });

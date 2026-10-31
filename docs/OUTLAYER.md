@@ -134,3 +134,14 @@ in `contract/vault/src/admin_override.rs`") at 0.85.
 profile; deploy the new program version; call `refresh_enclave_key` (≈0.01 NEAR). Then each
 maintainer turns reports on in the dashboard → **Security reports**, and links
 `/report/<repo_id>` from their SECURITY.md.
+
+### Live on testnet (2026-10-31)
+
+Enclave build `a2ecc8b3…b8d3` ([pinned URL](https://raw.githubusercontent.com/PatchBond/patchbond/bb2665d1b2e25a79552bacaf613e60ec30fc1dfb/outlayer/judge/dist/patchbond-judge.wasm)), contract repointed (`HhamFKtQ…`), enclave key published by the enclave itself (`6953UiuF…`, key `d21c0735…6e1b`). Two reports sent to `PatchBond/patchbond` (repo 1437287131):
+
+| Report | Facts the enclave computed | Verdict (GLM-5.3-flash, signed) |
+|---|---|---|
+| **Real:** rate limits keyed on the client-controlled first `X-Forwarded-For` entry, with curl steps | cited files exist, no phantom code, has reproduction | **refund** — "concrete, checkable claim … includes a step-by-step reproduction" |
+| **Made up:** "critical RCE" in `src/payments/withdraw_handler.py` and `contract/vault/src/escrow_v2.rs` | both files missing | **forfeit** — "both cited files do not exist in the repository" |
+
+The public saw only the two verdicts. The maintainer decrypted both reports and the judge's reasons, and the sealed request/response bytes matched NEAR AI's signature. The real report was real: `visitorOf()` now uses the proxy-appended last entry ([`judgeBudget.ts`](../server/src/judgeBudget.ts)).
