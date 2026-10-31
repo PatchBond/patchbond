@@ -17,6 +17,7 @@ mod events;
 mod outlayer;
 mod sealed;
 mod payout;
+mod queue;
 mod settle;
 pub mod tee;
 pub mod types;
@@ -540,9 +541,11 @@ impl PatchBond {
     pub fn quote_bond(&self, repo_id: RepoId, account_id: Option<AccountId>) -> U128 {
         let repo = self.repo(repo_id);
         let rep = account_id
-            .map(|a| self.get_reputation(a))
+            .as_ref()
+            .map(|a| self.get_reputation(a.clone()))
             .unwrap_or_default();
-        U128(curve::quote(&repo.policy, repo.open, &rep, env::block_timestamp_ms()))
+        let open = queue::priced_open(repo_id, repo.open, account_id.as_ref());
+        U128(curve::quote(&repo.policy, open, &rep, env::block_timestamp_ms()))
     }
 
     pub fn is_exempt(&self, account_id: AccountId) -> bool {

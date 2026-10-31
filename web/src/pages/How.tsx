@@ -88,7 +88,7 @@ function Pricing() {
           <Eyebrow>Attention pricing</Eyebrow>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">EIP-1559 for maintainers.</h2>
           <p className="mt-5 leading-relaxed text-muted-foreground">
-            The bond isn't a fixed fee. It follows the repo's queue of unreviewed outside submissions — computed <b className="text-ink">on-chain</b> from unsettled deposits, with no oracle. A flood of slop prices itself out; a quiet repo costs a newcomer a few cents.
+            The bond isn't a fixed fee. It follows the repo's queue of unreviewed outside submissions — computed <b className="text-ink">on-chain</b> from unsettled deposits, with no oracle. Each payer's own extra open PRs raise only their own price, so one account can't price out honest newcomers; a quiet repo costs a newcomer a few cents.
           </p>
           <p className="mt-4 leading-relaxed text-muted-foreground">
             Proven contributors (3 refunds on 2 repos) pay <b className="text-ink">$0</b> at any level. The web app draws the contract's exact integer maths — our end-to-end test checks they match on testnet.

@@ -50,7 +50,7 @@ Dashboard → your repo → **Bond policy → Edit**:
 
 - **Currency**: USDC or NEAR.
 - **Base bond**: what a newcomer pays when your queue is at capacity (try $1–2). It follows your
-  queue on-chain: busy repo → higher, quiet repo → cents, spam wave → prices itself out.
+  queue on-chain: busy repo → higher, quiet repo → cents, one payer's flood → raises only their own price.
 - **Capacity**: how many outside PRs you can review at once.
 - **Challenge window**: how long either side has to dispute an AI verdict (0 = settle at once).
 

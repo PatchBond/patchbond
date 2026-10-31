@@ -236,10 +236,13 @@ async fn the_bond_rises_in_a_flood_and_falls_as_the_queue_empties() -> anyhow::R
     p["target_open"] = json!(2);
     e.register(303, Some(p)).await?;
 
+    // Three payers, two PRs each (one payer's extra PRs only raise their own price: see below).
+    mint(&e, &[&e.amaka, &e.bob]).await?;
     let mut quotes = vec![e.quote(303, None).await?];
     for n in 1..=6 {
         let bond = *quotes.last().unwrap();
-        e.pay(&e.alice, 303, n, bond, json!({})).await?.into_result()?;
+        let payer = [&e.alice, &e.amaka, &e.bob][(n as usize - 1) / 2];
+        e.pay(payer, 303, n, bond, json!({})).await?.into_result()?;
         quotes.push(e.quote(303, None).await?);
     }
     // 0,1 open: below target; 2: base; each extra: +12.5%
@@ -253,6 +256,7 @@ async fn the_bond_rises_in_a_flood_and_falls_as_the_queue_empties() -> anyhow::R
     }
     assert_eq!(e.quote(303, None).await?, quotes[0], "back to the quiet price");
     assert_eq!(e.balance(&e.alice).await?, 100 * USDC);
+    assert_eq!(e.balance(&e.bob).await?, 20 * USDC);
     Ok(())
 }
 
@@ -462,5 +466,62 @@ async fn a_penny_budget_is_refused() -> anyhow::Result<()> {
     assert!(failure_text(&r).contains("at least 1.00 USDC"), "{}", failure_text(&r));
     assert!(e.view("get_budget", json!({ "agent": e.bob.id() })).await?.is_null());
     assert_eq!(e.balance(&e.alice).await?, 100 * USDC);
+    Ok(())
+}
+
+/// One payer flooding the queue raises only their own price: each payer counts at most 2 toward
+/// the queue everyone else is priced on (`queue.rs`). Refunds take them back out.
+#[tokio::test]
+async fn a_flood_from_one_payer_does_not_raise_the_price_for_everyone_else() -> anyhow::Result<()> {
+    const Q: u64 = 707;
+    let e = setup().await?;
+    let mut p = instant_policy();
+    p["target_open"] = json!(1);
+    e.register(Q, Some(p)).await?;
+    let curve = |open: i32| -> u128 {
+        let mut b: u128 = 2_000_000;
+        if open > 1 { for _ in 0..open - 1 { b = b * 9 / 8 } } else { for _ in 0..1 - open { b = b * 8 / 9 } }
+        b
+    };
+    mint(&e, &[&e.amaka]).await?;
+
+    // Alice opens six bonded PRs.
+    for n in 1..=6 {
+        let bond = e.quote(Q, Some(&e.alice)).await?;
+        assert_eq!(bond, curve(n as i32 - 1), "alice pays for her own queue");
+        e.pay(&e.alice, Q, n, bond, json!({})).await?.into_result()?;
+    }
+    // Everyone else is priced as if Alice had opened two; Alice pays for all six of hers.
+    assert_eq!(e.quote(Q, Some(&e.bob)).await?, curve(2));
+    assert_eq!(e.quote(Q, None).await?, curve(2));
+    assert_eq!(e.quote(Q, Some(&e.alice)).await?, curve(6));
+    assert_eq!(e.view("get_repo", json!({ "repo_id": Q })).await?["open"], 6, "the raw queue still counts every deposit");
+
+    // A second payer counts in full, up to their own two.
+    let bond = e.quote(Q, Some(&e.amaka)).await?;
+    e.pay(&e.amaka, Q, 7, bond, json!({})).await?.into_result()?;
+    assert_eq!(e.quote(Q, Some(&e.bob)).await?, curve(3));
+
+    // As Alice's PRs are judged, her share shrinks only once she's back under two.
+    for n in 1..=4 {
+        e.settle(Q, n, "refund").await?.into_result()?;
+    }
+    assert_eq!(e.quote(Q, Some(&e.bob)).await?, curve(3));
+    e.settle(Q, 5, "refund").await?.into_result()?;
+    e.settle(Q, 6, "refund").await?.into_result()?;
+    e.settle(Q, 7, "refund").await?.into_result()?;
+    assert_eq!(e.quote(Q, Some(&e.bob)).await?, curve(0));
+    assert_eq!(e.quote(Q, Some(&e.alice)).await?, curve(0));
+    Ok(())
+}
+
+async fn mint(e: &Env, who: &[&Account]) -> anyhow::Result<()> {
+    for a in who {
+        e.ft.call("mint")
+            .args_json(json!({ "account_id": a.id(), "amount": (20 * USDC).to_string() }))
+            .transact()
+            .await?
+            .into_result()?;
+    }
     Ok(())
 }

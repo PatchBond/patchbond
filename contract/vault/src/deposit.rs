@@ -127,7 +127,8 @@ impl PatchBond {
             format!("PatchBond is turned off for repo {repo_id}: no deposit is needed")
         );
         let rep = self.reputation.get(payer).cloned().unwrap_or_default();
-        let bond = curve::quote(&repo.policy, repo.open, &rep, env::block_timestamp_ms());
+        let open = crate::queue::priced_open(repo_id, repo.open, Some(payer));
+        let bond = curve::quote(&repo.policy, open, &rep, env::block_timestamp_ms());
         require!(
             bond > 0,
             "You're a proven contributor (≥3 refunds on ≥2 repos, no recent forfeits): no deposit is needed"
@@ -157,6 +158,7 @@ impl PatchBond {
         }
         let n = self.unsettled.get(&repo_id).copied().unwrap_or(0);
         self.unsettled.insert(repo_id, n + 1);
+        crate::queue::join(repo_id, self.repo(repo_id).open, &payer);
         let repo = self.repo_mut(repo_id);
         repo.open += 1;
         repo.stats.deposits += 1;

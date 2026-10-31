@@ -172,7 +172,7 @@ impl PatchBond {
         if window_ms == 0 {
             return self.finish(repo_id, number, verdict, verdict_hash, status);
         }
-        self.leave_queue(repo_id);
+        self.leave_queue(repo_id, number);
         let deadline = env::block_timestamp_ms() + window_ms;
         let d = self.unsettled_mut(repo_id, number);
         d.verdict_hash = Some(verdict_hash.clone());
@@ -213,7 +213,7 @@ impl PatchBond {
     /// The maintainer's forfeit: a 48 h proposal the contributor may dispute for free. Up to one
     /// bond is escrowed from the vault, paid to the contributor if the dispute wins.
     fn propose_maintainer_forfeit(&mut self, repo_id: RepoId, number: Number, verdict_hash: String, now: TimestampMs) {
-        self.leave_queue(repo_id);
+        self.leave_queue(repo_id, number);
         let deadline = now + MAINTAINER_FORFEIT_WINDOW_MS;
         let d = self.unsettled_mut(repo_id, number);
         let bond = d.bond.0;
@@ -278,7 +278,7 @@ impl PatchBond {
     /// Settle with the final `verdict`, sorting out any challenge stake first.
     fn finish(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, from: DepositStatus) {
         if from == DepositStatus::Held {
-            self.leave_queue(repo_id);
+            self.leave_queue(repo_id, number);
         }
         // A maintainer's forfeit: once the contributor disputed it and it didn't stand, the escrow is
         // their compensation. A forfeit that stands, or one retracted before any dispute, returns it.
@@ -411,7 +411,9 @@ impl PatchBond {
     }
 
     /// The deposit left the maintainers' review queue (the bond curve's `open`).
-    fn leave_queue(&mut self, repo_id: RepoId) {
+    fn leave_queue(&mut self, repo_id: RepoId, number: Number) {
+        let payer = self.unsettled_mut(repo_id, number).payer.clone();
+        crate::queue::leave(repo_id, self.repo(repo_id).open, &payer);
         let repo = self.repo_mut(repo_id);
         repo.open -= 1;
     }

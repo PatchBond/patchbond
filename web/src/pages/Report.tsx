@@ -62,7 +62,7 @@ export function ReportPage() {
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">Report a vulnerability — sealed.</h1>
       <p className="mt-3 text-muted-foreground">
         Your report is <b className="text-ink">encrypted in this browser</b> to two keys: the maintainer's, and an enclave judge's that no person holds (it was generated inside an Intel TDX
-        enclave on OutLayer). PatchBond's server and the public only ever see ciphertext. The enclave checks the report against the repository's real code, asks a verifiable model in
+        enclave on OutLayer). PatchBond's server and the public only ever see ciphertext; the plaintext exists only inside the enclave and NEAR AI's TEE while it's judged, and with the maintainer. The enclave checks the report against the repository's real code, asks a verifiable model in
         NEAR AI's TEE, and the contract checks its signature. A real report gets its bond back; a made-up one pays the maintainer for the time it took.
       </p>
 
@@ -118,7 +118,7 @@ export function ReportPage() {
           <div className="flex items-center gap-2 text-lg font-semibold"><ShieldCheck className="size-5 text-brand" /> Sealed, bonded and sent to the enclave.</div>
           <p className="mt-2 text-sm text-muted-foreground">
             Report #{step.number - 1_000_000_000_000 + 1} on this repository. The enclave usually answers within a minute or two; the verdict appears on the{" "}
-            <Link className="text-brand hover:underline" to={`/r/${repoId}`}>repository page</Link>. Only the maintainer can read your report and the judge's reasons.
+            <Link className="text-brand hover:underline" to={`/r/${repoId}`}>repository page</Link>. Only the maintainer can read your report and the judge's reasons (the enclave and NEAR AI's TEE saw it only while judging).
           </p>
         </Panel>
       )}

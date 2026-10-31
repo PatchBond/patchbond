@@ -247,10 +247,11 @@ Bank/card payouts; GitLab/email/job-application versions; running contributor co
 Free slop detectors exist and Illia's list will produce many "AI code reviewer" entries. These five mechanisms make PatchBond a **market for maintainer attention**, not a filter. Each was searched for prior art (none found — see docs/RESEARCH.md).
 
 ### 13.1 Attention pricing — "EIP-1559 for maintainers" (core)
-The bond isn't fixed. It rises when a repo is flooded and falls toward zero when it's quiet, exactly like Ethereum's base fee.
+The bond isn't fixed. It's a congestion price in the spirit of Ethereum's base fee (no burn, no per-block controller — an exponential price on the review queue): it rises when a repo is busy and falls toward the minimum when it's quiet.
 - The contract already knows the queue: every unsettled deposit for a repo is an open, unreviewed outside submission. So pricing is **fully on-chain**, no oracle.
 - `bond = clamp(min, max, base × 1.125^(open − target))` updated per new submission (target = how many outside PRs the maintainer can review at once; set in policy). Reputation multiplies it (proven contributors ×0).
-- Effect: spam waves price themselves out automatically; a quiet repo costs newcomers almost nothing (answers the curl objection with maths, not promises).
+- **Per-payer cap (`queue.rs`, added 2026-10-31 after review):** each payer counts at most 2 toward the queue everyone else is priced on; their own further open deposits raise only *their* next bond. Without it, one account could open a burst of plausible PRs (refunded later, costing only locked capital) and push the price up for every honest newcomer. Residual risk: many funded accounts can still each add 2 — that costs real capital per account, and maintainers can raise `target_open` or turn the curve's ceiling down.
+- Effect: a busy repo costs more, a quiet repo costs newcomers almost nothing, and a single flooder pays for their own flood.
 - Shown live on the repo page: "Current bond: $2.40 (14 open, target 8)".
 
 ### 13.2 Priority lane — maintainers get paid for their time (core)

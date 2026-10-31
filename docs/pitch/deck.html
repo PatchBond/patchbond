@@ -175,19 +175,19 @@
 <!-- Judge quality -->
 <section class="slide">
   <div class="eyebrow">Judge quality</div>
-  <h2>Built for precision: <span class="g">0 of 35 genuine contributions forfeited.</span></h2>
+  <h2>Built for precision: <span class="g">it never forfeited ordinary work.</span></h2>
   <div class="row" style="margin-top:56px;align-items:stretch">
     <div class="card" style="width:820px">
       <span class="tag">NEAR's own core repo · near/nearcore</span>
       <div class="row" style="margin-top:26px;gap:50px">
         <div><div class="stat num">186</div><p>open PRs</p></div>
         <div><div class="stat num">20</div><p>from strangers, judged</p></div>
-        <div><div class="stat num g">0</div><p>honest PRs forfeited</p></div>
+        <div><div class="stat num g">0</div><p>PRs forfeited</p></div>
       </div>
       <p>13 refunded automatically · 7 to a maintainer · <b style="color:var(--ink)">$0.0074 for all 20</b>, every verdict TEE-signed. Real fixes there wait a median <b style="color:var(--ink)">236 days</b> for review — signed triage helps even without spam.</p>
     </div>
     <div class="grow" style="display:flex;flex-direction:column;gap:28px">
-      <div class="card"><div class="stat num g" style="font-size:96px">0 / 35</div><p>genuine contributions forfeited across the labelled set and nearcore. Spam is stopped first by the bond itself; the judge only has to be right about who gets their money back.</p></div>
+      <div class="card"><div class="stat num g" style="font-size:96px">0 / 15</div><p>labelled good PRs forfeited (and 0 of 20 open nearcore PRs). The other side, honestly: 0 of 15 labelled slop forfeited by the AI — 8 went to a human. Spam is stopped first by the bond; the judge's first job is never to take an honest contributor's money.</p></div>
       <div class="card" style="border-color:rgba(248,113,113,.45)"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Forfeit · 0.99 · signed by NEAR AI</span><p style="font-style:italic;color:var(--ink)">“Adds a postinstall hook that pipes a remote script into a shell… none of the claimed work: no tests, no src/queue.ts change.”</p><p style="font-size:20px">The contract accepts this signature on-chain — <span class="mono" style="font-size:19px">bun run demo</span></p></div>
     </div>
   </div>
@@ -200,7 +200,7 @@
   <h2>Protects contributors, <span class="g">maintainers and the code.</span></h2>
   <div class="row" style="margin-top:60px;align-items:stretch">
     <div class="card grow"><span class="tag">Contributors protected</span><h3>A maintainer can't keep your bond on their own</h3><p>Their forfeit is a 48 h proposal you dispute <b style="color:var(--ink)">for free</b>. A stronger model re-judges. Overturned? You get your bond back <b style="color:var(--ink)">plus a penalty</b> from their vault — and it's on their public record.</p></div>
-    <div class="card grow"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Attacks caught</span><h3>Malicious code is flagged before anyone reviews it</h3><p>A deterministic scan finds Trojan-Source Unicode, hidden payloads, install-time downloads and poisoned CI, and proposes a forfeit. It settles on-chain only if the model signed a forfeit too — otherwise a maintainer confirms. No false alarms on 50 real PRs (none of them was malicious — real attack samples are next).</p></div>
+    <div class="card grow"><span class="tag" style="color:var(--danger);background:rgba(248,113,113,.12)">Attacks caught</span><h3>Malicious code is flagged before anyone reviews it</h3><p>A deterministic scan finds Trojan-Source Unicode, hidden payloads, install-time downloads and poisoned CI, and proposes a forfeit. It settles on-chain only if the model signed a forfeit too — otherwise a maintainer confirms. No false alarms on 50 real PRs. None of them was malicious, so this shows it stays quiet — not yet that it catches real attacks.</p></div>
     <div class="card grow"><span class="tag" style="color:var(--warn);background:rgba(251,191,36,.12)">Attention kept</span><h3>Unpaid PRs cost nothing to ignore</h3><p>Labelled <span class="mono" style="font-size:22px">deposit paid</span> / <span class="mono" style="font-size:22px">awaiting</span>, closed after an announced 24 h, reopened the moment they pay.</p></div>
   </div>
   <div class="foot"><span>contract/vault/tests/maintainer_safeguards.rs · server/src/judge/malice.ts</span><span>9</span></div>
@@ -242,9 +242,9 @@
   <div class="eyebrow">Proof, not promises</div>
   <h2>Built, tested, and live.</h2>
   <div class="row" style="margin-top:46px">
-    <div class="card grow"><div class="stat num g">62</div><p>real testnet transactions in one end-to-end run — every money path, gasless USDC, NEAR via the real wrap.testnet, an agent via MCP. All passed.</p></div>
-    <div class="card grow"><div class="stat num">158</div><p>automated tests: 54 contract (incl. a 50,000-case money property test, genuine NEAR AI signatures verified on-chain, the OutLayer callback), 102 TypeScript, and byte-parity of the enclave judge on 30 real PRs.</p></div>
-    <div class="card grow"><div class="stat num">0/35</div><p>genuine PRs forfeited by the <b style="color:var(--ink)">live TEE judge</b> — the labelled set plus nearcore's open queue. $0.00035 a verdict.</p></div>
+    <div class="card grow"><div class="stat num g">62</div><p>real testnet transactions in one end-to-end run — each money path, gasless USDC, NEAR via the real wrap.testnet, an agent via MCP. All passed.</p></div>
+    <div class="card grow"><div class="stat num">181</div><p>automated tests: 61 contract (incl. a 50,000-case money property test, genuine NEAR AI signatures verified on-chain, the OutLayer callback), 115 TypeScript, and byte-parity of the enclave judge on 30 real PRs.</p></div>
+    <div class="card grow"><div class="stat num">0/15</div><p>labelled good PRs forfeited by the <b style="color:var(--ink)">live TEE judge</b> (plus 0 of 20 on nearcore's open queue). $0.00035 a verdict.</p></div>
   </div>
   <div class="row tight" style="margin-top:34px;flex-wrap:wrap;gap:10px">
     <span class="pill">✓ curve on-chain = curve in the app</span><span class="pill">✓ refund · 90/10 forfeit · void</span>
