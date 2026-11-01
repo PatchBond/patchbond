@@ -18,9 +18,9 @@ PatchBond — local sandbox demo (starting a NEAR sandbox and deploying the vaul
   ✗ the oracle tries to withdraw the vault → "Only the repo's linked payout account can withdraw its vault"
   ✓ amaka (the linked maintainer) withdraws $0.70 — her wallet now holds $0.70
 
-── 4 · A spam wave prices itself out (EIP-1559 for attention) ──
-  ✓ 16 PRs in a row, each priced on-chain by the open queue: $0.77 → $0.87 → $0.98 → $1.10 → $1.24 → $1.40 → $1.58 → $1.77 → $2.00 → $2.25 → $2.53 → $2.84 → $3.20 → $3.60 → $4.05 → $4.56
-  ✓ and a newcomer arriving now would pay $5.13
+── 4 · A flood prices out the flooder, not newcomers (EIP-1559 for attention) ──
+  ✓ one account opens 16 PRs in a row, each priced on-chain by its own open queue: $0.77 → $0.87 → $0.98 → $1.10 → $1.24 → $1.40 → $1.58 → $1.77 → $2.00 → $2.25 → $2.53 → $2.84 → $3.20 → $3.60 → $4.05 → $4.56
+  ✓ a newcomer arriving now pays $0.98 — one payer counts at most 2 toward everyone else's price
 
 ── 5 · Judged in an OutLayer enclave: our server leaves the loop ──
   ✓ anyone (here: bob) asks the contract to judge alice's PR #3 in OutLayer

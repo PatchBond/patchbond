@@ -18,7 +18,7 @@
 
 Strangers attach a small **refundable bond** to their pull request, in USDC or NEAR. An **AI judge in a TEE on NEAR AI Cloud** reviews it after CI. Real work gets **every cent back**; a bond that is forfeited — with evidence, and a window to dispute it — **pays the maintainers whose time it wasted**. The bond follows an on-chain congestion price over the repo's queue (**EIP-1559 for open source**): a busy repo costs more, a quiet one costs a newcomer cents, and one payer's flood raises only their own price. **The contract forfeits a bond only if NEAR AI's enclave signed that verdict**, checked on-chain — our server can refund, but can't invent a forfeit. On the **OutLayer** route the server isn't involved at all: the contract has the PR judged inside an Intel TDX enclave that reads GitHub itself ([how](docs/OUTLAYER.md)).
 
-**Try it in two minutes:** `bun install && bun run demo` runs the contract on a local NEAR sandbox and shows it accept genuine NEAR AI and OutLayer signatures and refuse forged ones — no keys, no wallet. More in [Try it in 5 minutes](#try-it-in-5-minutes).
+**Try it with one command:** `bun install && bun run demo` (needs Rust; the first run compiles for ~10 minutes) runs the contract on a local NEAR sandbox and shows it accept genuine NEAR AI and OutLayer signatures and refuse forged ones — no keys, no wallet. More in [Try it in 5 minutes](#try-it-in-5-minutes).
 
 <!-- live:start -->
 ### Live now — [patchbond-production.up.railway.app](https://patchbond-production.up.railway.app)
@@ -122,7 +122,7 @@ Why not just take card deposits? Because the payers are increasingly agents, and
 git clone https://github.com/PatchBond/patchbond && cd patchbond && bun run demo
 ```
 
-A local NEAR sandbox runs the real contract with real token transfers: a real PR's bond refunded; our own server **refused** a forfeit with no signature, a tampered one, and a genuine NEAR AI signature on a *refund*; then **NEAR AI's own enclave-signed forfeit** pays the maintainer 90%; the oracle can't withdraw the vault, the maintainer can; a 16-PR spam wave prices itself from $0.77 to $5.13; and an OutLayer enclave verdict recovered on-chain to NEAR AI's GLM key. [Sample output](docs/demo-output.txt).
+A local NEAR sandbox runs the real contract with real token transfers: a real PR's bond refunded; our own server **refused** a forfeit with no signature, a tampered one, and a genuine NEAR AI signature on a *refund*; then **NEAR AI's own enclave-signed forfeit** pays the maintainer 90%; the oracle can't withdraw the vault, the maintainer can; one account's 16-PR flood prices *its own* bonds from $0.77 to $4.56 while a newcomer still pays $0.98; and an OutLayer enclave verdict recovered on-chain to NEAR AI's GLM key. [Sample output](docs/demo-output.txt).
 
 From a clean clone (macOS or Linux). **Prerequisites:** [Bun](https://bun.sh) ≥ 1.4, Rust stable with `wasm32-unknown-unknown`, [`cargo-near`](https://github.com/near/cargo-near) ≥ 0.22; optionally `near-cli-rs` and `gh`.
 

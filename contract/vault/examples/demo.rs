@@ -99,7 +99,7 @@ async fn main() -> anyhow::Result<()> {
         .into_result()?;
     ok(format!("amaka (the linked maintainer) withdraws {} — her wallet now holds {}", usd(vault), usd(e.balance(&e.amaka).await?)));
 
-    act("4 · A spam wave prices itself out (EIP-1559 for attention)");
+    act("4 · A flood prices out the flooder, not newcomers (EIP-1559 for attention)");
     let spammer = account(&e.worker, "spammer").await?;
     e.ft.call("mint").args_json(json!({ "account_id": spammer.id(), "amount": (1000 * USDC).to_string() })).transact().await?.into_result()?;
     let mut prices = vec![];
@@ -108,8 +108,8 @@ async fn main() -> anyhow::Result<()> {
         prices.push(usd(p));
         e.pay(&spammer, REPO, n, p, json!({})).await?.into_result()?;
     }
-    ok(format!("16 PRs in a row, each priced on-chain by the open queue: {}", prices.join(" → ")));
-    ok(format!("and a newcomer arriving now would pay {}", usd(e.quote(REPO, Some(&e.alice)).await?)));
+    ok(format!("one account opens 16 PRs in a row, each priced on-chain by its own open queue: {}", prices.join(" → ")));
+    ok(format!("a newcomer arriving now pays {} — one payer counts at most 2 toward everyone else's price", usd(e.quote(REPO, Some(&e.alice)).await?)));
 
     act("5 · Judged in an OutLayer enclave: our server leaves the loop");
     let mock = e.worker.dev_deploy(&near_workspaces::compile_project("../mock-outlayer").await?).await?;
