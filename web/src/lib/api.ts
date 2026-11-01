@@ -53,7 +53,23 @@ async function post<T>(path: string, body: object = {}): Promise<T> {
   return out as T;
 }
 
+export interface PublicStats {
+  prs: number;
+  repos: number;
+  verdicts_live: number;
+  verdicts: { refund: number; forfeit: number; needs_human: number; in_enclave: number };
+  cost_per_verdict_usd: number | null;
+  median_minutes_to_verdict: number | null;
+  disputes: number;
+  sealed_reports: number;
+  linked_repos: number;
+  judge: string;
+  network: string;
+  at: string;
+}
+
 export const api = {
+  stats: () => get<PublicStats>("/api/stats"),
   me: () => get<Me>("/api/me"),
   logout: () => post<{ ok: true }>("/api/auth/logout"),
   reports: (repo_id: number) => get<SealedReportSummary[]>(`/api/reports/${repo_id}`),
@@ -198,7 +214,8 @@ export const chain = {
   repo: (cfg: AppConfig, repo_id: number) => view<Repo | null>(cfg, "get_repo", { repo_id }),
   deposit: (cfg: AppConfig, repo_id: number, number: number) => view<Deposit | null>(cfg, "get_deposit", { repo_id, number }),
   quote: (cfg: AppConfig, repo_id: number, account_id?: string | null) => view<string>(cfg, "quote_bond", { repo_id, account_id: account_id ?? null }),
-  totals: (cfg: AppConfig) => view<{ held: string; refunded: string; forfeited: string; deposits: number }>(cfg, "get_totals", {}),
+  totals: (cfg: AppConfig, currency: "usdc" | "near" = "usdc") =>
+    view<{ held: string; refunded: string; forfeited: string; deposits: number }>(cfg, "get_totals", currency === "usdc" ? {} : { currency: "near" }),
   reputation: (cfg: AppConfig, account_id: string) =>
     view<{ refunds: number; forfeits: number; last_forfeit_at: number | null; refund_repos: number[] }>(cfg, "get_reputation", { account_id }),
   harness: (cfg: AppConfig, harness: string) => view<{ deposits: number; refunds: number; forfeits: number }>(cfg, "get_harness_stats", { harness }),

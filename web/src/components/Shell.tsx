@@ -39,6 +39,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 [
                   ["/how", "How it works"],
                   ["/verdicts", "Verdicts"],
+                  ["/stats", "Stats"],
                 ] as const
               ).map(([to, label]) => (
                 <NavLink key={to} to={to} className={({ isActive }) => `rounded-lg px-2.5 py-1.5 hover:bg-raised hover:text-ink ${isActive ? "text-ink" : ""}`}>
@@ -76,6 +77,7 @@ export function Shell({ children }: { children: ReactNode }) {
               [
                 ["/how", "How it works"],
                 ["/verdicts", "Verdicts"],
+                ["/stats", "Stats"],
                 ["/agents", "Agents"],
                 ["/dashboard", "Maintainers"],
               ] as const

@@ -158,11 +158,41 @@ export class Store {
   }
 
   /** Aggregate activity for the public live-numbers block (no names, no amounts). */
-  stats(): { prs: number; by_state: Record<string, number>; repos: number; verdicts_live: number } {
+  stats(): Stats {
     const by = this.db.query<{ state: string; n: number }, []>("SELECT state, COUNT(*) AS n FROM submissions GROUP BY state").all();
     const repos = this.db.query<{ n: number }, []>("SELECT COUNT(DISTINCT repo_id) AS n FROM submissions").get()?.n ?? 0;
-    const live = this.db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM verdicts WHERE json_extract(record, '$.mock') = 0").get()?.n ?? 0;
-    return { prs: by.reduce((a, r) => a + r.n, 0), by_state: Object.fromEntries(by.map((r) => [r.state, r.n])), repos, verdicts_live: live };
+    const count = (sql: string) => this.db.query<{ n: number }, []>(sql).get()?.n ?? 0;
+    const live = this.db.query<{ record: string; verdict: string }, []>("SELECT record, verdict FROM verdicts WHERE json_extract(record, '$.mock') = 0").all();
+    const outcomes = { refund: 0, forfeit: 0, needs_human: 0 } as Record<string, number>;
+    const costs: number[] = [];
+    let enclave = 0;
+    for (const v of live) {
+      outcomes[v.verdict] = (outcomes[v.verdict] ?? 0) + 1;
+      const r = JSON.parse(v.record) as { model: string; response_body: string; runner?: string };
+      if (r.runner === "outlayer-tdx") enclave++;
+      const cost = verdictCost(r.model, r.response_body);
+      if (cost !== null) costs.push(cost);
+    }
+    // Minutes from the bond being seen to the verdict, for PRs the bot judged.
+    const waits = this.db
+      .query<{ seen: number; at: string }, []>(
+        "SELECT s.deposit_seen_at AS seen, v.created_at AS at FROM submissions s JOIN verdicts v ON v.id = s.verdict_id WHERE s.deposit_seen_at IS NOT NULL",
+      )
+      .all()
+      .map((w) => (Date.parse(w.at) - w.seen) / 60_000)
+      .filter((m) => m >= 0);
+    return {
+      prs: by.reduce((a, r) => a + r.n, 0),
+      by_state: Object.fromEntries(by.map((r) => [r.state, r.n])),
+      repos,
+      verdicts_live: live.length,
+      verdicts: { refund: outcomes.refund ?? 0, forfeit: outcomes.forfeit ?? 0, needs_human: outcomes.needs_human ?? 0, in_enclave: enclave },
+      cost_per_verdict_usd: costs.length ? costs.reduce((a, b) => a + b, 0) / costs.length : null,
+      median_minutes_to_verdict: waits.length ? median(waits) : null,
+      disputes: count("SELECT COUNT(DISTINCT verdict_id) AS n FROM appeals"),
+      sealed_reports: count("SELECT COUNT(*) AS n FROM reports"),
+      linked_repos: count("SELECT COUNT(*) AS n FROM repo_maintainers"),
+    };
   }
 
   /** Newest first. `liveOnly` leaves out records from the offline dev judge. */
@@ -267,4 +297,44 @@ export class Store {
 
 function prefix(o: object): Record<string, string | number | null> {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [`$${k}`, v ?? null]));
+}
+
+export interface Stats {
+  prs: number;
+  by_state: Record<string, number>;
+  repos: number;
+  verdicts_live: number;
+  /** Final verdicts among live (TEE-signed) records; `in_enclave` were judged inside OutLayer. */
+  verdicts: { refund: number; forfeit: number; needs_human: number; in_enclave: number };
+  /** Measured from each signed response's token usage and the model's list price. */
+  cost_per_verdict_usd: number | null;
+  median_minutes_to_verdict: number | null;
+  disputes: number;
+  sealed_reports: number;
+  linked_repos: number;
+}
+
+/** USD per million tokens (input, output), NEAR AI Cloud list prices. */
+const PRICES: Record<string, [number, number]> = {
+  "z-ai/glm-5.3-flash": [0.08, 0.5],
+  "z-ai/glm-5.3": [1.8, 5.75],
+  "moonshotai/kimi-k3": [3.3, 16.5],
+};
+
+export function verdictCost(model: string, responseBody: string): number | null {
+  const price = PRICES[model];
+  if (!price) return null;
+  try {
+    const u = (JSON.parse(responseBody) as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
+    if (!u?.prompt_tokens) return null;
+    return (u.prompt_tokens * price[0] + (u.completion_tokens ?? 0) * price[1]) / 1e6;
+  } catch {
+    return null;
+  }
+}
+
+function median(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
 }

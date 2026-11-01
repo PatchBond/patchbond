@@ -1,5 +1,6 @@
 import { How } from "./pages/How";
 import { Verdicts } from "./pages/Verdicts";
+import { Stats } from "./pages/Stats";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
@@ -46,6 +47,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/how" element={<How />} />
               <Route path="/verdicts" element={<Verdicts />} />
+              <Route path="/stats" element={<Stats />} />
               <Route path="/pay/:repoId/:number" element={<Pay />} />
               <Route path="/v/:id" element={<VerdictPage />} />
               <Route path="/r/:repoId" element={<RepoPage />} />
