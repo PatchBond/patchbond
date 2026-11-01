@@ -206,6 +206,20 @@ impl PatchBond {
             format!("TEE proof rejected: confidence {} bps is below the repo's {} bps", signed.confidence_bps, threshold)
         );
         require!(signed.evidence > 0, "TEE proof rejected: a forfeit needs at least one piece of evidence");
+        // The signature must be about *this* repo and contribution, and can be used once: otherwise
+        // a genuine forfeit of one PR could be replayed against an honest one.
+        let request = proof.request.as_deref().unwrap_or_else(|| env::panic_str("TEE proof rejected: a forfeit needs the signed request bytes (proof.request)"));
+        let about = crate::tee::subject(request).unwrap_or_else(|e| env::panic_str(&format!("TEE proof rejected: {e}")));
+        let name = crate::repo_name(repo_id).unwrap_or_else(|| env::panic_str(&format!("TEE proof rejected: repo {repo_id} has no name on-chain yet (set_repo_name)")));
+        let d = self.deposits.get(&(repo_id, number)).unwrap_or_else(|| env::panic_str("No such deposit"));
+        let kind = match d.kind { Kind::Pr => "pr", Kind::Issue => "issue" };
+        require!(
+            about.repo.eq_ignore_ascii_case(&name) && about.number == number && about.kind == kind,
+            format!("TEE proof rejected: the signed request is about {} {}#{}, not {name} {kind}#{number}", about.repo, about.kind, about.number)
+        );
+        let used = format!("tu:{}", proof.request_sha256.to_lowercase()).into_bytes();
+        require!(!env::storage_has_key(&used), "TEE proof rejected: this signed verdict was already used");
+        env::storage_write(&used, &[1]);
         let signer = if by_enclave { signed.signer.clone() } else { signed.gateway_signer.clone().unwrap_or_default() };
         events::tee_verified(repo_id, number, &signer, &proof.model);
     }

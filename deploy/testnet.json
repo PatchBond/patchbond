@@ -11,5 +11,5 @@
   "wnear": "wrap.testnet",
   "deployed_at": "2026-10-28",
   "deploy_tx": "Azc5Frjk6bukbTKE2jueAViNJVhoqs81DDAaTHjkSiPw",
-  "upgraded_at": "2026-11-01 (per-payer queue cap, queue.rs \u2014 tx 6L1bZSVQZ8c3m6kNvAztAnLhLHvj5mhjCcxjgdFHrjrh); 2026-10-30 agent spending policy (tx GBGeC9mVXeY2PJn6EpkTumZS8ZQghTkn7DUmo4dFWKfP)"
+  "upgraded_at": "2026-11-01 (signed forfeits bound to repo + PR, one use each \u2014 tx FyZVV4zqE6z944szpAeBAXRffUJa3g3VWMpySh2vuA8q; per-payer queue cap \u2014 tx 6L1bZSVQZ8c3m6kNvAztAnLhLHvj5mhjCcxjgdFHrjrh); 2026-10-30 agent spending policy"
 }

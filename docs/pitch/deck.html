@@ -99,7 +99,7 @@
     <div class="card grow"><span class="tag">2 · Verifiable AI</span><h3>A TEE model judges it after CI</h3><p>Using facts we compute. The response is signed and public.</p></div>
     <div class="card grow"><span class="tag">3 · Settle</span><h3>Refund — or the repo is paid</h3><p>Real work: every cent back. Slop: 90% to the repo's vault.</p></div>
   </div>
-  <p style="font-size:28px;color:var(--ink2);margin-top:50px">The bond sits in a NEAR contract — <b style="color:var(--ink)">never with us</b>; only the repo's linked payout account can withdraw. The opposite of tea.xyz: spam <b style="color:var(--ink)">costs</b> money instead of earning it. No token.</p>
+  <p style="font-size:28px;color:var(--ink2);margin-top:50px">The bond sits in a NEAR contract — <b style="color:var(--ink)">not with us</b>; only the repo's linked payout account can withdraw (we hold the testnet upgrade key; it goes behind a DAO time-lock). The opposite of tea.xyz: spam <b style="color:var(--ink)">costs</b> money instead of earning it. No token.</p>
   <div class="foot"><span>PatchBond</span><span>3</span></div>
 </section>
 
@@ -243,7 +243,7 @@
   <h2>Built, tested, and live.</h2>
   <div class="row" style="margin-top:46px">
     <div class="card grow"><div class="stat num g">62</div><p>real testnet transactions in one end-to-end run — each money path, gasless USDC, NEAR via the real wrap.testnet, an agent via MCP. All passed.</p></div>
-    <div class="card grow"><div class="stat num">181</div><p>automated tests: 61 contract (incl. a 50,000-case money property test, genuine NEAR AI signatures verified on-chain, the OutLayer callback), 115 TypeScript, and byte-parity of the enclave judge on 30 real PRs.</p></div>
+    <div class="card grow"><div class="stat num">185</div><p>automated tests: 63 contract (incl. a 50,000-case money property test, genuine NEAR AI signatures verified on-chain, the OutLayer callback), 117 TypeScript, and byte-parity of the enclave judge on 30 real PRs.</p></div>
     <div class="card grow"><div class="stat num">0/15</div><p>labelled good PRs forfeited by the <b style="color:var(--ink)">live TEE judge</b> (plus 0 of 20 on nearcore's open queue). $0.00035 a verdict.</p></div>
   </div>
   <div class="row tight" style="margin-top:34px;flex-wrap:wrap;gap:10px">

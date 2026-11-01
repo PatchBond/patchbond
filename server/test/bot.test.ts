@@ -125,6 +125,11 @@ describe("GitHub bot", () => {
     const proof = chain.proofs.get(`${REPO.id}/2`)!;
     expect(JSON.parse(JSON.parse(proof.response).choices[0].message.content).verdict).toBe("forfeit");
     expect(proof.signature).toMatch(/^0x[0-9a-f]{130}$/);
+    // …with the exact request bytes, naming this repo and PR (the contract checks), and the repo named first.
+    const user = (JSON.parse(proof.request!) as { messages: { role: string; content: string }[] }).messages.find((m) => m.role === "user")!.content;
+    expect(user.startsWith(`<repo name="${REPO.owner}/${REPO.name}"`)).toBe(true);
+    expect(user).toContain('\n<contribution kind="pr" number="2"');
+    expect(chain.log.indexOf(`name ${REPO.id} ${REPO.owner}/${REPO.name}`)).toBeLessThan(chain.log.indexOf(`settle ${REPO.id}#2 forfeit`));
     expect((gh.posted(/\/check-runs\/\d+$/).at(-1)!.body as { conclusion: string }).conclusion).toBe("failure");
     // awaiting → paid → forfeit, so maintainers can filter at every stage
     expect(gh.posted(/\/labels$/).map((c) => (c.body as { labels: string[] }).labels[0])).toEqual([

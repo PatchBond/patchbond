@@ -28,6 +28,7 @@ There are about 50 commits on 2026-10-28. The design came first: the very first 
 | 29 Oct | On-chain checks of NEAR AI's TEE signatures, maintainer safeguards, hosted service on Railway, live README numbers |
 | 30 Oct | OutLayer: the judge as a Rust wasm program in Intel TDX, called by the contract; nearcore case study; maintainer guide; testnet faucet; sealed security reports; dispute fixes from live users; agent spending policy |
 | 31 Oct | Sealed reports live on testnet; enclave key published by the enclave; per-payer queue cap (one payer can't price out newcomers); fixes and wording from the review |
+| 1 Nov | Signed forfeits bound to their repo and PR (replay closed); public /stats page; "Who pays" economics |
 
 ## Findings from review, and what was done
 
@@ -36,4 +37,5 @@ There are about 50 commits on 2026-10-28. The design came first: the very first 
 | Test counts in the README and deck were out of date | Updated from a fresh run; the README says which command gives which count |
 | One payer could flood the queue and raise the bond for everyone | Each payer counts at most 2 toward everyone else's price ([queue.rs](../contract/vault/src/queue.rs)), with a sandbox test |
 | "0 of 35 genuine forfeited" counted 20 unlabelled nearcore PRs as genuine | Now reported separately, next to the other side: 0 of 15 labelled slop forfeited by the AI |
+| A genuine signed forfeit could be replayed against a different PR (the contract checked the signature, not which PR it was about) | The contract now checks the signed request names this repo and PR and accepts each signature once; sandbox test and demo line show a replay refused; live on testnet |
 | Absolute wording ("can't touch the money", "no custodian", "server isn't in the loop", "only the maintainer can read it") | Changed to say exactly what holds: the upgrade key, `exclusive` being off on testnet, and the enclave and NEAR AI seeing a sealed report while judging it |

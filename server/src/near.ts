@@ -68,8 +68,8 @@ export interface TeeProof {
 }
 
 export function teeProof(r: VerdictRecord): TeeProof {
-  const gateway = r.signature.signature_kind === "gateway";
-  return { model: r.model, request_sha256: sha256Hex(r.request_body), response: r.response_body, request: gateway ? r.request_body : null, signature: r.signature.signature };
+  // The request bytes always go along: the contract checks the signed request names this repo and PR.
+  return { model: r.model, request_sha256: sha256Hex(r.request_body), response: r.response_body, request: r.request_body, signature: r.signature.signature };
 }
 
 export interface OutlayerConfig {
@@ -131,6 +131,9 @@ export class Chain {
 
   // Installing the App never starts charging anyone: a new repo starts off, and the maintainer turns
   // bonds on from the dashboard once they've linked a payout account.
+  /** "owner/name" — a signed forfeit must name it. The oracle sets it once; then only the payout account. */
+  setRepoName = (repo_id: number, name: string) => this.call("set_repo_name", { repo_id, name }, 30n);
+  getRepoName = (repo_id: number) => this.view<string | null>("get_repo_name", { repo_id });
   registerRepo = (repo_id: number) => this.call("register_repo", { repo_id, policy: { ...DEFAULT_POLICY, enabled: false } }, 30n);
   setPolicy = (repo_id: number, policy: Repo["policy"]) => this.call("set_policy", { repo_id, policy }, 30n);
   linkRepo = (repo_id: number, payout: string) => this.call("link_repo", { repo_id, payout }, 30n);

@@ -42,6 +42,8 @@ async fn main() -> anyhow::Result<()> {
     let signed_forfeit: Value = serde_json::from_str(include_str!("../tests/fixtures/genuine_forfeit.json"))?;
     let glm = ol["genuine_signer"].as_str().unwrap();
     e.link(REPO, &e.amaka).await?;
+    // The signed forfeit below names example/widget #2; a signature only counts for the PR it names.
+    e.amaka.call(e.pb.id(), "set_repo_name").args_json(json!({ "repo_id": REPO, "name": "example/widget" })).transact().await?.into_result()?;
     e.owner
         .call(e.pb.id(), "set_tee_signers")
         .args_json(json!({ "signers": [glm] }))
@@ -84,6 +86,11 @@ async fn main() -> anyhow::Result<()> {
     ok(format!("with NEAR AI's enclave-signed forfeit (\"pipes a remote script into a shell… none of the claimed work\", confidence 0.99): {} to the repo's vault, {} to PatchBond", usd(u(&repo["vault"])), usd(fee)));
     let next = e.quote(REPO, Some(&e.bob)).await?;
     ok(format!("bob's record is on-chain: his next bond here costs {} (was {})", usd(next), usd(bond)));
+    let honest = e.quote(REPO, Some(&e.alice)).await?;
+    e.pay(&e.alice, REPO, 50, honest, json!({})).await?.into_result()?;
+    let r = forfeit(50, Some(signed_forfeit.clone())).await?;
+    no(format!("our server replays that genuine forfeit against alice's honest PR #50 → \"{}\"", reason(&r)));
+    e.settle(REPO, 50, "refund").await?.into_result()?;
 
     act("3 · Only the maintainer can take the money");
     let vault = u(&repo["vault"]);

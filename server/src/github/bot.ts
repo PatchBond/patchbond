@@ -23,7 +23,7 @@ export type ChainPort = Pick<
   Chain,
   "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
 > &
-  Partial<Pick<Chain, "getTeeJob" | "judgeInTee">>;
+  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getRepoName" | "setRepoName">>;
 
 /** What the contract acts on at once: refunds, and forfeits the model itself signed. */
 function actsOnChain(r: VerdictRecord): boolean {
@@ -34,6 +34,8 @@ export class Bot {
   readonly app: App;
   /** Challenges being re-judged right now (a slow tx must not start a second re-judge). */
   private rejudging = new Set<string>();
+  /** Repos whose on-chain name we've checked this run. */
+  private named = new Set<number>();
   /** Re-judge results not yet accepted on-chain, so a retry never pays for a second model call. */
   private rejudged = new Map<string, VerdictRecord>();
   /** `.github/patchbond.yml` per repo, briefly cached (the tick reads it for auto-close). */
@@ -65,7 +67,7 @@ export class Bot {
     const w = this.app.webhooks;
     w.on(["installation.created", "installation_repositories.added"], async ({ payload }) => {
       const repos = "repositories_added" in payload ? payload.repositories_added : (payload.repositories ?? []);
-      for (const r of repos) await this.ensureRepo(r.id);
+      for (const r of repos) await this.ensureRepo(r.id, r.full_name);
     });
     w.on(["pull_request.opened", "pull_request.reopened"], ({ octokit, payload }) =>
       this.onOpened(octokit, payload.installation!.id, payload.repository, payload.pull_request),
@@ -87,10 +89,21 @@ export class Bot {
     w.onError((e) => this.log("webhook error", e.message));
   }
 
-  private async ensureRepo(repoId: number) {
-    if (await this.chain.getRepo(repoId)) return;
-    await this.chain.registerRepo(repoId);
-    this.log(`registered repo ${repoId}`);
+  private async ensureRepo(repoId: number, fullName: string) {
+    if (!(await this.chain.getRepo(repoId))) {
+      await this.chain.registerRepo(repoId);
+      this.log(`registered repo ${repoId}`);
+    }
+    await this.ensureName(repoId, fullName);
+  }
+
+  /** The contract binds a signed forfeit to the repo's name; set it once (older repos have none yet). */
+  private async ensureName(repoId: number, fullName: string) {
+    if (this.named.has(repoId) || !this.chain.getRepoName || !this.chain.setRepoName) return;
+    if (!(await this.chain.getRepoName(repoId))) {
+      await this.chain.setRepoName(repoId, fullName).catch((e) => this.log(`naming repo ${repoId}`, String(e)));
+    }
+    this.named.add(repoId);
   }
 
   async onOpened(
@@ -104,7 +117,7 @@ export class Bot {
       repo_id: repo.id, number: pr.number, full_name: repo.full_name, installation_id: installationId,
       author, head_sha: pr.head.sha, check_run_id: null, comment_id: null, verdict_id: null, deposit_seen_at: null,
     };
-    await this.ensureRepo(repo.id);
+    await this.ensureRepo(repo.id, repo.full_name);
     const onChain = await this.chain.getRepo(repo.id);
     if (!onChain?.policy.enabled) return;
 
@@ -319,6 +332,7 @@ export class Bot {
     // The contract only forfeits what the TEE itself signed as a forfeit. When the server's scan
     // escalated past the model (malicious code the model let through), a maintainer confirms it.
     if (actsOnChain(record)) {
+      if (record.final.verdict === "forfeit") await this.ensureName(s.repo_id, s.full_name);
       await this.chain.settle(s.repo_id, s.number, record.final.verdict as "refund" | "forfeit", record.verdict_hash, record.final.verdict === "forfeit" ? teeProof(record) : undefined);
       onChain = true;
     }
@@ -396,10 +410,11 @@ export class Bot {
     // The contract still requires the model's signed forfeit above the repo's threshold, with evidence.
     const modelForfeit = record.model_verdict?.verdict === "forfeit";
     let verdict: "refund" | "forfeit" = (freeDispute ? modelForfeit : record.final.verdict === "forfeit" && modelForfeit) ? "forfeit" : "refund";
+    if (verdict === "forfeit") await this.ensureName(s.repo_id, s.full_name);
     try {
       await this.chain.resolveChallenge(s.repo_id, s.number, verdict, record.verdict_hash, verdict === "forfeit" ? teeProof(record) : undefined);
     } catch (e) {
-      if (verdict !== "forfeit" || !/TEE proof rejected|needs the NEAR AI TEE proof|only from the OutLayer enclave/.test(String(e))) throw e;
+      if (verdict !== "forfeit" || !/TEE proof rejected|needs the NEAR AI TEE proof|only from the OutLayer enclave|signed request is about|has no name on-chain/.test(String(e))) throw e;
       // e.g. the re-judge model's enclave key isn't registered on the contract: when in doubt, refund.
       this.log(`re-judge forfeit for ${key} not accepted on-chain (${String(e).slice(0, 120)}); refunding`);
       verdict = "refund";

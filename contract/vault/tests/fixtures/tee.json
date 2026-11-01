@@ -20,47 +20,47 @@
       "signature": "0xe5ec421d484bc89c6e017f72cd2d3daf38a1fb30463d5049fda75adac7414c473e1e077d5b67c3cfd2f77890d198dc2db2acd427a3c0499797fc239b98a72dcc1c"
     }
   },
-  "test_signer": "0x80d0fb21b3ca49a0a495275dc8bb12100c8eff62",
+  "test_signer": "0xd0f696f67404ad372777b181c85f69a213dbff09",
   "forfeit": {
     "model": "z-ai/glm-5.3-flash",
-    "request_sha256": "1d13fd87c8d1bd84c5fb23712af383717a7d539d2e4ad2def972862fd5d34b40",
+    "request_sha256": "cd538ad848a2d841de4f907e58625d22bc79b359ed589ed95a236f510ad84f86",
     "response": "{\"id\":\"chat-test\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.93,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"src/a.c\\\",\\\"line\\\":3,\\\"note\\\":\\\"pcap_magic() is not defined\\\"}]}\"}}]}",
-    "request": null,
-    "signature": "0x114206c35b873b9d36df9f47390ce1fe086b669b0f7631ccdcd2889b2fff18f56dfdc93c4b71e0a9deda0785a74ea915072275e1b3558ca3fc32d4033d8105321c"
+    "request": "{\"model\":\"z-ai/glm-5.3-flash\",\"temperature\":0,\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nTitle: x\\n</contribution>\"}]}",
+    "signature": "0xc7a4c63fff3b498eac5067774c413bd55f68967de9a5b24262096fe26b4f5db96298fc6267f62e2b9b6b7e0650299ed46d71c053b8719f26d10bc2285fd51bc61b"
   },
   "low_confidence": {
     "model": "z-ai/glm-5.3-flash",
-    "request_sha256": "1d13fd87c8d1bd84c5fb23712af383717a7d539d2e4ad2def972862fd5d34b40",
+    "request_sha256": "cd538ad848a2d841de4f907e58625d22bc79b359ed589ed95a236f510ad84f86",
     "response": "{\"id\":\"chat-test\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.6,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"src/a.c\\\",\\\"line\\\":3,\\\"note\\\":\\\"pcap_magic() is not defined\\\"}]}\"}}]}",
-    "request": null,
-    "signature": "0x0120162fb148694b0a90dc4f154f6d925f47481c6817bd12e8b59f311e0f4eae1a70e29d9f2745e076f6b558535a1e0766607b0a250e46fbe2c2578923157d031b"
+    "request": "{\"model\":\"z-ai/glm-5.3-flash\",\"temperature\":0,\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nTitle: x\\n</contribution>\"}]}",
+    "signature": "0xc7be855cdf72d16425c4490492b86ad8d427577f6b50485f50673cbfd82aae6618304e87d66125fc25ffa2fcb9c4a5c631eddc9fb88cee3f2360dfe7c40fe20c1c"
   },
   "no_evidence": {
     "model": "z-ai/glm-5.3-flash",
-    "request_sha256": "1d13fd87c8d1bd84c5fb23712af383717a7d539d2e4ad2def972862fd5d34b40",
+    "request_sha256": "cd538ad848a2d841de4f907e58625d22bc79b359ed589ed95a236f510ad84f86",
     "response": "{\"id\":\"chat-test\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.93,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[]}\"}}]}",
-    "request": null,
-    "signature": "0xbedca8f79b484c5c3ddf2dc13c556f24b8a0f266f9ba93703e50835ea2c08e4230e3fda0426772dda3919df7dcf35495bea4a400eba92ae87d4a7662c2180c291b"
+    "request": "{\"model\":\"z-ai/glm-5.3-flash\",\"temperature\":0,\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nTitle: x\\n</contribution>\"}]}",
+    "signature": "0xd16af4572839a1d30c7a2d1ed46a08d9a6e96d0d164ecc18b615c49adaf4ff985851017c31809f1e0119795c7a8fd395feb7d52bd6b5b8aa0367961f6a9bceb91b"
   },
   "gateway_forfeit": {
     "model": "moonshotai/kimi-k3",
-    "request_sha256": "e7956f48bceb1de3e4e48432e3d103e5da51715f143653b6071603ba3e78460f",
+    "request_sha256": "a3da97c7c851d638b6f4026330002344ecc74455c910a270d8a9c94decc9c637",
     "response": "{\"id\":\"chat-gw\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.93,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"src/a.c\\\",\\\"line\\\":3,\\\"note\\\":\\\"pcap_magic() is not defined\\\"}]}\"}}]}",
-    "request": "{\"model\":\"moonshotai/kimi-k3\",\"temperature\":0,\"messages\":[]}",
-    "signature": "0x297da29699cf297c1c23c8cf98c9b1a097d1eff831ebe920f60f9606b9c29dab0d46f1f5ab45005e98edd8897ee61cc6563ba81848a514d57cb5e18d0865a1b01b"
+    "request": "{\"model\":\"moonshotai/kimi-k3\",\"temperature\":0,\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nTitle: x\\n</contribution>\"}]}",
+    "signature": "0x8681b6fd7cebcde8819600f16a1a035c7c05dd2e72736c7c80f91d71c099efc023f060792fa44e2929b760af800a4a0ab766842f1da9abd802eaa6d62899729f1c"
   },
   "gateway_other_model": {
     "model": "anthropic/claude-fable-5",
-    "request_sha256": "4a882d94394a7315a1380298a41d233d6cea7f037fc8a04ad38e5fdef939cba9",
+    "request_sha256": "528e975eb28f378d05189397cef9fc312d346c15f33968f4eeddd545f3ffcfb9",
     "response": "{\"id\":\"chat-gw\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.93,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"src/a.c\\\",\\\"line\\\":3,\\\"note\\\":\\\"pcap_magic() is not defined\\\"}]}\"}}]}",
-    "request": "{\"model\":\"anthropic/claude-fable-5\",\"temperature\":0,\"messages\":[]}",
-    "signature": "0x749a33bfee9a2a640676fa8ffdcbf07932b732270a4a9f0963121b743ddc58dd3ddd5c62041b7393d306b61d7c0bb57f79e1a954cadee2bc60e72424a7f52e261b"
+    "request": "{\"model\":\"anthropic/claude-fable-5\",\"temperature\":0,\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nTitle: x\\n</contribution>\"}]}",
+    "signature": "0x58ca284aa9d57fde674c6f7c137ade0e110c43fd86a8795cbc650ebea7055c9c47165f580124c43134721e654a73e958e51f3ab5248e4998732e00762cca24f71c"
   },
   "gateway_model_mismatch": {
     "model": "moonshotai/kimi-k3",
-    "request_sha256": "4a882d94394a7315a1380298a41d233d6cea7f037fc8a04ad38e5fdef939cba9",
+    "request_sha256": "528e975eb28f378d05189397cef9fc312d346c15f33968f4eeddd545f3ffcfb9",
     "response": "{\"id\":\"chat-gw\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.93,\\\"category\\\":\\\"phantom_code\\\",\\\"reasons\\\":[\\\"Calls a function that doesn't exist.\\\"],\\\"evidence\\\":[{\\\"file\\\":\\\"src/a.c\\\",\\\"line\\\":3,\\\"note\\\":\\\"pcap_magic() is not defined\\\"}]}\"}}]}",
-    "request": "{\"model\":\"anthropic/claude-fable-5\",\"temperature\":0,\"messages\":[]}",
-    "signature": "0x749a33bfee9a2a640676fa8ffdcbf07932b732270a4a9f0963121b743ddc58dd3ddd5c62041b7393d306b61d7c0bb57f79e1a954cadee2bc60e72424a7f52e261b"
+    "request": "{\"model\":\"anthropic/claude-fable-5\",\"temperature\":0,\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nTitle: x\\n</contribution>\"}]}",
+    "signature": "0x58ca284aa9d57fde674c6f7c137ade0e110c43fd86a8795cbc650ebea7055c9c47165f580124c43134721e654a73e958e51f3ab5248e4998732e00762cca24f71c"
   }
 }

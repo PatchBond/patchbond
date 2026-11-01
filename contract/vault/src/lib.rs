@@ -462,6 +462,27 @@ impl PatchBond {
         events::link(repo_id, &payout);
     }
 
+    /// The repo's GitHub name ("owner/name"), which a signed forfeit must name. The oracle sets it
+    /// once; after that only the repo's linked payout account can change it (e.g. after a rename).
+    pub fn set_repo_name(&mut self, repo_id: RepoId, name: String) {
+        let caller = env::predecessor_account_id();
+        let repo = self.repo(repo_id);
+        let current = repo_name(repo_id);
+        let by_payout = repo.payout.as_ref() == Some(&caller);
+        require!(
+            by_payout || (caller == self.oracle && current.is_none()),
+            "Only the oracle (once) or the repo's linked payout account can set its name"
+        );
+        let ok = name.len() <= 140 && name.split('/').count() == 2 && name.split('/').all(|p| !p.is_empty())
+            && name.chars().all(|c| c.is_ascii_alphanumeric() || "-_./".contains(c));
+        require!(ok, "The repo name must look like owner/name");
+        env::storage_write(&repo_name_key(repo_id), name.as_bytes());
+    }
+
+    pub fn get_repo_name(&self, repo_id: RepoId) -> Option<String> {
+        repo_name(repo_id)
+    }
+
     /// The current payout account hands the repo to another account (e.g. a project DAO).
     #[payable]
     pub fn set_payout(&mut self, repo_id: RepoId, payout: AccountId) {
@@ -672,4 +693,12 @@ impl PatchBond {
             ))
         })
     }
+}
+
+fn repo_name_key(repo_id: RepoId) -> Vec<u8> {
+    format!("nm:{repo_id}").into_bytes()
+}
+
+pub(crate) fn repo_name(repo_id: RepoId) -> Option<String> {
+    env::storage_read(&repo_name_key(repo_id)).map(|v| String::from_utf8_lossy(&v).into_owned())
 }

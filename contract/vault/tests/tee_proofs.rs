@@ -132,16 +132,44 @@ async fn a_gateway_key_counts_only_for_the_model_it_was_registered_with() -> any
 
 #[tokio::test]
 async fn a_forfeit_genuinely_signed_by_near_ai_settles_on_chain() -> anyhow::Result<()> {
-    // NEAR AI's GLM enclave judged a constructed slop PR (server/scripts/make-forfeit-example.ts):
+    // NEAR AI's GLM enclave judged a constructed slop PR, example/widget #2 (server/scripts/make-forfeit-example.ts):
     // claims not in the diff + a postinstall piping a download into a shell → forfeit, 0.99.
+    const EX: u64 = 202;
     let e = setup().await?;
     let fx = fixtures();
     set_signers(&e, &e.owner, &[fx["live"]["signer"].as_str().unwrap()]).await?.into_result()?;
-    bond(&e, 1).await?;
+    e.register_named(EX, Some(instant_policy()), "example/widget").await?;
+    let b = e.quote(EX, Some(&e.alice)).await?;
+    e.pay(&e.alice, EX, 2, b, json!({})).await?.into_result()?;
     let proof: Value = serde_json::from_str(include_str!("fixtures/genuine_forfeit.json"))?;
-    let r = forfeit_with(&e, 1, Some(&proof)).await?;
+    let forfeit = |repo: u64, number: u64| {
+        e.oracle
+            .call(e.pb.id(), "settle")
+            .args_json(json!({ "repo_id": repo, "number": number, "verdict": "forfeit", "verdict_hash": ZERO_HASH, "proof": &proof }))
+            .gas(Gas::from_tgas(150))
+            .transact()
+    };
+
+    // The same genuine signature can't forfeit a different PR: it names example/widget #2.
+    bond(&e, 1).await?;
+    let r = forfeit(REPO, 1).await?;
+    assert!(failure_text(&r).contains("the signed request is about example/widget pr#2, not acme/widget pr#1"), "{}", failure_text(&r));
+
+    let r = forfeit(EX, 2).await?;
     assert!(r.is_success(), "{}", failure_text(&r));
     assert!(r.logs().iter().any(|l| l.contains("tee_verified") && l.contains("3b753b4406613c5e70ae640508632b600424fa0c")));
-    assert_eq!(e.view("get_deposit", json!({ "repo_id": REPO, "number": 1 })).await?["status"]["settled"]["verdict"], "forfeit");
+    assert_eq!(e.view("get_deposit", json!({ "repo_id": EX, "number": 2 })).await?["status"]["settled"]["verdict"], "forfeit");
+
+    // Nor can it be used twice — not even on a repo renamed to match (only its payout account can rename it).
+    const OTHER: u64 = 203;
+    e.register(OTHER, Some(instant_policy())).await?;
+    e.link(OTHER, &e.amaka).await?;
+    let rename = |by: &Account| by.call(e.pb.id(), "set_repo_name").args_json(json!({ "repo_id": OTHER, "name": "example/widget" })).transact();
+    assert!(failure_text(&rename(&e.oracle).await?).contains("Only the oracle (once) or the repo's linked payout account"));
+    rename(&e.amaka).await?.into_result()?;
+    let b = e.quote(OTHER, Some(&e.alice)).await?;
+    e.pay(&e.alice, OTHER, 2, b, json!({})).await?.into_result()?;
+    let r = forfeit(OTHER, 2).await?;
+    assert!(failure_text(&r).contains("this signed verdict was already used"), "{}", failure_text(&r));
     Ok(())
 }

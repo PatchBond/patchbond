@@ -13,6 +13,7 @@ PatchBond — local sandbox demo (starting a NEAR sandbox and deploying the vaul
   ✗ …with a genuine NEAR AI signature on a *refund* → "TEE proof rejected: the model said 'refund', not 'forfeit'"
   ✓ with NEAR AI's enclave-signed forfeit ("pipes a remote script into a shell… none of the claimed work", confidence 0.99): $0.70 to the repo's vault, $0.07 to PatchBond
   ✓ bob's record is on-chain: his next bond here costs $1.55 (was $0.77)
+  ✗ our server replays that genuine forfeit against alice's honest PR #50 → "TEE proof rejected: the signed request is about example/widget pr#2, not example/widget pr#50"
 
 ── 3 · Only the maintainer can take the money ──
   ✗ the oracle tries to withdraw the vault → "Only the repo's linked payout account can withdraw its vault"

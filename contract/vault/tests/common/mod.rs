@@ -104,10 +104,22 @@ pub async fn setup() -> anyhow::Result<Env> {
 }
 
 impl Env {
+    /// Registers `repo` under a test name: REPO is "acme/widget" (what the TEE fixtures' requests name).
     pub async fn register(&self, repo: u64, policy: Option<Value>) -> anyhow::Result<()> {
+        let name = if repo == REPO { "acme/widget".to_string() } else { format!("acme/repo-{repo}") };
+        self.register_named(repo, policy, &name).await
+    }
+
+    pub async fn register_named(&self, repo: u64, policy: Option<Value>, name: &str) -> anyhow::Result<()> {
         self.oracle
             .call(self.pb.id(), "register_repo")
             .args_json(json!({ "repo_id": repo, "policy": policy }))
+            .transact()
+            .await?
+            .into_result()?;
+        self.oracle
+            .call(self.pb.id(), "set_repo_name")
+            .args_json(json!({ "repo_id": repo, "name": name }))
             .transact()
             .await?
             .into_result()?;
