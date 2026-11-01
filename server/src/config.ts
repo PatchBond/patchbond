@@ -80,6 +80,8 @@ export function loadConfig() {
     pollMs: Number(process.env.POLL_SEC || 10) * 1000,
     /** needs_human with no maintainer decision for this long → refunded ("when in doubt, refund"). */
     needsHumanTimeoutMs: Number(process.env.NEEDS_HUMAN_DAYS || 14) * 86_400_000,
+    /** Enclave route: how long both sides have to post statements on-chain before the re-judge runs. */
+    rejudgeDelayMs: Number(process.env.REJUDGE_DELAY_MIN ?? 20) * 60_000,
   };
 }
 

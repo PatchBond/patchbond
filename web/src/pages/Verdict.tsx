@@ -526,7 +526,17 @@ function fmtDuration(ms: number) {
 
 function Appeals({ r }: { r: VerdictRecord }) {
   const wallet = useWallet();
+  const cfg = useConfig();
   const { data, reload } = useAsync(() => api.appeals(r.id), [r.id]);
+  // During an open dispute, the contributor's and the maintainer's statements go on-chain: that's
+  // what the enclave re-judge reads (nothing our server stores reaches it).
+  const { data: onChain, reload: reloadChain } = useAsync(async () => {
+    const [d, repo, statements] = await Promise.all([chain.deposit(cfg, r.repo.id, r.number), chain.repo(cfg, r.repo.id), chain.statements(cfg, r.repo.id, r.number)]);
+    const open = !!d && typeof d.status === "object" && "challenged" in d.status;
+    const side = !wallet.accountId ? null : wallet.accountId === d?.payer ? "contributor" : wallet.accountId === repo?.payout ? "maintainer" : null;
+    return { open, side, statements };
+  }, [r.id, wallet.accountId]);
+  const onChainSide = onChain?.open ? onChain.side : null;
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
@@ -541,10 +551,17 @@ function Appeals({ r }: { r: VerdictRecord }) {
     setHint(null);
     setBusy(true);
     try {
+      if (onChainSide) {
+        const out = await wallet.call(cfg.contract, "add_statement", { repo_id: r.repo.id, number: r.number, note: note.trim().slice(0, 1500) }, { tgas: 30 });
+        if (out.error) throw new Error(out.error);
+      }
       await api.appeal(r.id, note.trim(), wallet.accountId ?? "anonymous");
       setNote("");
-      toast.success("Appeal attached", { description: "The maintainer sees it next to this verdict." });
+      toast.success(onChainSide ? "Statement posted on-chain" : "Appeal attached", {
+        description: onChainSide ? "The stronger model reads it when it re-judges this dispute in the enclave." : "The maintainer sees it next to this verdict.",
+      });
       reload();
+      reloadChain();
     } catch (e) {
       toast.error("Not sent", { description: (e as Error).message });
     } finally {
@@ -554,7 +571,20 @@ function Appeals({ r }: { r: VerdictRecord }) {
   return (
     <Panel className="p-6">
       <Eyebrow>Appeals</Eyebrow>
-      <p className="mt-1.5 text-sm text-muted-foreground">Think the judge got it wrong? Say exactly what it misread — file and line. To force a re-judge by a stronger model, stake a challenge in the on-chain panel.</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        Think the judge got it wrong? Say exactly what it misread — file and line. To force a re-judge by a stronger model, stake a challenge in the on-chain panel.
+        {onChainSide && <> While this dispute is open, your statement as the <b className="text-ink">{onChainSide}</b> is posted on-chain (your wallet signs it) — the stronger model reads it when it re-judges in the enclave. Two per side, 1,500 characters each.</>}
+      </p>
+      {!!onChain?.statements.length && (
+        <ul className="mt-4 space-y-2">
+          {onChain.statements.map((st, i) => (
+            <li key={`c${i}`} className="rounded-xl border border-brand/30 bg-bg px-3 py-2.5 text-sm">
+              <div className="text-xs text-faint">On-chain · <span className="font-mono">{st.from}</span></div>
+              <p className="mt-1 whitespace-pre-wrap">{st.note}</p>
+            </li>
+          ))}
+        </ul>
+      )}
       {!!data?.length && (
         <ul className="mt-4 space-y-2">
           {data.map((a, i) => (
@@ -584,7 +614,7 @@ function Appeals({ r }: { r: VerdictRecord }) {
           {hint ?? (short > 0 ? `${note.trim().length}/2000 · ${short} more to go (at least 10)` : `${note.trim().length}/2000 · ready to attach`)}
         </span>
         <Button variant={short > 0 ? "ghost" : "primary"} disabled={busy} onClick={() => void send()}>
-          {busy ? <Spinner /> : "Attach appeal"}
+          {busy ? <Spinner /> : onChainSide ? "Post statement on-chain" : "Attach appeal"}
         </Button>
       </div>
     </Panel>

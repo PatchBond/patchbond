@@ -213,6 +213,9 @@ export const chain = {
   enclaveKey: (cfg: AppConfig) => view<string | null>(cfg, "get_enclave_key", {}),
   repo: (cfg: AppConfig, repo_id: number) => view<Repo | null>(cfg, "get_repo", { repo_id }),
   deposit: (cfg: AppConfig, repo_id: number, number: number) => view<Deposit | null>(cfg, "get_deposit", { repo_id, number }),
+  /** Both sides' statements in a dispute — what the enclave re-judge reads. */
+  statements: (cfg: AppConfig, repo_id: number, number: number) =>
+    view<{ from: string; note: string }[]>(cfg, "get_statements", { repo_id, number }).catch(() => []),
   quote: (cfg: AppConfig, repo_id: number, account_id?: string | null) => view<string>(cfg, "quote_bond", { repo_id, account_id: account_id ?? null }),
   totals: (cfg: AppConfig, currency: "usdc" | "near" = "usdc") =>
     view<{ held: string; refunded: string; forfeited: string; deposits: number }>(cfg, "get_totals", currency === "usdc" ? {} : { currency: "near" }),

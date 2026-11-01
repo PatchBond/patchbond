@@ -1,0 +1,49 @@
+{
+  "note": "Synthetic re-judge outputs, gateway-signed by test_signer (register it as `<test_signer>@moonshotai/kimi-k3`).",
+  "model": "moonshotai/kimi-k3",
+  "test_signer": "0x5adf986734489caa2038a2696ed8762864a40526",
+  "model_forfeit_no_hard_fact": {
+    "status": "judged",
+    "verdict": "needs_human",
+    "model_verdict": "forfeit",
+    "confidence_bps": 9700,
+    "evidence": 1,
+    "model": "moonshotai/kimi-k3",
+    "request_sha256": "dc4fbd3479c6475ebabd978e965afd29d148503b19f08f100c7b0692fd3ea87f",
+    "response_sha256": "1ca2fe6338881a3518760ce574647bd6afa99e99c70119f80ba10d756e39b732",
+    "signature": "0x0a900d4d494d25b6bf83af4ead29a075896259977210baa3c8293ced67bcc40837917c15b0d5d3bbb6e83be3b8941ee5e23fe621d0964ee2c4aa2f295aed6dc71b"
+  },
+  "refund": {
+    "status": "judged",
+    "verdict": "refund",
+    "model_verdict": "refund",
+    "confidence_bps": 9000,
+    "evidence": 0,
+    "model": "moonshotai/kimi-k3",
+    "request_sha256": "2a644a198e448ed079b08093eb984c6a9a9453b20ac969fc8fd65cd5b85cbe70",
+    "response_sha256": "167e64a88923e65ad4f64fa82d0cefe9e48df9c423c26681eff00c7376bbc463",
+    "signature": "0xcb82982f3caa4a69c27760e8900984a647be63b8beae80a30f52463e9009e3f73dcfb4595caee74fa796a1724badbf6070c93f298516f69f00ef2569479bcc8f1c"
+  },
+  "full_forfeit": {
+    "status": "judged",
+    "verdict": "forfeit",
+    "model_verdict": "forfeit",
+    "confidence_bps": 9500,
+    "evidence": 2,
+    "model": "moonshotai/kimi-k3",
+    "request_sha256": "5f51717b562aa486a764132967ba78a481918cee41afd508ed50039158032bf0",
+    "response_sha256": "1345f932df81c96db12c1cd1ecdf16f4138afc69241170a9afd91ab63aa4745f",
+    "signature": "0x4e8f38f83be4be16aa77001fa20dca6e98698c458e91d604b65feacf51466fb7048f47a225b14db488355c506043127ae3f0610a791123c6c6cd7ed68ee9c2be1c"
+  },
+  "other_model": {
+    "status": "judged",
+    "verdict": "forfeit",
+    "model_verdict": "forfeit",
+    "confidence_bps": 9500,
+    "evidence": 2,
+    "model": "z-ai/glm-5.3-flash",
+    "request_sha256": "8dbaac63dff05b09491587f1fbf570a615287331cd8dcd0dfb626b9479767621",
+    "response_sha256": "3c3184a7c25687c2acdc93118c69ab3f2e651b1aaceed3f6ce4691f548980f7b",
+    "signature": "0x5059de8d47016fde7439271d688b8a969ec60ce900b0304b501c838d62fb25b64bd15aa68b5f916c3fc92593bd0237d069d7de26ff5cdcb23bdaadf29b1c773d1b"
+  }
+}

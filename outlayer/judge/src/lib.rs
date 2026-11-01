@@ -21,7 +21,8 @@ use facts::{CheckRun, Contribution, Facts, Issue, OpenItem, SymbolIndex};
 use rules::{Final, ModelVerdict};
 
 /// What the contract passes in `input_data` — all of it from on-chain state. `mode`: "" (a pull
-/// request), "report" (a sealed security report) or "pubkey" (report the enclave's report key).
+/// request), "rejudge" (a disputed verdict, with both sides' on-chain statements), "report" (a
+/// sealed security report) or "pubkey" (report the enclave's report key).
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Input {
@@ -40,11 +41,20 @@ pub struct Input {
     /// Where to publish the full record (exact bytes) for the public verdict page.
     #[serde(default)]
     pub record_url: Option<String>,
+    /// Rejudge mode: the challenged verdict, who challenged it, and the parties' statements.
+    pub proposed: String,
+    pub challenger: String,
+    pub statements: Vec<prompt::Statement>,
 }
 
 impl Input {
     pub fn is_report(&self) -> bool {
         self.mode == "report"
+    }
+
+    /// The challenge block for a re-judge (None for a first judgment).
+    pub fn challenge(&self) -> Option<prompt::Challenge> {
+        (self.mode == "rejudge").then(|| prompt::Challenge { proposed: self.proposed.clone(), challenger: self.challenger.clone(), statements: self.statements.clone() })
     }
 }
 
@@ -91,8 +101,13 @@ pub fn compute_facts(g: &Gathered, reputation: &str, index: impl FnOnce() -> Opt
 }
 
 pub fn request_for(model: &str, g: &Gathered, facts: &Facts) -> String {
+    rejudge_request_for(model, g, facts, None)
+}
+
+/// With a challenge block for a re-judge (`requestBody(…, challenge)` on the server).
+pub fn rejudge_request_for(model: &str, g: &Gathered, facts: &Facts, challenge: Option<&prompt::Challenge>) -> String {
     let repo = prompt::RepoContext { full_name: g.full_name.clone(), policy_note: None, contributing: g.contributing.clone() };
-    prompt::request_body(model, &repo, facts, &g.contribution)
+    prompt::request_body(model, &repo, facts, &g.contribution, challenge)
 }
 
 /// NEAR AI's signature object (`GET /v1/signature/<chat_id>`).
@@ -220,5 +235,7 @@ pub fn record(input: &Input, g: &Gathered, j: &Judged, chat_id: &str, request_bo
         "verdict_hash": j.verdict_hash,
         "mock": false,
         "runner": "outlayer-tdx",
+        // A re-judge of a disputed verdict (its hash is the contract's `get_rejudge_job`).
+        "rejudge": input.mode == "rejudge",
     })
 }

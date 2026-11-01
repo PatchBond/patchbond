@@ -322,6 +322,60 @@ describe("GitHub bot", () => {
     ).rejects.toThrow();
     expect(gh.calls).toHaveLength(0);
   });
+  test("enclave mode: a dispute is re-judged in OutLayer after the statements window — our server resolves nothing", async () => {
+    process.env.REJUDGE_DELAY_MIN = "0";
+    bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, () => {});
+    const jobs = new Map<string, { state: "requested" | "judged"; verdict_hash: string | null }>();
+    const asked: string[] = [];
+    chain.getTeeJob = async () => null;
+    chain.judgeInTee = async () => undefined as never;
+    chain.getRejudgeJob = async (r, n) => jobs.get(`${r}/${n}`) ?? null;
+    chain.rejudgeInTee = async (r, n) => {
+      asked.push(`${r}#${n}`);
+      jobs.set(`${r}/${n}`, { state: "requested", verdict_hash: null });
+      return undefined as never;
+    };
+    const mock = new MockInference();
+    const tee = new TeeRecords({ getTeeSigners: async () => [mock.signingAddress.toLowerCase()], getTeeJob: chain.getTeeJob, getRejudgeJob: chain.getRejudgeJob }, store, () => {}, 20);
+    bot.useEnclave(tee);
+
+    await deliver("pull_request", prOpened(1));
+    chain.pay(1, "tunde.testnet", "tunde");
+    // The maintainer's forfeit, disputed for free.
+    chain.deposits.get(`${REPO.id}/1`)!.status = { challenged: { verdict: "forfeit", challenger: "tunde.testnet", stake: "0" } };
+    store.setState(REPO.id, 1, "judged");
+    await bot.tick();
+    expect(asked).toEqual([`${REPO.id}#1`]);
+    expect(chain.log.some((l) => l.startsWith("resolve"))).toBe(false);
+
+    // The enclave publishes its re-judge record; the contract's callback resolved the dispute.
+    const f = PRS[0]!;
+    const record = {
+      ...(await judge(
+        {
+          repo: { id: REPO.id, full_name: `${REPO.owner}/${REPO.name}` }, author: f.author,
+          contribution: { kind: "pr", number: 1, title: f.title, body: f.body, diff: f.diff, files: f.files, additions: 1, deletions: 0 },
+          checkRuns: f.checks, openItems: [], symbolIndex: async () => ({ has: () => true, namespaceSize: () => 0 }),
+          issueLookup: async () => ({ exists: false, open: false }), authorReputation: "new", threshold: 0.85,
+        },
+        mock,
+        new Date(),
+        { proposed: "forfeit", challenger: "contributor", statements: [] },
+      )),
+      runner: "outlayer-tdx" as const,
+      rejudge: true,
+    };
+    expect(await tee.accept(record)).toBeNull();
+    jobs.set(`${REPO.id}/1`, { state: "judged", verdict_hash: record.verdict_hash });
+    chain.deposits.get(`${REPO.id}/1`)!.status = { settled: { verdict: "forfeit", at: Date.now() } };
+    await bot.tick();
+    expect(store.submission(REPO.id, 1)?.state).toBe("settled");
+    expect(store.verdict(record.id)?.runner).toBe("outlayer-tdx");
+    expect(comments().some((c) => c.includes("inside the OutLayer enclave") && c.includes("The forfeit stands"))).toBe(true);
+    expect(chain.log.some((l) => l.startsWith("resolve"))).toBe(false); // the contract resolved it, not us
+    delete process.env.REJUDGE_DELAY_MIN;
+  });
+
   test("enclave mode: the contract judges in OutLayer; we publish only the record the chain accepted", async () => {
     const jobs = new Map<string, { state: "requested" | "judged"; verdict_hash: string | null }>();
     const asked: string[] = [];

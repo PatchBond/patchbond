@@ -122,12 +122,16 @@ export class Chain {
   /** The OutLayer enclave judge (contract/vault/src/outlayer.rs), if this contract has one. */
   getOutlayer = () => this.view<OutlayerConfig | null>("get_outlayer", {});
   getTeeJob = (repo_id: number, number: number) => this.view<TeeJob | null>("get_tee_job", { repo_id, number });
+  getRejudgeJob = (repo_id: number, number: number) => this.view<TeeJob | null>("get_rejudge_job", { repo_id, number });
+  getStatements = (repo_id: number, number: number) => this.view<{ from: string; note: string }[]>("get_statements", { repo_id, number });
   getReportKey = (repo_id: number) => this.view<string | null>("get_report_key", { repo_id });
   getEnclaveKey = () => this.view<string | null>("get_enclave_key", {});
   /** Asks the contract to judge a sealed report in OutLayer (the exact envelope the bond is bound to). */
   judgeReportInTee = (repo_id: number, number: number, sealed: string, deposit = 20n * 10n ** 21n) => this.call("judge_report_in_tee", { repo_id, number, sealed }, 300n, deposit);
   /** Asks the contract to judge in OutLayer. Returns once included; the enclave answers ~1 min later. */
   judgeInTee = (repo_id: number, number: number, deposit = 20n * 10n ** 21n) => this.call("judge_in_tee", { repo_id, number }, 300n, deposit);
+  /** A disputed verdict, re-judged in the enclave by the stronger model with the on-chain statements. */
+  rejudgeInTee = (repo_id: number, number: number, deposit = 20n * 10n ** 21n) => this.call("rejudge_in_tee", { repo_id, number }, 300n, deposit);
 
   // Installing the App never starts charging anyone: a new repo starts off, and the maintainer turns
   // bonds on from the dashboard once they've linked a payout account.

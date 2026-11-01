@@ -18,6 +18,7 @@ mod outlayer;
 mod sealed;
 mod payout;
 mod queue;
+mod rejudge;
 mod settle;
 pub mod tee;
 pub mod types;

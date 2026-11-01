@@ -5,7 +5,7 @@ use crate::http;
 
 use base64::Engine;
 use patchbond_judge::facts::{self, CheckRun, Contribution, Issue, OpenItem, SymbolIndex};
-use patchbond_judge::{compute_facts, decide, record, report, request_for, rules, sealed, symbols, verdict_hash, Gathered, Input, NearAiSignature, Output};
+use patchbond_judge::{compute_facts, decide, record, rejudge_request_for, report, rules, sealed, symbols, verdict_hash, Gathered, Input, NearAiSignature, Output};
 use serde_json::Value;
 
 const GITHUB: &str = "https://api.github.com";
@@ -99,7 +99,8 @@ fn judge(input: &Input) -> Result<Output, String> {
         let tgz = gh.bytes(&format!("{base}/tarball/{base_sha}")).ok()?;
         symbols::index_identifiers(&tgz).ok().map(|i| Box::new(i) as Box<dyn SymbolIndex>)
     });
-    let request_body = request_for(&input.model, &g, &facts);
+    let challenge = input.challenge();
+    let request_body = rejudge_request_for(&input.model, &g, &facts, challenge.as_ref());
 
     let (chat_id, response_body, sig) = near_ai(&key, &input.model, &request_body)?;
     let j = decide(input, &g, facts, &response_body, &sig.text);

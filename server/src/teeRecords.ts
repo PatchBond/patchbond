@@ -16,7 +16,7 @@ export class TeeRecords {
   private pendingReports = new Map<string, { record: SealedRecord; at: number }>();
 
   constructor(
-    private chain: Pick<Chain, "getTeeSigners" | "getTeeJob">,
+    private chain: Pick<Chain, "getTeeSigners" | "getTeeJob"> & Partial<Pick<Chain, "getRejudgeJob">>,
     private store: Store,
     /** Called once a record is confirmed on-chain and saved. */
     private onConfirmed: (r: VerdictRecord) => void = () => {},
@@ -32,16 +32,20 @@ export class TeeRecords {
     }
     const failed = (await verifyRecord(r)).filter((c) => !c.ok);
     if (failed.length) return `Record doesn't verify: ${failed.map((c) => c.name).join("; ")}`;
-    // The contract lists keys as "0x<address>"; gateway keys ("0x…@model") never count here, as in
-    // the contract's own callback check.
+    // The contract lists keys as "0x<address>", and gateway keys as "0x…@model" — those count only
+    // for a re-judge that asked exactly that model, as in the contract's own callback check.
     const bare = (a: string) => a.toLowerCase().replace(/^0x/, "");
-    const signers = ((await this.chain.getTeeSigners()) ?? []).filter((a) => !a.includes("@")).map(bare);
+    const rejudge = (r as VerdictRecord & { rejudge?: boolean }).rejudge === true;
+    const signers = ((await this.chain.getTeeSigners()) ?? []).flatMap((a) => {
+      const [addr, model] = a.split("@");
+      return !model ? [bare(addr!)] : rejudge && model === r.model ? [bare(addr!)] : [];
+    });
     if (!signers.includes(bare(r.signature.signing_address))) {
       return `0x${r.signature.signing_address} isn't a NEAR AI key this contract trusts`;
     }
     this.prune();
     this.pending.set(r.verdict_hash, { record: { ...r, mock: false }, at: Date.now() });
-    void this.confirmLater(r.repo.id, r.number);
+    void this.confirmLater(r.repo.id, r.number, rejudge);
     return null;
   }
 
@@ -71,9 +75,9 @@ export class TeeRecords {
     return null;
   }
 
-  /** The confirmed record for a judged job, saving it the first time. */
-  async confirmed(repoId: number, number: number): Promise<VerdictRecord | null> {
-    const job = await this.chain.getTeeJob(repoId, number);
+  /** The confirmed record for a judged job (or re-judge), saving it the first time. */
+  async confirmed(repoId: number, number: number, rejudge = false): Promise<VerdictRecord | null> {
+    const job = await this.job(repoId, number, rejudge);
     if (job?.state !== "judged" || !job.verdict_hash) return null;
     const report = this.pendingReports.get(job.verdict_hash);
     if (report) {
@@ -92,16 +96,21 @@ export class TeeRecords {
   }
 
   /** The enclave's run finishes ~seconds after it posts; check the chain for a few minutes. */
-  private async confirmLater(repoId: number, number: number) {
+  private async confirmLater(repoId: number, number: number, rejudge = false) {
     for (let i = 0; i < (5 * 60_000) / this.pollMs; i++) {
       await Bun.sleep(this.pollMs);
-      const job = await this.chain.getTeeJob(repoId, number).catch(() => undefined);
+      const job = await this.job(repoId, number, rejudge).catch(() => undefined);
       if (job === null) return; // not judged (failed/waiting) — the record never goes public
       if (job?.state === "judged") {
-        await this.confirmed(repoId, number);
+        await this.confirmed(repoId, number, rejudge);
         return;
       }
     }
+  }
+
+  private job(repoId: number, number: number, rejudge: boolean) {
+    if (!rejudge) return this.chain.getTeeJob(repoId, number);
+    return this.chain.getRejudgeJob ? this.chain.getRejudgeJob(repoId, number) : Promise.resolve(null);
   }
 
   private prune() {

@@ -290,7 +290,7 @@ impl PatchBond {
     }
 
     /// Settle with the final `verdict`, sorting out any challenge stake first.
-    fn finish(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, from: DepositStatus) {
+    pub(crate) fn finish(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, from: DepositStatus) {
         if from == DepositStatus::Held {
             self.leave_queue(repo_id, number);
         }

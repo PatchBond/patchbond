@@ -23,7 +23,7 @@ export type ChainPort = Pick<
   Chain,
   "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
 > &
-  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getRepoName" | "setRepoName">>;
+  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee">>;
 
 /** What the contract acts on at once: refunds, and forfeits the model itself signed. */
 function actsOnChain(r: VerdictRecord): boolean {
@@ -34,6 +34,8 @@ export class Bot {
   readonly app: App;
   /** Challenges being re-judged right now (a slow tx must not start a second re-judge). */
   private rejudging = new Set<string>();
+  /** Enclave route: each open dispute we've seen (for the statements window and the announcement). */
+  private disputes = new Map<string, { seen: number; proposed: "refund" | "forfeit"; challenger: string; free: boolean }>();
   /** Repos whose on-chain name we've checked this run. */
   private named = new Set<number>();
   /** Re-judge results not yet accepted on-chain, so a retry never pays for a second model call. */
@@ -178,6 +180,9 @@ export class Bot {
     const d = await this.chain.getDeposit(s.repo_id, s.number);
     if (!d) return;
     if (typeof d.status === "object" && "settled" in d.status) {
+      // An enclave re-judge settles the deposit in the contract's callback: announce it first.
+      const dispute = this.disputes.get(`${s.repo_id}/${s.number}`);
+      if (dispute && this.tee && this.chain.getRejudgeJob && !(await this.finishEnclaveRejudge(s, dispute, d.status.settled.verdict))) return;
       this.store.setState(s.repo_id, s.number, "settled");
       if (d.status.settled.verdict === "forfeit") await this.closeForfeited(s);
       return;
@@ -187,7 +192,12 @@ export class Bot {
       if (this.rejudging.has(key)) return;
       this.rejudging.add(key);
       try {
-        await this.rejudge(s, d.status.challenged.verdict as "refund" | "forfeit", d.status.challenged.challenger, d.status.challenged.stake === "0");
+        const { verdict, challenger, stake } = d.status.challenged;
+        if (this.tee && this.chain.rejudgeInTee && this.chain.getRejudgeJob) {
+          await this.rejudgeInEnclave(s, verdict as "refund" | "forfeit", challenger, stake === "0");
+        } else {
+          await this.rejudge(s, verdict as "refund" | "forfeit", challenger, stake === "0");
+        }
       } finally {
         this.rejudging.delete(key);
       }
@@ -367,6 +377,57 @@ export class Bot {
     await this.announce(s, gh, record, repoOnChain, actsOnChain(record));
   }
 
+  /**
+   * Enclave route for a dispute: after a window for both sides to post statements on-chain, ask the
+   * contract to re-judge in OutLayer. Its callback resolves the dispute; we announce the record.
+   */
+  private async rejudgeInEnclave(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string, freeDispute: boolean) {
+    const key = `${s.repo_id}/${s.number}`;
+    if (!this.disputes.has(key)) this.disputes.set(key, { seen: Date.now(), proposed, challenger: challengerAccount, free: freeDispute });
+    if (await this.chain.getRejudgeJob!(s.repo_id, s.number)) return; // running, or done (then the deposit is settled)
+    if (Date.now() - this.disputes.get(key)!.seen < this.cfg.rejudgeDelayMs) return;
+    if (Date.now() - (this.teeAsked.get(`rj:${key}`) ?? 0) < 3 * 60_000) return;
+    this.teeAsked.set(`rj:${key}`, Date.now());
+    await this.chain.rejudgeInTee!(s.repo_id, s.number);
+    this.log(`asked the contract to re-judge ${s.full_name}#${s.number} in OutLayer`);
+  }
+
+  /** The contract's callback resolved a dispute: announce the enclave's record. False = not yet. */
+  private async finishEnclaveRejudge(s: Submission, dispute: { seen: number; proposed: "refund" | "forfeit"; challenger: string; free: boolean }, settled: string): Promise<boolean> {
+    const key = `${s.repo_id}/${s.number}`;
+    const job = await this.chain.getRejudgeJob!(s.repo_id, s.number);
+    if (job?.state !== "judged" || (settled !== "refund" && settled !== "forfeit")) {
+      this.disputes.delete(key);
+      return true; // settled some other way
+    }
+    const record = await this.tee!.confirmed(s.repo_id, s.number, true);
+    // The enclave's published record hasn't arrived: wait a while, then settle without it.
+    if (!record) return Date.now() - dispute.seen > this.cfg.rejudgeDelayMs + 30 * 60_000;
+    this.disputes.delete(key);
+    this.teeAsked.delete(`rj:${key}`);
+    this.store.setState(s.repo_id, s.number, "settled", { verdict_id: record.id });
+    const repoOnChain = await this.chain.getRepo(s.repo_id);
+    const challenger = repoOnChain?.payout === dispute.challenger ? "maintainer" : "contributor";
+    await this.announceRejudge(s, record, dispute.proposed, settled, challenger, dispute.free, true);
+    return true;
+  }
+
+  private async announceRejudge(s: Submission, record: VerdictRecord, proposed: "refund" | "forfeit", verdict: "refund" | "forfeit", challenger: string, freeDispute: boolean, inEnclave: boolean) {
+    const gh = await this.app.getInstallationOctokit(s.installation_id);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    const overturned = verdict !== proposed;
+    const where = inEnclave ? " inside the OutLayer enclave (PatchBond's server took no part)" : "";
+    const what = freeDispute
+      ? `The contributor disputed the maintainer's forfeit (free). A stronger model (\`${record.model}\`) re-judged the PR${where} with both sides' statements and decided **${verdict}**.${overturned ? " The deposit is returned, plus a penalty from the maintainers' vault." : " The forfeit stands."}`
+      : `The ${challenger} staked to challenge the "${proposed}" verdict. A stronger model (\`${record.model}\`) re-judged the PR${where} with both sides' statements and decided **${verdict}**.${overturned ? " The challenger's stake is returned." : ` The stake goes to the ${challenger === "contributor" ? "repository" : "contributor"}.`}`;
+    await gh.rest.issues.createComment({
+      owner, repo, issue_number: s.number,
+      body: `${MARKER}\n### ${overturned ? "🔄 Challenge upheld — verdict overturned" : "⚖️ Challenge rejected — verdict stands"}\n\n${what}\n\n${record.final.reasons.map((r) => `- ${r}`).join("\n")}\n\n<sub>[Signed record — verify it yourself](${this.cfg.webUrl}/v/${record.id})</sub>`,
+    });
+    if (verdict === "forfeit") await this.closeForfeited(s);
+    this.log(`re-judged ${s.full_name}#${s.number}${inEnclave ? " in OutLayer" : ""}: ${proposed} → ${verdict}`);
+  }
+
   private async announce(s: Submission, gh: Octokit, record: VerdictRecord, repoOnChain: Awaited<ReturnType<ChainPort["getRepo"]>>, onChain: boolean) {
     const [owner, repo] = s.full_name.split("/") as [string, string];
     const v = record.final.verdict;
@@ -422,16 +483,7 @@ export class Bot {
     }
     this.rejudged.delete(key);
     this.store.setState(s.repo_id, s.number, "settled", { verdict_id: record.id });
-    const overturned = verdict !== proposed;
-    const what = freeDispute
-      ? `The contributor disputed the maintainer's forfeit (free). A stronger model (\`${record.model}\`) re-judged the PR with both sides' statements and decided **${verdict}**.${overturned ? " The deposit is returned, plus a penalty from the maintainers' vault." : " The forfeit stands."}`
-      : `The ${challenger} staked to challenge the "${proposed}" verdict. A stronger model (\`${record.model}\`) re-judged the PR with both sides' statements and decided **${verdict}**.${overturned ? " The challenger's stake is returned." : ` The stake goes to the ${challenger === "contributor" ? "repository" : "contributor"}.`}`;
-    await gh.rest.issues.createComment({
-      owner, repo, issue_number: s.number,
-      body: `${MARKER}\n### ${overturned ? "🔄 Challenge upheld — verdict overturned" : "⚖️ Challenge rejected — verdict stands"}\n\n${what}\n\n${record.final.reasons.map((r) => `- ${r}`).join("\n")}\n\n<sub>[Signed record — verify it yourself](${this.cfg.webUrl}/v/${record.id})</sub>`,
-    });
-    if (verdict === "forfeit") await this.closeForfeited(s);
-    this.log(`re-judged ${s.full_name}#${s.number}: ${proposed} → ${verdict}`);
+    await this.announceRejudge(s, record, proposed, verdict, challenger, freeDispute, false);
   }
 
   /** A merged PR that fixes an issue with a bounty pays its author (slop funds the fix). */
