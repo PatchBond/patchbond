@@ -290,6 +290,29 @@ vault fits GitLab merge requests, bug-bounty and security reports, issue tracker
 agent-to-agent requests (an agent pays to get another agent's — or a human's — attention). Only
 GitHub is built today.
 
+## Who pays, and what it costs
+
+**Running it is cheap.** Measured, not estimated — the live [`/stats`](https://patchbond-production.up.railway.app/stats) page computes these from the signed records:
+
+| Cost | Amount |
+|---|---|
+| One verdict (GLM-5.3-flash, TEE-signed) | **$0.0002–0.0005** (eval average $0.00035) — under **$1 per 1,000 PRs** |
+| A dispute re-judge (Kimi K3) | ≈ $0.01, only when someone disputes |
+| An OutLayer enclave run | ≈ 0.0015 NEAR, only on the enclave route |
+| Hosting | one small server, ≈ $5–20 a month; the contract holds the money |
+
+**Who pays.** Never the honest contributor (refunds are whole) and never anyone for submitting.
+
+| Revenue | Paid by | Status |
+|---|---|---|
+| 10% of forfeited bonds | the sender of slop | ✅ Built — small by design, since forfeits should be rare |
+| A share of priority-lane review tips | whoever wants a fast review (often a company that needs a fix) | 🟡 Tips are built and go 100% to the repo today; a PatchBond share is a one-line policy change |
+| Sealed-report triage for bug-bounty programs | the program, per report or monthly — they already pay to filter AI-written reports | 🟡 Sealed reports are live on testnet; pricing is next |
+| An organisation plan: many repos, custom policies, the enclave route with `exclusive` on, reports | the organisation | Planned |
+| Agent reputation lookups (passport records per agent and harness) | agent platforms and marketplaces | Planned — the records are already public on-chain |
+
+**It doesn't need us to keep working.** The contract is MIT and holds the money; anyone can run the judge, and on the OutLayer route the contract has PRs judged without any server of ours. The upgrade key moves behind a DAO time-lock before mainnet.
+
 ## After the hackathon
 
 1. **Maintainers first** — the trial is open now on testnet ([guide](docs/MAINTAINERS.md)); their
