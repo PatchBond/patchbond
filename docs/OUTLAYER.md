@@ -35,9 +35,19 @@ One enclave judgment per deposit — no re-rolls until a good answer comes out. 
 running" run clears the job so anyone can ask again; NEAR that OutLayer refused comes back.
 
 **`exclusive: true`** turns the oracle's forfeit power off entirely: forfeits then come only from
-the enclave. The oracle can still refund (the safe direction), a challenged verdict that the
-stronger model re-judges then resolves as a refund (when in doubt, refund), and maintainers keep their
-48 h disputable proposal.
+the enclave. The oracle can still refund (the safe direction), and maintainers keep their disputable
+proposal. **It is on for the live testnet contract since 1 Nov 2026** (build `eb3baa69…`).
+
+**Disputes are re-judged in the enclave too.** While a verdict is challenged, the contributor and the
+maintainer each post up to two statements on-chain (`add_statement`, signed by their own wallets).
+Then anyone calls `rejudge_in_tee`: the enclave fetches the PR again, sends the stronger model
+(`get_rejudge_model`) the PR, the challenged verdict and those statements, and the contract checks
+NEAR AI's signature before it settles — the model's enclave key, or the gateway key registered for
+that one model. The rule is the server's: a disputed *maintainer* forfeit stands only if the stronger
+model itself signs a forfeit above the repo's threshold with evidence; an AI verdict also needs the
+rules (a hard fact) to agree. Otherwise, refund. The re-judge request is byte-identical to the
+server's (`outlayer/judge/tests/rejudge.rs`). Kimi K3 is the intended re-judge model; while NEAR AI
+reports it unavailable, testnet uses GLM-5.3 (one owner call to switch back).
 
 ## Same bytes as the server — proven
 
