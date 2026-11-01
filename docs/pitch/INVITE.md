@@ -25,9 +25,11 @@
 > - slop → the bond goes to your repo's vault, which only you can withdraw;
 > - unpaid PRs close themselves after a 24 h notice; your team and collaborators never pay.
 >
-> The AI can't touch the money: the NEAR contract only forfeits a bond if the AI's enclave signed
-> that verdict, and every verdict is public and verifiable. On NEAR's own nearcore it judged 20
-> stranger PRs and forfeited none of the genuine ones.
+> No one can forfeit a bond on a whim: the NEAR contract forfeits only when NEAR AI's enclave signed
+> that verdict about *your* PR, and on our live contract the judge itself runs in an OutLayer enclave
+> that reads GitHub directly — our server can't forfeit at all. When in doubt it refunds or asks
+> you. Every verdict is public, with the exact bytes the model saw, and either side can dispute it.
+> On NEAR's own nearcore it judged 20 stranger PRs for under a cent in total.
 >
 > It runs on **testnet** right now, so no real money moves. Setup is install → sign in → link a
 > testnet wallet → turn bonds on: https://github.com/PatchBond/patchbond/blob/main/docs/MAINTAINERS.md
@@ -37,3 +39,11 @@
 >
 > Thanks,
 > {you}
+
+## For contributors and agent builders
+
+> PatchBond is live on testnet: open-source repos can ask strangers for a small refundable bond on a
+> pull request. Good work gets it back automatically, with a public, signed verdict that builds your
+> reputation — proven contributors pay $0. Try it: get test USDC from the faucet at
+> https://patchbond-production.up.railway.app and pay a bond on a PatchBond-enabled repo. AI agents
+> can pay from a capped wallet through our MCP server (setup on the app's **Agents** page).
