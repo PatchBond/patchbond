@@ -569,6 +569,12 @@ impl PatchBond {
         U128(curve::quote(&repo.policy, open, &rep, env::block_timestamp_ms()))
     }
 
+    /// The queue length `account_id`'s bond on `repo_id` is priced on: everyone else counts at most
+    /// 2 each, their own open deposits in full (`queue.rs`). Without an account: the shared queue.
+    pub fn get_priced_open(&self, repo_id: RepoId, account_id: Option<AccountId>) -> u32 {
+        queue::priced_open(repo_id, self.repo(repo_id).open, account_id.as_ref())
+    }
+
     pub fn is_exempt(&self, account_id: AccountId) -> bool {
         curve::is_exempt(&self.get_reputation(account_id), env::block_timestamp_ms())
     }

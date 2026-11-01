@@ -16,9 +16,17 @@
 
 ---
 
-Strangers attach a small **refundable bond** to their pull request, in USDC or NEAR. An **AI judge in a TEE on NEAR AI Cloud** reviews it after CI. Real work gets **every cent back**; a bond that is forfeited — with evidence, and a window to dispute it — **pays the maintainers whose time it wasted**. The bond follows an on-chain congestion price over the repo's queue (**EIP-1559 for open source**): a busy repo costs more, a quiet one costs a newcomer cents, and one payer's flood raises only their own price. **An AI forfeit needs NEAR AI's enclave signature on a forfeit of that exact PR**, checked on-chain: our server can refund, but can't forge a forfeit or reuse one from another PR. (It still chooses what the model sees — every request is published so anyone can check it — and on the **OutLayer** route it isn't involved at all: the contract has the PR judged inside an Intel TDX enclave that reads GitHub itself ([how](docs/OUTLAYER.md)).) A maintainer can also propose a forfeit; the contributor can dispute it for free.
+Strangers attach a small **refundable bond** to their pull request (USDC or NEAR). An AI judge running in a TEE on **NEAR AI Cloud** reviews it after CI. Real work gets the whole bond back. Slop that is forfeited, with evidence and a free window to dispute, pays the maintainers whose time it wasted. The price follows the repo's review queue on-chain, like a base fee.
 
-**Try it with one command:** `bun install && bun run demo` (needs Rust; the first run compiles for ~10 minutes) runs the contract on a local NEAR sandbox and shows it accept genuine NEAR AI and OutLayer signatures and refuse forged ones — no keys, no wallet. More in [Try it in 5 minutes](#try-it-in-5-minutes).
+**Three claims you can check yourself:**
+
+1. **Our server can't take anyone's money.** The contract forfeits a bond only with NEAR AI's enclave signature on a forfeit *of that exact PR*. It refuses a forfeit with no signature, a forged one, and a genuine one replayed against another PR. → `bun run demo` ([CI runs it on every push](https://github.com/PatchBond/patchbond/actions/workflows/ci.yml)), [`settle.rs`](contract/vault/src/settle.rs), [`tee.rs`](contract/vault/src/tee.rs)
+2. **The judge can run without our server.** On the OutLayer route the contract has the PR judged inside an Intel TDX enclave that reads GitHub itself, and checks NEAR AI's signature in the callback. → [docs/OUTLAYER.md](docs/OUTLAYER.md), with testnet transactions
+3. **An agent can be given money without being given the keys.** Its function-call key can only pay bonds, within a cap, a per-bond limit and a repo list its owner sets in the contract. → [`budget.rs`](contract/vault/src/budget.rs), the app's **Agents** page
+
+**Honest limits:** testnet only so far; we hold the upgrade key; on the server route the server still chooses what the model sees (every request is published); the AI has forfeited 0 of 15 labelled slop PRs, so today the bond and the 24 h deadline do most of the filtering. Details in [What's real](#whats-real) and [SECURITY.md](SECURITY.md).
+
+**Try it:** `git clone https://github.com/PatchBond/patchbond && cd patchbond && bun install && bun run demo`. It needs Rust and Bun; the first run downloads and compiles for about 10 minutes. No keys and no wallet: it runs the real contract on a local NEAR sandbox. More in [Try it in 5 minutes](#try-it-in-5-minutes).
 
 <!-- live:start -->
 ### Live now — [patchbond-production.up.railway.app](https://patchbond-production.up.railway.app)
@@ -46,7 +54,7 @@ Strangers attach a small **refundable bond** to their pull request, in USDC or N
 
 | The pattern | What PatchBond does |
 |---|---|
-| Tens of PRs at once | **Attention pricing**: every extra open submission makes the next bond 12.5% more expensive. |
+| Tens of PRs at once | **Attention pricing**: each extra open PR from the same payer makes their next bond 12.5% more expensive. |
 | PRs for issues assigned to someone else | **Assignment check**, read from GitHub; repos can make it forfeit evidence. |
 | "Claims he did what he didn't do" | **Claims vs diff**: every claim of work in the description is matched against the diff. |
 | Maintainers paying for it all with their time | **Unpaid PRs close themselves; a forfeited bond pays the maintainer** (forfeits are rare by design — the bond itself does most of the filtering). |
@@ -139,7 +147,7 @@ cp .env.example .env          # testnet by default; set NEARAI_API_KEY + JUDGE_M
 | 3 | `bun run --cwd server judge-pr https://github.com/tj/commander.js/pull/2637` | A **refund** with reasons and facts (set `GITHUB_TOKEN` to avoid GitHub's 60-requests-an-hour limit). Without a NEAR AI key the output says `"mock": true` — its signature is from a local key, proving only the pipeline, not NEAR AI's TEE; `…/OWASP/Nettacker/pull/1787` → **needs_human** (failing CI). With a NEAR AI key it's TEE-signed (~$0.0004); without one the same pipeline runs offline with a local key. |
 | 4 | `bun run dev`, open <http://localhost:5317> | Drag the bond curve, **Simulate a spam wave**, ⌘K → judge a PR → **Verify signature** in the browser. |
 | 5 | With test USDC from [faucet.circle.com](https://faucet.circle.com) ("Near Testnet") or test NEAR from [near-faucet.io](https://near-faucet.io), and a Meteor or Intear wallet: `/pay/1/1?repo=PatchBond/playground&user=YOUR_LOGIN` (or `/pay/2/1?repo=PatchBond/playground-near&user=…` for NEAR) | Pay a real bond into [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) at the live on-chain quote. |
-| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet account) | **62 real testnet transactions** (run of 2026-10-28, before the TEE gate, safeguards and queue cap — those are covered by the sandbox tests) — each money path, a gasless bond, an agent via MCP, NEAR via the real `wrap.testnet` — then every account is deleted. [Last report](docs/e2e/testnet-report.md), one explorer link per transaction. |
+| 6 | `bun run --cwd server e2e:testnet` (needs a funded testnet account) | **62 real testnet transactions** (re-run 2026-11-01 on today's contract) — each money path, a gasless bond, an agent via MCP, NEAR via the real `wrap.testnet` — then every account is deleted. [Last report](docs/e2e/testnet-report.md), one explorer link per transaction. |
 
 **Coding agents (MCP):** `claude mcp add patchbond -e PATCHBOND_API=https://patchbond-production.up.railway.app -- bun "$PWD/mcp/src/index.ts"`. Read-only tools work with no wallet (`patchbond_policy`, free `patchbond_preflight`, `patchbond_status`, `patchbond_reputation`); `patchbond_deposit` pays with a function-call key limited to `deposit_from_budget` — **the server refuses to start with a full-access key**. Setup is on the app's **Agents** page.
 

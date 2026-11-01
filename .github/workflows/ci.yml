@@ -31,7 +31,7 @@ jobs:
         working-directory: contract
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97.1
         with:
           targets: wasm32-unknown-unknown
           components: clippy
@@ -44,6 +44,10 @@ jobs:
       - run: cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml
       - run: cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml
       - run: cargo test -p patchbond-vault
+      - name: One-command demo (the README's first step) — output in the run summary
+        run: |
+          cargo run -q -p patchbond-vault --example demo 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee demo.txt
+          { echo '### `bun run demo` on a fresh runner'; echo '```'; cat demo.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   enclave:
     name: OutLayer judge program — byte parity with the TS judge, sealed envelopes, report checks
@@ -53,7 +57,9 @@ jobs:
         working-directory: outlayer/judge
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          targets: wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: outlayer/judge

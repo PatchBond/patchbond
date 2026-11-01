@@ -194,7 +194,7 @@ log(`# PatchBond — end-to-end on NEAR testnet\n\nRun \`${RUN}\` · ${new Date(
 try {
   section("1. Deploy a throwaway stack");
   const ft = await sub("usdc", "1.5");
-  const vault = await sub("vault", "4");
+  const vault = await sub("vault", "6");
   const [oracle, alice, bob, amaka, mike, agent] = await Promise.all(
     ["oracle", "alice", "bob", "amaka", "mike", "agent"].map((p) => sub(p, "0.3")),
   );
@@ -234,14 +234,16 @@ try {
   const p1 = policy({});
   const quotes: bigint[] = [];
   for (let n = 1; n <= 4; n++) {
-    const q = await quote(R1);
+    const q = await quote(R1, alice!);
     quotes.push(q);
-    eq(q, curveBond(p1, n - 1), `quote with ${n - 1} open = $${Number(q) / 1e6} — identical to shared/curve.ts`);
+    eq(q, curveBond(p1, n - 1), `alice's quote with ${n - 1} of her own open = $${Number(q) / 1e6} — identical to shared/curve.ts`);
     const o = await pay(alice!, R1, n, q);
     check(!o.panic, `alice pays bond on #${n}`, o.panic ?? "");
   }
   check(quotes.every((q, i) => i === 0 || q > quotes[i - 1]!), `price rises with the queue: ${quotes.map((q) => `$${Number(q) / 1e6}`).join(" → ")}`);
   eq((await repoOf(R1)).open, 4, "four submissions open");
+  // One payer counts at most 2 toward everyone else's price (contract/vault/src/queue.rs).
+  eq(await quote(R1, bob!), curveBond(p1, 2), "a newcomer is priced as if alice had opened 2, not 4");
 
   section("3. Verdicts move money: refund, forfeit 90/10, void");
   const before = await bal(alice!);
@@ -447,7 +449,8 @@ try {
   const rep = await view<{ refunds: number; forfeits: number; refund_repos: number[] }>(vault.id, "get_reputation", { account_id: alice!.id });
   log(`- alice: ${rep.refunds} refunds on ${rep.refund_repos.length} repos, ${rep.forfeits} forfeits`);
   const mult = BigInt(1 + Math.min(rep.forfeits, 3));
-  eq(await quote(R1, alice!), curveBond(p1, (await repoOf(R1)).open) * mult, `recent forfeits → alice pays ×${mult}`);
+  const pricedOpen = await view<number>(vault.id, "get_priced_open", { repo_id: R1, account_id: alice!.id });
+  eq(await quote(R1, alice!), curveBond(p1, pricedOpen) * mult, `recent forfeits → alice pays ×${mult}`);
 
   section("12. NEAR bonds through the real wrap.testnet");
   const wbal = async (a: Actor) => BigInt(await view<string>(WNEAR, "ft_balance_of", { account_id: a.id }));

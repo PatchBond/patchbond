@@ -28,7 +28,7 @@ There are about 50 commits on 2026-10-28. The design came first: the very first 
 | 29 Oct | On-chain checks of NEAR AI's TEE signatures, maintainer safeguards, hosted service on Railway, live README numbers |
 | 30 Oct | OutLayer: the judge as a Rust wasm program in Intel TDX, called by the contract; nearcore case study; maintainer guide; testnet faucet; sealed security reports; dispute fixes from live users; agent spending policy |
 | 31 Oct | Sealed reports live on testnet; enclave key published by the enclave; per-payer queue cap (one payer can't price out newcomers); fixes and wording from the review |
-| 1 Nov | Signed forfeits bound to their repo and PR (replay closed); public /stats page; "Who pays" economics |
+| 1 Nov | Signed forfeits bound to their repo and PR (replay closed); full testnet e2e re-run on today's contract (62 transactions, all passed); public /stats page; "Who pays" economics |
 
 ## Findings from review, and what was done
 

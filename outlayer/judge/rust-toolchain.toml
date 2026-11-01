@@ -1,0 +1,4 @@
+# Same compiler as build.sh's reproducible enclave build.
+[toolchain]
+channel = "1.97.1"
+targets = ["wasm32-wasip2"]

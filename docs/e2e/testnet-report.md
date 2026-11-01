@@ -1,23 +1,24 @@
 # PatchBond — end-to-end on NEAR testnet
 
-Run `mvsof9ya` · 2026-10-28T22:18:58.992Z · RPC https://test.rpc.fastnear.com · parent `patchbond-e2e.testnet`
+Run `mvx6a6ab` · 2026-11-01T01:49:58.753Z · RPC https://test.rpc.fastnear.com · parent `patchbond-e2e.testnet`
 
 ### 1. Deploy a throwaway stack
-- ✅ vault vault-mvsof9ya.patchbond-e2e.testnet initialised with USDC usdc-mvsof9ya.patchbond-e2e.testnet and wNEAR wrap.testnet
+- ✅ vault vault-mvx6a6ab.patchbond-e2e.testnet initialised with USDC usdc-mvx6a6ab.patchbond-e2e.testnet and wNEAR wrap.testnet
 - ✅ alice holds 100 test USDC
 - ✅ three repos registered by the oracle (instant, optimistic, flat-$1)
 
 ### 2. Attention pricing on-chain matches the web app's curve
-- ✅ quote with 0 open = $1.580246 — identical to shared/curve.ts
+- ✅ alice's quote with 0 of her own open = $1.580246 — identical to shared/curve.ts
 - ✅ alice pays bond on #1
-- ✅ quote with 1 open = $1.777777 — identical to shared/curve.ts
+- ✅ alice's quote with 1 of her own open = $1.777777 — identical to shared/curve.ts
 - ✅ alice pays bond on #2
-- ✅ quote with 2 open = $2 — identical to shared/curve.ts
+- ✅ alice's quote with 2 of her own open = $2 — identical to shared/curve.ts
 - ✅ alice pays bond on #3
-- ✅ quote with 3 open = $2.25 — identical to shared/curve.ts
+- ✅ alice's quote with 3 of her own open = $2.25 — identical to shared/curve.ts
 - ✅ alice pays bond on #4
 - ✅ price rises with the queue: $1.580246 → $1.777777 → $2 → $2.25
 - ✅ four submissions open
+- ✅ a newcomer is priced as if alice had opened 2, not 4
 
 ### 3. Verdicts move money: refund, forfeit 90/10, void
 - ✅ refund returns the whole bond to alice
@@ -102,69 +103,69 @@ Run `mvsof9ya` · 2026-10-28T22:18:58.992Z · RPC https://test.rpc.fastnear.com 
 - deleted 10/10 accounts; their NEAR went back to patchbond-e2e.testnet
 
 ---
-**✅ ALL PASSED** in 361 s · 62 transactions
+**✅ ALL PASSED** in 381 s · 62 transactions
 
 ## Transactions
 
-- [1. Deploy a throwaway stack: usdc-mvsof9ya → new](https://testnet.nearblocks.io/txns/ECnvUcqRgBLBJmfAbex5NG64tHgK9Qxx6mon3FVSabeD)
-- [1. Deploy a throwaway stack: vault-mvsof9ya → new](https://testnet.nearblocks.io/txns/7oN2WZxq3BixTeVjoxgJk8CNZvwLvRK13ysay8GPnQ1z)
-- [1. Deploy a throwaway stack: mint 0 → vault-mvsof9ya](https://testnet.nearblocks.io/txns/9YtgYoXw5XG5qn8TWquqmnhvsR9pzo9W3kgD4qWsRFv2)
-- [1. Deploy a throwaway stack: mint 100 → alice-mvsof9ya](https://testnet.nearblocks.io/txns/GDNBSKQJDz78Yrtywaps2zj2qK3PYun43ENurDdiCyco)
-- [1. Deploy a throwaway stack: mint 20 → bob-mvsof9ya](https://testnet.nearblocks.io/txns/AmPDJTEkKHdmt7XooVXVE9WK3KrhfpMARKnYqy38tsr8)
-- [1. Deploy a throwaway stack: mint 20 → amaka-mvsof9ya](https://testnet.nearblocks.io/txns/2rJNEbyivqBpS3kMcnkmKVW69Nbuw9Q7kw4o2fHiEfeh)
-- [1. Deploy a throwaway stack: mint 20 → mike-mvsof9ya](https://testnet.nearblocks.io/txns/FihaSkJb55KNCoDfcaJdAgApnpZ8J9YqHZn54YZ2GypN)
-- [1. Deploy a throwaway stack: oracle-mvsof9ya → register_repo](https://testnet.nearblocks.io/txns/A5qFXCPVAec4yEgRhYQqi8MHZhqfvK9auiWwavF8iSJE)
-- [1. Deploy a throwaway stack: oracle-mvsof9ya → register_repo](https://testnet.nearblocks.io/txns/GiNAmHc37B9K4YdoFVELsz5fDHA3dJMGDYfhy3LArAns)
-- [1. Deploy a throwaway stack: oracle-mvsof9ya → register_repo](https://testnet.nearblocks.io/txns/7eXUb1iLU3nfdTC25N6Ndu2ihbmJecrDhaEW5VjCouU8)
-- [2. Attention pricing on-chain matches the web app's curve: alice-mvsof9ya pays bond on 1000001#1](https://testnet.nearblocks.io/txns/2g6qB2ynrgnMYsyLFDMXe5fmHrmJoFfBeiXWPLJioyE6)
-- [2. Attention pricing on-chain matches the web app's curve: alice-mvsof9ya pays bond on 1000001#2](https://testnet.nearblocks.io/txns/3itmsCjcjjHFGM18FhXtSyXLtABrXr9rVWt4TbMfrVCj)
-- [2. Attention pricing on-chain matches the web app's curve: alice-mvsof9ya pays bond on 1000001#3](https://testnet.nearblocks.io/txns/Bqyuo56i5LtskGZSHJXf6Ku2ZvwuKwf5mkwGPu7V3iHY)
-- [2. Attention pricing on-chain matches the web app's curve: alice-mvsof9ya pays bond on 1000001#4](https://testnet.nearblocks.io/txns/jnfMZ9KwAbkepEcwjQbvoqLsmsqJmPS9CB3ju6ZWCmm)
-- [3. Verdicts move money: refund, forfeit 90/10, void: oracle settles 1000001#1: refund](https://testnet.nearblocks.io/txns/8sxBC7qwQHcpCLHivtcx9sGZgba9UvECvcfXxHVYhams)
-- [3. Verdicts move money: refund, forfeit 90/10, void: oracle settles 1000001#2: forfeit](https://testnet.nearblocks.io/txns/5HfPgecAeWkVcx4SnVwG4AVxgT4eLUeiCSVhEWQBPgbP)
-- [3. Verdicts move money: refund, forfeit 90/10, void: oracle settles 1000001#4: void](https://testnet.nearblocks.io/txns/Aj5vxu9pAbQ2Vp8AWB3BZTm2P5AX4JfNsJXUU4Qj8tAg)
-- [3. Verdicts move money: refund, forfeit 90/10, void: bob-mvsof9ya pays bond on 1000001#4](https://testnet.nearblocks.io/txns/3Lpx55LPfiNXcCTe6aqHPq99X4beG9TSBCVAvxfWs8a9)
-- [4. Priority lane: tip earned only when reviewed in time: alice-mvsof9ya pays bond on 1000001#5](https://testnet.nearblocks.io/txns/HCvMQeKGyqaxiEAKUigv3NeDmepzDbap9PEPPiqQUHnw)
-- [4. Priority lane: tip earned only when reviewed in time: maintainer reviewed #5 (in window)](https://testnet.nearblocks.io/txns/72CvgLWY8nZ3jH5AyXQV7zf5NtkKpAxtvCMKNHmr79HM)
-- [4. Priority lane: tip earned only when reviewed in time: oracle settles 1000001#5: refund](https://testnet.nearblocks.io/txns/CbsnNfJKJnWwTdRU4vhEtoqb5aHKjNy6fmyZeTuwc4Ds)
-- [4. Priority lane: tip earned only when reviewed in time: alice-mvsof9ya pays bond on 1000001#6](https://testnet.nearblocks.io/txns/CuRq5EgEsjxFXYcV3Fxipa96jWHU5oMd9qiYZHEzSinz)
-- [4. Priority lane: tip earned only when reviewed in time: oracle settles 1000001#6: refund](https://testnet.nearblocks.io/txns/CsWhWvdm4PHRhtctmLA3eo58Q769MENG4Vvb4bBsqUsv)
-- [5. Slop funds the fix: alice-mvsof9ya pays bond on 1000001#7](https://testnet.nearblocks.io/txns/9wA36jsxwqUxEAT6ETpnu2R2VPsKxEZVjXLV9vFyeNK4)
-- [5. Slop funds the fix: oracle settles 1000001#7: forfeit](https://testnet.nearblocks.io/txns/5ej1oNK4RVcf79XydQXbdU2NqJFpv6uHeQy1F38rNUrN)
-- [5. Slop funds the fix: real fix merged → pay bounty to bob](https://testnet.nearblocks.io/txns/JCkb7RbSDcLue3vo1XuU9V2didcymj9V7CuDp1PqCvDX)
-- [6. Only the linked maintainer can withdraw: oracle links R1 → amaka](https://testnet.nearblocks.io/txns/AFaqxtFvsCNXmkRJ8J7bAqnij2MCD4bsJmtR36j3WQJT)
-- [6. Only the linked maintainer can withdraw: amaka withdraws the vault](https://testnet.nearblocks.io/txns/4e4ZPQuT36kzZJwwYA5AQZKxYwcGv4QF9amLjfQx4449)
-- [7. Bad input is refunded with a reason: alice-mvsof9ya pays bond on 1000001#8](https://testnet.nearblocks.io/txns/2haCYThPzyHU4KPUQ1sDeSoG6WPV9t4GkRPnFVU3e1YE)
-- [7. Bad input is refunded with a reason: alice-mvsof9ya pays bond on 1000001#1](https://testnet.nearblocks.io/txns/J2V9Z9j2TQRNG67s6CQZwFBjETqcWxBJLnBZ4s1JXwga)
-- [7b. Gasless: a contributor with no spare NEAR pays through the relayer (NEP-366): mint 5 → gasless](https://testnet.nearblocks.io/txns/9dP4vPVDBs1q6BkkyMiSqhQjbJKxH33N7BKC7ymyhEA9)
-- [7b. Gasless: a contributor with no spare NEAR pays through the relayer (NEP-366): relayer submits the signed delegate](https://testnet.nearblocks.io/txns/EDtE2ArsDTQtvcu3d343LQQze9SVXGy7F3jLqS6JPbiy)
-- [7b. Gasless: a contributor with no spare NEAR pays through the relayer (NEP-366): oracle settles 1000001#20: refund](https://testnet.nearblocks.io/txns/5Y6dgxubgWKaF1trzuaYH2MTAFHWk7fhJrVDVg7zm3yp)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: oracle-mvsof9ya → link_repo](https://testnet.nearblocks.io/txns/5ub2uBdPsG2oXFYfRgg342GiwsvgHuBpnwvNeY68dKML)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: alice-mvsof9ya pays bond on 1000002#1](https://testnet.nearblocks.io/txns/EmNmYei3K6Tn1mU533SSxYrN1hXJrRt8K7WKmKVghsDc)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: oracle settles 1000002#1: forfeit](https://testnet.nearblocks.io/txns/58ui2RVUrZLMp9UCq5MhnkKRzUXpDN9VHdtKPcDzwZA7)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: alice stakes to challenge](https://testnet.nearblocks.io/txns/BGX1K8HhaRBdseH5JcayLoFvxcMuTdfHCjxciM8eh1aw)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: stronger model overturns → refund](https://testnet.nearblocks.io/txns/3usf6HvDdEj1Hk3qruV95UtVRTwbQLudodqw2VqdL2WZ)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: alice-mvsof9ya pays bond on 1000002#2](https://testnet.nearblocks.io/txns/DxACY8nRmc4FfpzimXmjcpAiSSswfD9YkBzz9WnWZudo)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: oracle settles 1000002#2: refund](https://testnet.nearblocks.io/txns/CjivmWcz3MkwWa97XgW8Rh8bnDT7sM7FTC5UZBrSeSNK)
-- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: bob (anyone) finalizes after the window](https://testnet.nearblocks.io/txns/HDtDVwyageJJUP4hTE8U8uiZM1YVTi3auKtg2oUmSX9m)
-- [9. Agents: a capped budget and a function-call key: mike funds a 10 USDC budget, cap 2.5/day](https://testnet.nearblocks.io/txns/HMPn7CJrKTwYUodMZxfdqGszf7cVtvgVqfej3Fy1uNjN)
-- [9. Agents: a capped budget and a function-call key: agent pays via the MCP server](https://testnet.nearblocks.io/txns/J6Dk6u5xktH5vmXdMcqJcTbPD1LQD2SAz5BHeesD9SkM)
-- [9. Agents: a capped budget and a function-call key: agent (function-call key) pays bond on R3#2](https://testnet.nearblocks.io/txns/GaZvSmmoKY8Gp92qufhJh6eCmnznTcYu5BRkbM4eeebp)
-- [9. Agents: a capped budget and a function-call key: oracle settles 1000003#1: refund](https://testnet.nearblocks.io/txns/Ep1iUuxjgCJxV8mbEh5a4Kp7pYaBmVV1RGPFCEGUuTTQ)
-- [9. Agents: a capped budget and a function-call key: oracle settles 1000003#2: forfeit](https://testnet.nearblocks.io/txns/BuZmcqGtnprG9SfJjLypVGBF9mqqmtMuQDLRGoZtmMmS)
-- [9. Agents: a capped budget and a function-call key: mike withdraws the rest](https://testnet.nearblocks.io/txns/9fayf3U7aEMAJTC26cfoqNBSvCFu6LzTAuxZ8fxg4RML)
-- [10. Judge → chain: a signed verdict's hash lands on-chain: alice-mvsof9ya pays bond on 1000001#10](https://testnet.nearblocks.io/txns/7KahS7ZMnocLrCTX7ukYf8g2E95XyphBLwSEJfxT1Q3b)
-- [10. Judge → chain: a signed verdict's hash lands on-chain: oracle settles 1000001#10: forfeit](https://testnet.nearblocks.io/txns/DUNrgJ139SJEAbGkbUX9RokWiR2kfjutUs4VMhUa2k9P)
-- [12. NEAR bonds through the real wrap.testnet: vault registers with wrap.testnet](https://testnet.nearblocks.io/txns/GAwu6WUVWwdqGZKvnxqZ9y3rodSYL2F1gcrSDAv8rgUu)
-- [12. NEAR bonds through the real wrap.testnet: oracle-mvsof9ya → register_repo](https://testnet.nearblocks.io/txns/FzbDqgpWxUfNctC7mQCZ8V7ep2rQs5scu9JjnbS43Lar)
-- [12. NEAR bonds through the real wrap.testnet: oracle switches R4 to NEAR](https://testnet.nearblocks.io/txns/XrQaUBMwNM1Y2Pq5xame3xRiXwiwaQkduyxXr4H4KUr)
-- [12. NEAR bonds through the real wrap.testnet: alice-mvsof9ya pays bond on 1000004#1](https://testnet.nearblocks.io/txns/564mzJxwugCRjxS1Bg8t9QTLGxfZ7gvyUb4V8KN8Avrt)
-- [12. NEAR bonds through the real wrap.testnet: dana wraps 0.03950617283950617 NEAR and pays R4#1 in one transaction](https://testnet.nearblocks.io/txns/ApFkn14NctVKY5Npaqu7Nkj2dGNmZkveLcHSY2SvKoSm)
-- [12. NEAR bonds through the real wrap.testnet: oracle settles 1000004#1: refund](https://testnet.nearblocks.io/txns/2CcVYSgsXfcSTpBFj63ytbdSzsFP8ZG6xyqBYNysFgC1)
-- [12. NEAR bonds through the real wrap.testnet: dana pays R4#2 from wNEAR](https://testnet.nearblocks.io/txns/Bk8QpJpQqNcfAbK7LjjsYodRo6yNtBjbHAf8WQUStCUM)
-- [12. NEAR bonds through the real wrap.testnet: oracle settles 1000004#2: forfeit](https://testnet.nearblocks.io/txns/695h6Y1a2d4Gq1SM2fMdJTeQPNVULZ9jx7ijuuZw5sKe)
-- [12. NEAR bonds through the real wrap.testnet: oracle links R4 → amaka](https://testnet.nearblocks.io/txns/59KVCo4tro3vFKuzjcStAd8rYrt7RuUJaiMyvxQ5uc4w)
-- [12. NEAR bonds through the real wrap.testnet: amaka registers with wrap.testnet](https://testnet.nearblocks.io/txns/FiZHZw8waCpH3kovxUoKwGc9vvGWWE5f4vs7pgu6uRNC)
-- [12. NEAR bonds through the real wrap.testnet: amaka withdraws the NEAR vault](https://testnet.nearblocks.io/txns/85qzXQVCYvHiX1W7ziECM7phd4wwd9oj5q3Gfkb2k8dY)
-- [12. NEAR bonds through the real wrap.testnet: amaka unwraps to plain NEAR](https://testnet.nearblocks.io/txns/8MKxXRDxgaPK981TdVUuZokpH14fnxho5nfYXus8UCyU)
-- [12. NEAR bonds through the real wrap.testnet: dana unwraps her refund](https://testnet.nearblocks.io/txns/68miuFwm2ohFqxEzGGnrjKGJXPwKhF2bRYTkhVK9whny)
+- [1. Deploy a throwaway stack: usdc-mvx6a6ab → new](https://testnet.nearblocks.io/txns/ExQntepx1ajhLXvVC1BRTkWxnGEV5Zbuzimw6PnYX7Zp)
+- [1. Deploy a throwaway stack: vault-mvx6a6ab → new](https://testnet.nearblocks.io/txns/Ce1FX11iDB3GE4uWjo3Nsbr3CfnTTDW9axzj1RU8utN3)
+- [1. Deploy a throwaway stack: mint 0 → vault-mvx6a6ab](https://testnet.nearblocks.io/txns/Dq7gvdjqtrzPYVoEym1vnGMpYdtfTC1GfEVRov1Db2c5)
+- [1. Deploy a throwaway stack: mint 100 → alice-mvx6a6ab](https://testnet.nearblocks.io/txns/BB7PoVo1PZRQiQhc4q3xgfZMFRCHdrmDRy8wumgndQSr)
+- [1. Deploy a throwaway stack: mint 20 → bob-mvx6a6ab](https://testnet.nearblocks.io/txns/2LdN1fy8izij34yWziyFWjmR88tTKoGASeD8W6WxjNK9)
+- [1. Deploy a throwaway stack: mint 20 → amaka-mvx6a6ab](https://testnet.nearblocks.io/txns/CJzZ1Kq2cchaVZ2bGxt4AfWJdRCCTyhvy253K1PQicTx)
+- [1. Deploy a throwaway stack: mint 20 → mike-mvx6a6ab](https://testnet.nearblocks.io/txns/8x29P3a5rzzCMBtAwq7of5QJJcMV1LrWG59FT1wHb1dD)
+- [1. Deploy a throwaway stack: oracle-mvx6a6ab → register_repo](https://testnet.nearblocks.io/txns/ERkF3amjTmfW5pn1B3WFkrbbdVdYjwUkki5b6Nw2bVDR)
+- [1. Deploy a throwaway stack: oracle-mvx6a6ab → register_repo](https://testnet.nearblocks.io/txns/9mbvm7gXbEPyduCztyKthPqcE4Y8KknCQeWCkYexuN38)
+- [1. Deploy a throwaway stack: oracle-mvx6a6ab → register_repo](https://testnet.nearblocks.io/txns/5jyqPnNYyygF95Xkp5pQPjr754meoJUMHx2oZR8y4S5w)
+- [2. Attention pricing on-chain matches the web app's curve: alice-mvx6a6ab pays bond on 1000001#1](https://testnet.nearblocks.io/txns/C1yh9ez4S2nXLPYdM5HUuHtpMEUNyJt2hAmtGCHNvLKP)
+- [2. Attention pricing on-chain matches the web app's curve: alice-mvx6a6ab pays bond on 1000001#2](https://testnet.nearblocks.io/txns/ArhPtyWAs7RAD6gRRRY6754HnF9KWLQUPMKnk8AFJuwW)
+- [2. Attention pricing on-chain matches the web app's curve: alice-mvx6a6ab pays bond on 1000001#3](https://testnet.nearblocks.io/txns/7dbukARkWU8nxQ2TP6WScYiANCkWw2DNvWsStqu8a4XY)
+- [2. Attention pricing on-chain matches the web app's curve: alice-mvx6a6ab pays bond on 1000001#4](https://testnet.nearblocks.io/txns/6cPoW8Wu2CvHfFNTPwzLEGXaAVEjcymFztjc6gXkAW5)
+- [3. Verdicts move money: refund, forfeit 90/10, void: oracle settles 1000001#1: refund](https://testnet.nearblocks.io/txns/4MAh2VYUmXJL8Deywvkr3cnW63f3ZkDTXN7CfUtNZLSi)
+- [3. Verdicts move money: refund, forfeit 90/10, void: oracle settles 1000001#2: forfeit](https://testnet.nearblocks.io/txns/4jHj2ewodbQUwPPFUd3HTzLY8F4vukau2MM6xftWBgqX)
+- [3. Verdicts move money: refund, forfeit 90/10, void: oracle settles 1000001#4: void](https://testnet.nearblocks.io/txns/9RqUChKMoDipsXn1CSNSi5rKXyo1s1civ9cCB58iNN2Y)
+- [3. Verdicts move money: refund, forfeit 90/10, void: bob-mvx6a6ab pays bond on 1000001#4](https://testnet.nearblocks.io/txns/Due5AjLGXpMqZjAmxxJd92uNmJmnWmVvnvVX4PkQ5XLp)
+- [4. Priority lane: tip earned only when reviewed in time: alice-mvx6a6ab pays bond on 1000001#5](https://testnet.nearblocks.io/txns/4o2HCKHzdHREfvLC2AjGBE7cf7RBuU2fEkvvfuXPrU6r)
+- [4. Priority lane: tip earned only when reviewed in time: maintainer reviewed #5 (in window)](https://testnet.nearblocks.io/txns/CPoNsXgop99Vis8hVBeqH4MDnTpH3Dt37xxbQF1jNKVN)
+- [4. Priority lane: tip earned only when reviewed in time: oracle settles 1000001#5: refund](https://testnet.nearblocks.io/txns/2vPCWLBZXkYXrDSyQ9omxwhfVwEcFUCNEZwie2o1Nk2L)
+- [4. Priority lane: tip earned only when reviewed in time: alice-mvx6a6ab pays bond on 1000001#6](https://testnet.nearblocks.io/txns/EddDcVqtWBUTqdDU2VeLQ6SLWLBVcHKEDpiTPWgYUDx2)
+- [4. Priority lane: tip earned only when reviewed in time: oracle settles 1000001#6: refund](https://testnet.nearblocks.io/txns/9hVFXgz3NbzeHoSgxVSUL96APmr1vBuCZ4LVcPWffUHn)
+- [5. Slop funds the fix: alice-mvx6a6ab pays bond on 1000001#7](https://testnet.nearblocks.io/txns/3EjxjLKv1HM3Cvyer3LcnjJUXTKH3vQnP6kVpHWGfzWh)
+- [5. Slop funds the fix: oracle settles 1000001#7: forfeit](https://testnet.nearblocks.io/txns/5QR9k6JsMq1qZ1nZEprn9JnTJ5c9gRRXKuJiMhsvQtmn)
+- [5. Slop funds the fix: real fix merged → pay bounty to bob](https://testnet.nearblocks.io/txns/4kDScwybDX3c4NekWM4thTXaaMtFU8gGXqJT8KZ7hZ6i)
+- [6. Only the linked maintainer can withdraw: oracle links R1 → amaka](https://testnet.nearblocks.io/txns/9Q2sD4i58ut3uA6VDAdfBnPtXdN7j7WpDgMyKVUQvCSU)
+- [6. Only the linked maintainer can withdraw: amaka withdraws the vault](https://testnet.nearblocks.io/txns/8aeYdJdsw7mi3HTS1yrLqktEm6GD2nuMmgr4Sde2fhYW)
+- [7. Bad input is refunded with a reason: alice-mvx6a6ab pays bond on 1000001#8](https://testnet.nearblocks.io/txns/7FCsWQNPCFe997FYTRNKerUfhjvWsdGRHL6MwsjpmDPw)
+- [7. Bad input is refunded with a reason: alice-mvx6a6ab pays bond on 1000001#1](https://testnet.nearblocks.io/txns/GXH8iUk7we6fDMpeVkJWiXP5QJU8WJZJ8JST8jiUBn8d)
+- [7b. Gasless: a contributor with no spare NEAR pays through the relayer (NEP-366): mint 5 → gasless](https://testnet.nearblocks.io/txns/CEWzRcELmrdfr1dLxvXetAarMP5dg1XfVfVpXLpg3jUp)
+- [7b. Gasless: a contributor with no spare NEAR pays through the relayer (NEP-366): relayer submits the signed delegate](https://testnet.nearblocks.io/txns/HL4mfEKPXAqbCdWUHhYyVScpKC6ViBoP7Bt9NDPojCB1)
+- [7b. Gasless: a contributor with no spare NEAR pays through the relayer (NEP-366): oracle settles 1000001#20: refund](https://testnet.nearblocks.io/txns/2dr4PQ5edW6UkS9tvaQjBr4dnDtvg4djLjxvZSnnhQRW)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: oracle-mvx6a6ab → link_repo](https://testnet.nearblocks.io/txns/96Ysg6QoHdxGhHvaPG8CejaVqo1yesv9inLGQaCCyd2E)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: alice-mvx6a6ab pays bond on 1000002#1](https://testnet.nearblocks.io/txns/6DjH376vGrBL1gRGfU7JhRayu6W1ABq8JhX1SD4xYuaC)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: oracle settles 1000002#1: forfeit](https://testnet.nearblocks.io/txns/Dc5oH6J76hWW2xLHezktRb3kQdZrckC4gyFyd13jHSG8)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: alice stakes to challenge](https://testnet.nearblocks.io/txns/3CXBbfAgw7vnqniPvjr8AmwvQzk2xm6jCJNnXxaNoebz)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: stronger model overturns → refund](https://testnet.nearblocks.io/txns/96f5wmaEsDqvXrPVax2pzfFegzP91gNuWKhJsM7Jg3zK)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: alice-mvx6a6ab pays bond on 1000002#2](https://testnet.nearblocks.io/txns/EBobkrRAGaciACPtefYzMe7BnnfbKz6sQZoqVZY2fnEs)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: oracle settles 1000002#2: refund](https://testnet.nearblocks.io/txns/7Xt2CCydYx6KmywbAVbeKSyArfvoxbqsTpdZJLj4pWeR)
+- [8. Optimistic verdicts: challenge and finalize, with a real 15-second window: bob (anyone) finalizes after the window](https://testnet.nearblocks.io/txns/75FKfx4NBYCe3Yka9ju1j6wTZABZWWYGhgaddUpe11zn)
+- [9. Agents: a capped budget and a function-call key: mike funds a 10 USDC budget, cap 2.5/day](https://testnet.nearblocks.io/txns/6PiMoFbLmA4i7pFgfKoTYxVJYbjZXgruDYpWesiAHgi5)
+- [9. Agents: a capped budget and a function-call key: agent pays via the MCP server](https://testnet.nearblocks.io/txns/5Paok1JcMCU9e5vYTgSMs7VmxTz3FyD32vJn3ACLfkav)
+- [9. Agents: a capped budget and a function-call key: agent (function-call key) pays bond on R3#2](https://testnet.nearblocks.io/txns/3XRPEN4SVKeMRKjRaf3gpZw71Cw1pWdD8LvK7UjKRY87)
+- [9. Agents: a capped budget and a function-call key: oracle settles 1000003#1: refund](https://testnet.nearblocks.io/txns/HkffvdMHZJrv6rTKFk3TfJHktT5PPXL3gF6bSvnyy51c)
+- [9. Agents: a capped budget and a function-call key: oracle settles 1000003#2: forfeit](https://testnet.nearblocks.io/txns/31jy2YGezbM3YBLRn3R86mwwiYTrawmmNxiRYXVde7c3)
+- [9. Agents: a capped budget and a function-call key: mike withdraws the rest](https://testnet.nearblocks.io/txns/57pstBoQ8gagy4caxqghWpZxVh8v7Ei5EZURRAmZLMvU)
+- [10. Judge → chain: a signed verdict's hash lands on-chain: alice-mvx6a6ab pays bond on 1000001#10](https://testnet.nearblocks.io/txns/39qNomqznNwGYQj2BK6bpLzYpV6gWKVb7ib8DbG9xRsv)
+- [10. Judge → chain: a signed verdict's hash lands on-chain: oracle settles 1000001#10: forfeit](https://testnet.nearblocks.io/txns/AFt7xdfnCbrVg2Ai9UWKritXhJGeTmyFpSGKLcA156Cu)
+- [12. NEAR bonds through the real wrap.testnet: vault registers with wrap.testnet](https://testnet.nearblocks.io/txns/ETMGd3BEijVpysbNRQT8Yq8JfAhP1r4vKCLJimmqwBnr)
+- [12. NEAR bonds through the real wrap.testnet: oracle-mvx6a6ab → register_repo](https://testnet.nearblocks.io/txns/GgDaXqkPp93eKzgHvRXCmCdpFLEfKoggiCNkqtxLrzTu)
+- [12. NEAR bonds through the real wrap.testnet: oracle switches R4 to NEAR](https://testnet.nearblocks.io/txns/Bp1idU8b3RZSiDAfsPQoBFC91sqqk1i1qkeyo7zxzBiV)
+- [12. NEAR bonds through the real wrap.testnet: alice-mvx6a6ab pays bond on 1000004#1](https://testnet.nearblocks.io/txns/3Es4hPSnExn2evfrW9AZpufzNtoSaDQYNQcJmqKtP3fF)
+- [12. NEAR bonds through the real wrap.testnet: dana wraps 0.03950617283950617 NEAR and pays R4#1 in one transaction](https://testnet.nearblocks.io/txns/5D6RBrVaMCBXgSr7PpcjTX1FMbc3VGXFM5hJtWnHuLKq)
+- [12. NEAR bonds through the real wrap.testnet: oracle settles 1000004#1: refund](https://testnet.nearblocks.io/txns/6TrETaTh7eGQzEW4QgJrJwZMikuwikDAfBudMuPRmqTq)
+- [12. NEAR bonds through the real wrap.testnet: dana pays R4#2 from wNEAR](https://testnet.nearblocks.io/txns/CySoPNbviBqo5re37uTu7cbmYQs9VhMZPNSA3c4jGY8R)
+- [12. NEAR bonds through the real wrap.testnet: oracle settles 1000004#2: forfeit](https://testnet.nearblocks.io/txns/7g38TqKR6V14UKXPf7FhMpyHAJ3oKcHHfQaVBP9JFCLo)
+- [12. NEAR bonds through the real wrap.testnet: oracle links R4 → amaka](https://testnet.nearblocks.io/txns/GdeqM9iFMvNaPha4V32yAYQ5zC9VwS88CqK85HcAhFTD)
+- [12. NEAR bonds through the real wrap.testnet: amaka registers with wrap.testnet](https://testnet.nearblocks.io/txns/6qpxTMYKhZzzukkMrN46XJKRXEEN6Fx9uzfhffdWARRD)
+- [12. NEAR bonds through the real wrap.testnet: amaka withdraws the NEAR vault](https://testnet.nearblocks.io/txns/EUTBr7tRp8BeMFN815K52We9hyyiyaZVH3rjHofgPK4R)
+- [12. NEAR bonds through the real wrap.testnet: amaka unwraps to plain NEAR](https://testnet.nearblocks.io/txns/BqonnkWCQ2Pa98V9QXvZrPQqgqWGa4QuAK1KGTYsMw8B)
+- [12. NEAR bonds through the real wrap.testnet: dana unwraps her refund](https://testnet.nearblocks.io/txns/8i9pgEqekPHsa1fgUiN3nPMNzWLefAZeAcoinNR95xHL)

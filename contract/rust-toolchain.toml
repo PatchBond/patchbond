@@ -1,0 +1,5 @@
+# The toolchain every contract build and test here was checked with (CI uses the same).
+[toolchain]
+channel = "1.97.1"
+targets = ["wasm32-unknown-unknown"]
+components = ["clippy"]
