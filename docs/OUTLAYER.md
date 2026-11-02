@@ -49,6 +49,18 @@ rules (a hard fact) to agree. Otherwise, refund. The re-judge request is byte-id
 server's (`outlayer/judge/tests/rejudge.rs`). Kimi K3 is the intended re-judge model; while NEAR AI
 reports it unavailable, testnet uses GLM-5.3 (one owner call to switch back).
 
+**Live on testnet, 2 Nov 2026** (our own test, not an outside user): [PatchBond/demo-widget#2](https://github.com/PatchBond/demo-widget/pull/2)
+is a deliberately poor PR — it calls `acquireLockSafe` from a file that doesn't exist (CI fails), adds
+no test and puts hype in the README. The contributor paid a $1 bond
+([tx](https://testnet.nearblocks.io/txns/Fva33moq5uuQaUQYuAkGT1wQcov6U3hNb1XxedWpEq3W)), the maintainer
+proposed a forfeit ([tx](https://testnet.nearblocks.io/txns/C6LTnkD2WmuUx5wUKgVDucvsKcAk7XikLchzMQWKHNvS)),
+the contributor disputed it for free ([tx](https://testnet.nearblocks.io/txns/2cBKmi95kJ6yK2uMo9q2KiGNhyRBmAerdMchrKRiS7C7)),
+both sides posted a statement on-chain, and `rejudge_in_tee`
+([tx](https://testnet.nearblocks.io/txns/HV68yEs15FLQntpUJcfrHV9g4qVBbUMi5Dv8wTH9WaHP)) ran build
+`eb3baa69…` in OutLayer (9.4 s, 0.0021 NEAR). The contract checked GLM-5.3's gateway signature
+(`tee_verified`, signer `0xb98a…e779@z-ai/glm-5.3`) and settled the forfeit: $0.90 to the repo's vault,
+$0.10 to the treasury. No PatchBond server call decided it.
+
 ## Same bytes as the server — proven
 
 `outlayer/judge` is a Rust port of `server/src/judge/` (facts, malicious-code scan, prompt, rules,
