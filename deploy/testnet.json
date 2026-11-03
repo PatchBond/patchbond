@@ -11,11 +11,11 @@
   "wnear": "wrap.testnet",
   "deployed_at": "2026-10-28",
   "deploy_tx": "Azc5Frjk6bukbTKE2jueAViNJVhoqs81DDAaTHjkSiPw",
-  "upgraded_at": "2026-11-01 (signed forfeits bound to repo + PR, one use each \u2014 tx FyZVV4zqE6z944szpAeBAXRffUJa3g3VWMpySh2vuA8q; per-payer queue cap \u2014 tx 6L1bZSVQZ8c3m6kNvAztAnLhLHvj5mhjCcxjgdFHrjrh); 2026-10-30 agent spending policy",
+  "upgraded_at": "2026-11-03 (bounties paid on the OutLayer enclave's check, claim_bounty_in_tee \u2014 tx GQjnVKTpgMtDMfEZj1f8JUcAuGxfHWgQpffoLmW2cQnM); 2026-11-01 (signed forfeits bound to repo + PR, one use each \u2014 tx FyZVV4zqE6z944szpAeBAXRffUJa3g3VWMpySh2vuA8q; per-payer queue cap \u2014 tx 6L1bZSVQZ8c3m6kNvAztAnLhLHvj5mhjCcxjgdFHrjrh); 2026-10-30 agent spending policy",
   "outlayer": {
-    "version_key": "eb3baa6949b1d03aa14c2f5a6d8eafda937a61a0a9c317c48e1401038f807383",
+    "version_key": "cfcd8707a89b546f709e9182bfcf99c2b02dd351c0c4f99e27547b97dd398af8",
     "exclusive": true,
-    "set_tx": "Bexq6MA7z8WTn9SpGd2q8jQFofuegpQGy3fcXVkcukbX",
+    "set_tx": "9h9PLisnnqtYBKC3cTqEq7D7bv2ShZxeQYLS2g38zhnQ",
     "rejudge_model": "z-ai/glm-5.3"
   }
 }

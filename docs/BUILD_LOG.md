@@ -30,6 +30,7 @@ There are about 50 commits on 2026-10-28. The design came first: the very first 
 | 31 Oct | Sealed reports live on testnet; enclave key published by the enclave; per-payer queue cap (one payer can't price out newcomers); fixes and wording from the review |
 | 1 Nov | Signed forfeits bound to their repo and PR (replay closed); full testnet e2e re-run on today's contract (62 transactions, all passed); public /stats page; "Who pays" economics; disputes re-judged in the enclave (`rejudge_in_tee`, on-chain statements) and `exclusive` turned on for testnet |
 | 2 Nov | First live enclave re-judge of a dispute on testnet (our demo repo, [demo-widget#2](https://github.com/PatchBond/demo-widget/pull/2)): bond → maintainer forfeit → dispute → on-chain statements → `rejudge_in_tee` → forfeit settled on NEAR AI's signature |
+| 3 Nov | Bounties paid on the enclave's check (`claim_bounty_in_tee`), live on testnet: slop [demo-widget#3](https://github.com/PatchBond/demo-widget/pull/3) forfeited in the enclave → $1.80 bounty on #1 → real fix [#4](https://github.com/PatchBond/demo-widget/pull/4) merged → the enclave confirmed it and the contract paid the fixer. `build.sh` fixed for paths with spaces |
 
 ## Findings from review, and what was done
 

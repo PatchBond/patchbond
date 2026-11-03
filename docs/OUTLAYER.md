@@ -73,6 +73,18 @@ model signature, because nothing is judged. A repo's admins can edit a PR's desc
 payout line is only as trustworthy as they are (they could also have kept the forfeit by not
 linking an issue). With `exclusive` on, `pay_bounty` (the oracle's route) is refused.
 
+**Live on testnet, 3 Nov 2026** (our own test PRs on [PatchBond/demo-widget](https://github.com/PatchBond/demo-widget), not outside users):
+[#3](https://github.com/PatchBond/demo-widget/pull/3) claimed to fix #1 but calls a `MutexPool` that
+doesn't exist (CI fails). Its bond was **$2, not $1** — the payer already had a forfeit, so the
+contract doubled their price. `judge_in_tee` ([tx](https://testnet.nearblocks.io/txns/DF6RznwH6BAoaYDc7g5ZpmGKiKp1LM7DqQTKYNmvv2e3))
+ran build `cfcd8707…`; GLM-5.3-flash signed a forfeit, the contract checked the signature against
+NEAR AI's enclave key and settled it ([public verdict](https://patchbond-production.up.railway.app/v/b77581d382460ebf)):
+$1.80 became a bounty on #1. The real fix, [#4](https://github.com/PatchBond/demo-widget/pull/4)
+(regression tests, one of which fails on the old code), was merged with `PatchBond: tester1604.testnet`
+in its description. `claim_bounty_in_tee` ([tx](https://testnet.nearblocks.io/txns/Hd48Ju7spyayYof8mqo1H7424rrHn5ax8LXPFg99WbkB))
+had the enclave confirm the merge on GitHub, and the contract paid **$1.80 to `tester1604.testnet`**.
+Neither step was decided by a PatchBond server call.
+
 ## Same bytes as the server — proven
 
 `outlayer/judge` is a Rust port of `server/src/judge/` (facts, malicious-code scan, prompt, rules,
