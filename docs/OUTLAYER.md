@@ -1,7 +1,7 @@
 # Judging in OutLayer: the server leaves the loop
 
 Without OutLayer, PatchBond's server gathers the PR, computes the facts and builds the prompt; the
-contract then refuses any forfeit that NEAR AI's enclave didn't sign. That still leaves one thing to
+contract then refuses any AI forfeit that NEAR AI's enclave didn't sign (a maintainer's forfeit is a disputable proposal — see [TRUST.md](TRUST.md)). That still leaves one thing to
 trust: **the server chooses what the model sees.** A dishonest server could feed it a fake "CI
 failed" and get a genuinely signed forfeit.
 
@@ -36,7 +36,7 @@ running" run clears the job so anyone can ask again; NEAR that OutLayer refused 
 
 **`exclusive: true`** turns the oracle's forfeit power off entirely: forfeits then come only from
 the enclave. The oracle can still refund (the safe direction), and maintainers keep their disputable
-proposal. **It is on for the live testnet contract since 1 Nov 2026** (build `eb3baa69…`).
+proposal. **It is on for the live testnet contract since 1 Nov 2026**; the pinned build is `cfcd8707…` since 3 Nov (`eb3baa69…` before).
 
 **Disputes are re-judged in the enclave too.** While a verdict is challenged, the contributor and the
 maintainer each post up to two statements on-chain (`add_statement`, signed by their own wallets).
@@ -112,6 +112,9 @@ bash outlayer/judge/build.sh     # → dist/patchbond-judge.wasm and its sha256
 
 Local paths are stripped, so the same source, `Cargo.lock` and Rust toolchain (1.97) give the same
 hash. The contract pins that hash (`version_key`); OutLayer's worker refuses bytes that don't match.
+The build the live contract trusts is `cfcd8707…`: `git checkout e31f6f4 && bash outlayer/judge/build.sh`
+prints `cfcd8707a89b546f709e9182bfcf99c2b02dd351c0c4f99e27547b97dd398af8` (Rust 1.97.1). The earlier
+`eb3baa69…` is the same command at `a448538`. Compare with `get_outlayer` on `patchbond-dev.testnet`.
 
 ## Turning it on (testnet)
 
