@@ -21,7 +21,7 @@ Strangers attach a small **refundable bond** to their pull request (USDC or NEAR
 **Three claims you can check yourself:**
 
 1. **Our server can't take anyone's money.** The contract forfeits a bond only with NEAR AI's enclave signature on a forfeit *of that exact PR*. It refuses a forfeit with no signature, a forged one, and a genuine one replayed against another PR. → `bun run demo` ([CI runs it on every push](https://github.com/PatchBond/patchbond/actions/workflows/ci.yml)), [`settle.rs`](contract/vault/src/settle.rs), [`tee.rs`](contract/vault/src/tee.rs)
-2. **The judge can run without our server.** On the OutLayer route the contract has the PR judged inside an Intel TDX enclave that reads GitHub itself, and checks NEAR AI's signature in the callback. → [docs/OUTLAYER.md](docs/OUTLAYER.md), with testnet transactions
+2. **The judge can run without our server.** On the OutLayer route the contract has the PR judged inside an Intel TDX enclave that reads GitHub itself, and checks NEAR AI's signature in the callback. Disputes are re-judged there too, and bounties are paid on its check of the merged fix; with `exclusive` on (live on testnet) our server can't forfeit or pay a bounty at all. → [docs/OUTLAYER.md](docs/OUTLAYER.md), with testnet transactions
 3. **An agent can be given money without being given the keys.** Its function-call key can only pay bonds, within a cap, a per-bond limit and a repo list its owner sets in the contract. → [`budget.rs`](contract/vault/src/budget.rs), the app's **Agents** page
 
 **Honest limits:** testnet only so far; we hold the upgrade key; on the server route the server still chooses what the model sees (every request is published); the AI has forfeited 0 of 15 labelled slop PRs, so today the bond and the 24 h deadline do most of the filtering. Details in [What's real](#whats-real) and [SECURITY.md](SECURITY.md).
@@ -33,13 +33,13 @@ Strangers attach a small **refundable bond** to their pull request (USDC or NEAR
 
 | | |
 |---|---|
-| Bonds paid on-chain | **2** |
-| Refunded to real contributors | **$0.00** |
-| Forfeited to maintainers | **$2.00** |
+| Bonds paid on-chain | **10** |
+| Refunded to contributors | **$2.00** |
+| Forfeited to maintainers | **$5.00** |
 | Unpaid PRs closed after their 24 h notice | **0** |
-| TEE-signed verdicts on the hosted service | **2** (PRs handled there: 0) · the contract trusts 2 NEAR AI keys |
+| TEE-signed verdicts on the hosted service | **7** (PRs handled there: 4) · the contract trusts 3 NEAR AI keys |
 
-<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-10-30 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service</sub>
+<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-11-03 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service. So far these are the team's own test PRs and test accounts — no outside contributor has paid a bond yet</sub>
 <!-- live:end -->
 
 ![PatchBond home](docs/media/home.png)
@@ -154,14 +154,16 @@ cp .env.example .env          # testnet by default; set NEARAI_API_KEY + JUDGE_M
 
 ## What's real
 
-Honest status on 2026-11-01. Testnet is the reproduce-it-yourself path; mainnet follows with the team's go-ahead.
+Honest status on 2026-11-03. Testnet is the reproduce-it-yourself path; mainnet follows with the team's go-ahead.
 
 | Part | Status |
 |---|---|
 | Vault contract: USDC or NEAR bonds per repo, curve, refund/forfeit, void, tips, bounties, challenges, maintainer safeguards, agent budgets, reputation, NEP-297 events, link-once, pause, upgrades | ✅ **Live on testnet** ([`deploy/testnet.json`](deploy/testnet.json)), 63 tests, full e2e |
-| On-chain check of NEAR AI's TEE signature before any forfeit | ✅ **Live on testnet** with NEAR AI's GLM enclave key and the gateway key bound to Kimi K3 (`get_tee_signers`) |
-| **Judging in OutLayer** (`judge_in_tee`): the judge as a wasm program in Intel TDX — fetches the PR from GitHub itself, asks NEAR AI, the contract verifies the signature in the callback; byte-identical prompts to the server's (parity test, 30 real PRs) | ✅ **Live on testnet** — first run: [tx `GTZM613J…`](https://testnet.nearblocks.io/txns/GTZM613JkwxhDoEafaBsEmX5tFr4SGwEQ3SaVtAh6Hr4) (24.5 s in the enclave, 0.0036 NEAR, NEAR AI's GLM key recovered on-chain); the hosted bot is set to judge paid PRs this way |
-| AI judge on NEAR AI Cloud (`z-ai/glm-5.3-flash`, re-judges by `moonshotai/kimi-k3`) | ✅ **Live**, TEE-signed, $0.00035 a verdict; 0/15 good PRs forfeited |
+| On-chain check of NEAR AI's TEE signature before any forfeit | ✅ **Live on testnet** with NEAR AI's GLM enclave key and gateway keys bound to one model each — Kimi K3, and GLM-5.3 for disputes (`get_tee_signers`) |
+| **Judging in OutLayer** (`judge_in_tee`): the judge as a wasm program in Intel TDX — fetches the PR from GitHub itself, asks NEAR AI, the contract verifies the signature in the callback; byte-identical prompts to the server's (parity test, 30 real PRs) | ✅ **Live on testnet** — first run: [tx `GTZM613J…`](https://testnet.nearblocks.io/txns/GTZM613JkwxhDoEafaBsEmX5tFr4SGwEQ3SaVtAh6Hr4) (24.5 s in the enclave, 0.0036 NEAR, NEAR AI's GLM key recovered on-chain); the hosted bot is set to judge paid PRs this way; **`exclusive` is on** for the live contract, so the oracle can no longer forfeit |
+| **Disputes re-judged in OutLayer** (`rejudge_in_tee`): both sides post statements on-chain, the enclave sends them and the PR to the stronger model, the contract settles on NEAR AI's signature | ✅ **Live on testnet** — a disputed maintainer forfeit re-judged and upheld ([demo-widget#2](https://github.com/PatchBond/demo-widget/pull/2), our test PR; [tx](https://testnet.nearblocks.io/txns/HV68yEs15FLQntpUJcfrHV9g4qVBbUMi5Dv8wTH9WaHP)) |
+| **Bounties paid on the enclave's check** (`claim_bounty_in_tee`): slop that claimed to fix #N funds a bounty; the enclave confirms on GitHub that a real fix merged and who it pays | ✅ **Live on testnet** — slop [demo-widget#3](https://github.com/PatchBond/demo-widget/pull/3) forfeited in the enclave, the real fix [#4](https://github.com/PatchBond/demo-widget/pull/4) merged, $1.80 paid to its author's account ([tx](https://testnet.nearblocks.io/txns/Hd48Ju7spyayYof8mqo1H7424rrHn5ax8LXPFg99WbkB)); our test PRs, not outside users |
+| AI judge on NEAR AI Cloud (`z-ai/glm-5.3-flash`; disputes re-judged by `moonshotai/kimi-k3`, and by `z-ai/glm-5.3` on testnet while NEAR AI reports Kimi K3 unavailable) | ✅ **Live**, TEE-signed, $0.00035 a verdict; 0/15 good PRs forfeited |
 | GitHub App bot: deposit comment + 24 h deadline, labels, check runs, deposit watch, judge after CI, settle, @mention on payment, review → tip, merge → bounty | ✅ **Live** as the [`patchbond` App](https://github.com/apps/patchbond) on Sanctifier — first live PR [#1972](https://github.com/HyperSafeD/Sanctifier/pull/1972) went comment → bond → verdict → settlement (a test: opened and paid from the maintainer's own second account, `coldroom5333.testnet`; no outside contributor has paid a bond yet) |
 | Web app: pay, verdicts with in-browser verification, maintainer dashboard (sign-in, NEP-413 linking, withdraw, policy, activity), agents, ⌘K | ✅ **Live** at the demo URL |
 | MCP server for agents (7 tools) | ✅ Paid a real bond on testnet in the e2e |

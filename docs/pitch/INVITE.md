@@ -45,5 +45,7 @@
 > PatchBond is live on testnet: open-source repos can ask strangers for a small refundable bond on a
 > pull request. Good work gets it back automatically, with a public, signed verdict that builds your
 > reputation — proven contributors pay $0. Try it: get test USDC from the faucet at
-> https://patchbond-production.up.railway.app and pay a bond on a PatchBond-enabled repo. AI agents
-> can pay from a capped wallet through our MCP server (setup on the app's **Agents** page).
+> https://patchbond-production.up.railway.app and pay a bond on a PatchBond-enabled repo.
+> Fixed an issue that someone's slop claimed to fix? Add `PatchBond: <your account>` to your PR and
+> you're paid that slop's bond when it merges. AI agents can pay from a capped wallet through our
+> MCP server (setup on the app's **Agents** page).

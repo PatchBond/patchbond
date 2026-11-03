@@ -79,6 +79,12 @@ unassigned_pr: flag             # flag = a maintainer decides; evidence = counts
 
 Not paid by the deadline → the PR closes itself; paying later reopens it.
 
+**Slop funds the fix.** If a forfeited PR claimed to fix issue #N ("Fixes #N"), its forfeit becomes a
+bounty on #N instead of going to your vault. When a real fix for #N is merged, the bounty goes to
+its author: the account that paid the fix's bond, or — if it had none — the account named on a line
+of its own in the PR description, `PatchBond: alice.testnet`. On the live testnet contract this is
+checked in the OutLayer enclave against GitHub, not decided by our server.
+
 **Who never pays:** your org's members, collaborators, people on your `exempt:` list, and
 contributors with a proven record on PatchBond.
 
@@ -86,7 +92,7 @@ contributors with a proven record on PatchBond.
 
 - **Refund any bond at once** from its verdict page (cases waiting for you are listed on the dashboard) — no safeguard needed to give money back.
 - **Your forfeit is a proposal**: the contributor can dispute it for free; a stronger model
-  re-judges. Overturned maintainer forfeits pay the contributor a penalty, and your record is public.
+  re-judges it inside the OutLayer enclave, with a statement from each of you posted on-chain. Overturned maintainer forfeits pay the contributor a penalty, and your record is public.
 - **Withdraw** your vault to your wallet whenever you like.
 - **Turn bonds off** (Bond policy → off) or **uninstall** the App — nothing is charged after that.
 
