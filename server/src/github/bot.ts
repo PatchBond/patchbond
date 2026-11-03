@@ -23,7 +23,7 @@ export type ChainPort = Pick<
   Chain,
   "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
 > &
-  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee">>;
+  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee" | "claimBountyInTee">>;
 
 /** What the contract acts on at once: refunds, and forfeits the model itself signed. */
 function actsOnChain(r: VerdictRecord): boolean {
@@ -496,11 +496,19 @@ export class Bot {
     if (!m) return;
     const issue = Number(m[1]);
     const bounty = await this.chain.getBounty(repoId, issue);
-    const recipient = pr.user && this.store.nearAccountOf(pr.user.login);
-    if (bounty && bounty !== "0" && recipient) {
-      await this.chain.payBounty(repoId, issue, recipient);
-      this.log(`paid bounty on #${issue} to ${recipient}`);
+    if (!bounty || bounty === "0") return;
+    // A bonded fix pays whoever paid its bond; otherwise the account the author linked.
+    const deposit = await this.chain.getDeposit(repoId, pr.number);
+    const recipient = deposit?.kind === "pr" ? deposit.payer : pr.user && this.store.nearAccountOf(pr.user.login);
+    if (!recipient) return;
+    if (this.tee && this.chain.claimBountyInTee) {
+      // The enclave checks the merge on GitHub and the contract pays on its answer — not on our word.
+      await this.chain.claimBountyInTee(repoId, issue, pr.number, recipient);
+      this.log(`asked the enclave to confirm #${pr.number} fixes #${issue} (bounty to ${recipient})`);
+      return;
     }
+    await this.chain.payBounty(repoId, issue, recipient);
+    this.log(`paid bounty on #${issue} to ${recipient}`);
   }
 
   private async check(

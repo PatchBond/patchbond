@@ -5,7 +5,9 @@
 #   bash outlayer/judge/build.sh        → prints the wasm path and its sha256
 set -euo pipefail
 cd "$(dirname "$0")"
-export RUSTFLAGS="--remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$PWD=/judge --remap-path-prefix=$(rustc --print sysroot)=/rust"
+# CARGO_ENCODED_RUSTFLAGS (0x1f-separated), so a checkout path with spaces still works.
+SEP=$'\x1f'
+export CARGO_ENCODED_RUSTFLAGS="--remap-path-prefix=$HOME/.cargo=/cargo${SEP}--remap-path-prefix=$PWD=/judge${SEP}--remap-path-prefix=$(rustc --print sysroot)=/rust"
 export CARGO_TARGET_DIR="$PWD/target"
 cargo build --locked --release --target wasm32-wasip2 >&2
 mkdir -p dist

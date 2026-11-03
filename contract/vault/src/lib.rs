@@ -10,6 +10,7 @@
 //! - Only the repo's linked payout account can withdraw its vault. Nobody else — not the owner,
 //!   not the oracle — can move vault funds.
 
+mod bounty;
 mod budget;
 mod curve;
 mod deposit;

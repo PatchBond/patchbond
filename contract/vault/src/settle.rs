@@ -148,17 +148,16 @@ impl PatchBond {
         events::challenged(repo_id, number, &caller, 0);
     }
 
-    /// Oracle: a real fix for `issue` was merged; pay its whole bounty to the fix's author.
+    /// Oracle: a real fix for `issue` was merged; pay its whole bounty to the fix's author. With
+    /// OutLayer `exclusive` on, bounties are paid only on the enclave's check (`claim_bounty_in_tee`).
     pub fn pay_bounty(&mut self, repo_id: RepoId, issue: Number, recipient: AccountId) -> Promise {
         self.assert_oracle();
-        let amount = self.bounties.remove(&(repo_id, issue)).map_or(0, |b| b.0);
-        require!(amount > 0, format!("Issue #{issue} on repo {repo_id} has no bounty"));
-        let held = self.bounty_held.get(&repo_id).map_or(0, |b| b.0);
-        self.bounty_held.insert(repo_id, U128(held.saturating_sub(amount)));
-        events::bounty_paid(repo_id, issue, &recipient, amount);
-        // Bounties are in the repo's currency: it can't switch while one is unpaid.
-        let currency = self.currency_of(repo_id);
-        self.send(recipient, amount, currency, Fallback::Claimable)
+        require!(
+            !crate::outlayer::outlayer_config().is_some_and(|c| c.exclusive),
+            "Bounties on this contract are paid only on the OutLayer enclave's check of the merged fix (claim_bounty_in_tee)"
+        );
+        self.take_bounty(repo_id, issue, &recipient)
+            .unwrap_or_else(|| env::panic_str(&format!("Issue #{issue} on repo {repo_id} has no bounty")))
     }
 }
 

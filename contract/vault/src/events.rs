@@ -180,3 +180,9 @@ pub fn report_key(repo_id: RepoId, key: &str) {
 pub fn enclave_key(key: &str) {
     emit("enclave_key", json!({ "key": key }));
 }
+
+/// A bounty claim checked in the OutLayer enclave: requested, paid (detail = the fix's GitHub
+/// author) or not_paid (detail = why).
+pub fn bounty_claim(repo_id: RepoId, issue: Number, fix: Number, recipient: &AccountId, outcome: &str, detail: &str) {
+    emit("bounty_claim", json!({ "repo_id": repo_id, "issue": issue, "fix": fix, "recipient": recipient, "outcome": outcome, "detail": detail }));
+}

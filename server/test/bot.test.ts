@@ -322,6 +322,28 @@ describe("GitHub bot", () => {
     ).rejects.toThrow();
     expect(gh.calls).toHaveLength(0);
   });
+  test("enclave mode: a merged fix's bounty is claimed through the enclave, never paid on our word", async () => {
+    bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, () => {});
+    const claims: string[] = [];
+    chain.getTeeJob = async () => null;
+    chain.judgeInTee = async () => undefined as never;
+    chain.claimBountyInTee = async (r, issue, fix, to) => {
+      claims.push(`${r}#${issue} fix ${fix} → ${to}`);
+      return undefined as never;
+    };
+    bot.useEnclave(new TeeRecords({ getTeeSigners: async () => [], getTeeJob: chain.getTeeJob }, store, () => {}, 20));
+    await deliver("pull_request", prOpened(1));
+    chain.pay(1, "tunde.testnet", "tunde");
+    chain.getBounty = async () => "1800000";
+    await deliver("pull_request", {
+      action: "closed", installation: { id: 7 },
+      repository: { id: REPO.id, full_name: "acme/widget", name: "widget", owner: { login: "acme" } },
+      pull_request: { number: 1, merged: true, title: "Fix empty config crash", body: "Fixes #9", user: { login: "tunde" } },
+    });
+    expect(claims).toEqual([`${REPO.id}#9 fix 1 → tunde.testnet`]);
+    expect(chain.log.some((l) => l.startsWith("bounty "))).toBe(false);
+  });
+
   test("enclave mode: a dispute is re-judged in OutLayer after the statements window — our server resolves nothing", async () => {
     process.env.REJUDGE_DELAY_MIN = "0";
     bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, () => {});

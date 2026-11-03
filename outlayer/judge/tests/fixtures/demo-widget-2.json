@@ -1,0 +1,15 @@
+{
+ "number": 2,
+ "title": "Fix race condition in queue (fixes #1)",
+ "body": "Fixes #1. Adds acquireLockSafe so drain() is fully exclusive and race-condition free. Tested thoroughly; all tests pass. Also refreshed the README.\n\n_PatchBond demo: a deliberately poor PR, opened by the PatchBond team to test a maintainer forfeit, a dispute and the enclave re-judge on NEAR testnet._",
+ "merged": false,
+ "user": {
+  "login": "Gbangbolaoluwagbemiga"
+ },
+ "base": {
+  "repo": {
+   "id": 1442281556,
+   "full_name": "PatchBond/demo-widget"
+  }
+ }
+}

@@ -5,7 +5,7 @@ use crate::http;
 
 use base64::Engine;
 use patchbond_judge::facts::{self, CheckRun, Contribution, Issue, OpenItem, SymbolIndex};
-use patchbond_judge::{compute_facts, decide, record, rejudge_request_for, report, rules, sealed, symbols, verdict_hash, Gathered, Input, NearAiSignature, Output};
+use patchbond_judge::{check_fix, compute_facts, decide, record, rejudge_request_for, report, rules, sealed, symbols, verdict_hash, Gathered, Input, NearAiSignature, Output};
 use serde_json::Value;
 
 const GITHUB: &str = "https://api.github.com";
@@ -32,10 +32,28 @@ pub fn run() {
         let _ = std::io::stdout().flush();
         return;
     }
+    if input.mode == "bounty" {
+        let out = bounty(&input).unwrap_or_else(|reason| patchbond_judge::BountyOutput {
+            repo_id: input.repo_id, number: input.number, status: "skip", reason: Some(reason), fix: input.fix, recipient: None, author: None,
+        });
+        print!("{}", serde_json::to_string(&out).unwrap());
+        let _ = std::io::stdout().flush();
+        return;
+    }
     let out = if input.is_report() { judge_report(&input) } else { judge(&input) }.unwrap_or_else(|reason| Output::not_judged(&input, "skip", reason));
     let line = serde_json::to_string(&out).unwrap();
     print!("{line}");
     let _ = std::io::stdout().flush();
+}
+
+/// Bounty mode: read the claimed fix from GitHub and check it (`check_fix`). No model, no secrets
+/// beyond an optional GITHUB_TOKEN.
+fn bounty(input: &Input) -> Result<patchbond_judge::BountyOutput, String> {
+    let gh = GitHub { token: std::env::var("GITHUB_TOKEN").ok().filter(|t| !t.is_empty()) };
+    let repo = gh.json(&format!("{GITHUB}/repositories/{}", input.repo_id))?;
+    let full = repo["full_name"].as_str().ok_or("repository has no full_name")?;
+    let pr = gh.json(&format!("{GITHUB}/repos/{full}/pulls/{}", input.fix))?;
+    Ok(check_fix(input, &pr))
 }
 
 fn judge(input: &Input) -> Result<Output, String> {

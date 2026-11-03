@@ -132,6 +132,9 @@ export class Chain {
   judgeInTee = (repo_id: number, number: number, deposit = 20n * 10n ** 21n) => this.call("judge_in_tee", { repo_id, number }, 300n, deposit);
   /** A disputed verdict, re-judged in the enclave by the stronger model with the on-chain statements. */
   rejudgeInTee = (repo_id: number, number: number, deposit = 20n * 10n ** 21n) => this.call("rejudge_in_tee", { repo_id, number }, 300n, deposit);
+  /** Slop funds the fix: the enclave checks on GitHub that `fix` is a merged fix for `issue`, bound to `recipient`; the contract pays on its answer. */
+  claimBountyInTee = (repo_id: number, issue: number, fix: number, recipient: string, deposit = 20n * 10n ** 21n) =>
+    this.call("claim_bounty_in_tee", { repo_id, issue, fix, recipient }, 300n, deposit);
 
   // Installing the App never starts charging anyone: a new repo starts off, and the maintainer turns
   // bonds on from the dashboard once they've linked a payout account.

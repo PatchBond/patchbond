@@ -22,7 +22,8 @@ use rules::{Final, ModelVerdict};
 
 /// What the contract passes in `input_data` — all of it from on-chain state. `mode`: "" (a pull
 /// request), "rejudge" (a disputed verdict, with both sides' on-chain statements), "report" (a
-/// sealed security report) or "pubkey" (report the enclave's report key).
+/// sealed security report), "bounty" (is `fix` a merged fix for issue `number`?) or "pubkey"
+/// (report the enclave's report key).
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct Input {
@@ -45,6 +46,9 @@ pub struct Input {
     pub proposed: String,
     pub challenger: String,
     pub statements: Vec<prompt::Statement>,
+    /// Bounty mode: the PR claimed as the fix, and the NEAR account the bounty would go to.
+    pub fix: u64,
+    pub recipient: String,
 }
 
 impl Input {
@@ -56,6 +60,58 @@ impl Input {
     pub fn challenge(&self) -> Option<prompt::Challenge> {
         (self.mode == "rejudge").then(|| prompt::Challenge { proposed: self.proposed.clone(), challenger: self.challenger.clone(), statements: self.statements.clone() })
     }
+}
+
+/// The answer in bounty mode (`contract/vault/src/bounty.rs` `BountyOutput`).
+#[derive(Debug, PartialEq, Serialize)]
+pub struct BountyOutput {
+    pub repo_id: u64,
+    /// The issue.
+    pub number: u64,
+    /// "fix_ok" | "skip".
+    pub status: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub fix: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recipient: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+}
+
+/// Is `pr` (GitHub's pull request JSON) a merged fix for issue `input.number` in repo
+/// `input.repo_id`, bound to `input.recipient`? Bound means: the bond's GitHub user wrote it, or —
+/// with no bond — the PR names the account on a line of its own (`PatchBond: alice.near`).
+pub fn check_fix(input: &Input, pr: &serde_json::Value) -> BountyOutput {
+    let skip = |reason: String| BountyOutput { repo_id: input.repo_id, number: input.number, status: "skip", reason: Some(js::slice16(&reason, 300).to_string()), fix: input.fix, recipient: None, author: None };
+    let author = pr["user"]["login"].as_str().unwrap_or("ghost").to_string();
+    if pr["base"]["repo"]["id"].as_u64() != Some(input.repo_id) {
+        return skip(format!("#{} isn't a pull request into this repo", input.fix));
+    }
+    if pr["merged"].as_bool() != Some(true) {
+        return skip(format!("#{} isn't merged", input.fix));
+    }
+    let text = format!("{}\n{}", pr["title"].as_str().unwrap_or(""), pr["body"].as_str().unwrap_or(""));
+    if facts::linked_issue(&text) != Some(input.number) {
+        return skip(format!("#{} doesn't say it fixes #{} (\"Fixes #{}\" in its title or body)", input.fix, input.number, input.number));
+    }
+    if !input.github_user.is_empty() {
+        if !author.eq_ignore_ascii_case(&input.github_user) {
+            return skip(format!("#{} is by {author}, but its bond was paid for {}", input.fix, input.github_user));
+        }
+    } else if !names_payout(pr["body"].as_str().unwrap_or(""), &input.recipient) {
+        return skip(format!("#{} doesn't name {} (add a line \"PatchBond: {}\" to its description)", input.fix, input.recipient, input.recipient));
+    }
+    BountyOutput { repo_id: input.repo_id, number: input.number, status: "fix_ok", reason: None, fix: input.fix, recipient: Some(input.recipient.clone()), author: Some(author) }
+}
+
+/// A line of its own: `PatchBond: <account>` (or `PatchBond payout: <account>`), any case.
+pub fn names_payout(body: &str, account: &str) -> bool {
+    !account.is_empty()
+        && body.lines().any(|l| {
+            let l = l.trim().to_ascii_lowercase();
+            ["patchbond:", "patchbond payout:"].iter().any(|p| l.strip_prefix(p).is_some_and(|rest| rest.trim().trim_matches('`') == account))
+        })
 }
 
 /// Everything fetched from GitHub for one PR (also the parity-test fixture format).
