@@ -19,10 +19,10 @@ enforces today, method by method, and what each guarantee still rests on. Live c
 | Path | Who triggers it | What the contract requires | Still trusted |
 |---|---|---|---|
 | **Refund** (AI or oracle) | Oracle, or the enclave's callback | Nothing beyond the role — giving money back is the safe direction ("when in doubt, refund") | The oracle not refunding slop (which would cost maintainers, not contributors) |
-| **AI forfeit, enclave route** | Anyone → `judge_in_tee` → OutLayer callback | The model's own signed forfeit ≥ repo threshold with ≥1 evidence item, signature recovered on-chain to a registered NEAR AI key, from the pinned wasm ([`outlayer.rs`](../contract/vault/src/outlayer.rs)). Proposed for the repo's challenge window (0 on demo-widget) | OutLayer's attested worker running the pinned wasm; GitHub's answers; NEAR AI's keys as registered by the owner |
+| **AI forfeit, enclave route** | Anyone → `judge_in_tee` → OutLayer callback | The model's own signed forfeit ≥ repo threshold with ≥1 evidence item, signature recovered on-chain to a registered NEAR AI key, from the pinned wasm, each signature once ([`outlayer.rs`](../contract/vault/src/outlayer.rs)). Proposed for the repo's challenge window (0 on demo-widget) | OutLayer's attested worker running the pinned wasm; GitHub's answers; NEAR AI's keys as registered by the owner |
 | **AI forfeit, oracle route** | Oracle → `settle` | **Refused while `exclusive` is on** (live). When off: a NEAR AI signature on a request naming this repo and PR, each signature once ([`settle.rs`](../contract/vault/src/settle.rs), [`tee.rs`](../contract/vault/src/tee.rs)) | When off: the oracle chose the request bytes, so it could feed the model a fabricated diff under the right name (detectable — every request is published) |
 | **Maintainer forfeit, not disputed** | Payout account → `settle(forfeit)`, then anyone → `finalize` after 48 h | **No model signature.** A 48 h proposal; a penalty is escrowed from the repo's vault in case it's overturned; the maintainer's forfeit and dispute counts are public | **The maintainer's honesty, and the payer noticing within 48 h.** This is the one forfeit path without a signature |
-| **Maintainer forfeit, disputed** | Payer → `dispute` (free), then anyone → `rejudge_in_tee` | The stronger model's own signed forfeit ≥ threshold with evidence, recovered to a key registered *for that model* ([`rejudge.rs`](../contract/vault/src/rejudge.rs)). Otherwise refund, and the maintainer pays a penalty | Same as the enclave route. A human already decided, so the AI's hard-fact rule isn't required here — by design |
+| **Maintainer forfeit, disputed** | Payer → `dispute` (free), then anyone → `rejudge_in_tee` | The stronger model's own signed forfeit ≥ threshold with evidence, recovered to a key registered *for that model*, each signature once ([`rejudge.rs`](../contract/vault/src/rejudge.rs)). Otherwise refund, and the maintainer pays a penalty | Same as the enclave route. A human already decided, so the AI's hard-fact rule isn't required here — by design |
 | **Staked challenge of an AI verdict** | Either side stakes → `rejudge_in_tee` | The stronger model's signed forfeit **and** the rules (a hard fact) for a forfeit; the loser's stake goes to the other side | Same as the enclave route |
 | **Bounty** | Anyone → `claim_bounty_in_tee` | The enclave confirms on GitHub: the fix is merged into this repo, its title or body says it fixes #N, and it's bound to the recipient — the bond's payer (author = the bond's GitHub user), or a `PatchBond: <account>` line in the PR ([`bounty.rs`](../contract/vault/src/bounty.rs), `check_fix` in [`lib.rs`](../outlayer/judge/src/lib.rs)). Paid once; the oracle's `pay_bounty` is refused while `exclusive` is on | **The maintainer's merge decision** — the enclave checks the PR was merged and claims the issue, not that the issue is really fixed. Repo admins can edit a PR description, so the payout line is as trustworthy as they are |
 | **Tip** | Oracle → `mark_reviewed` | Review within the window → vault, else refunded | The oracle's report that a maintainer reviewed (from GitHub's review event) |
@@ -35,9 +35,35 @@ enforces today, method by method, and what each guarantee still rests on. Live c
 |---|---|---|
 | **Oracle key** | Refund bonds; link a repo that **nobody has linked yet** to itself, then propose (disputable) maintainer forfeits there; mark PRs reviewed so tips go to vaults | Forfeit through its own route (`exclusive`), re-link a linked repo, withdraw any vault, pay a bounty |
 | **A maintainer's payout account** | Propose forfeits on its own repo (each disputable for free, penalised if overturned); withdraw its own vault | Touch other repos, settle a dispute in its own favour |
-| **Owner key** | **Everything, via a code upgrade.** Without upgrading: register a key of its own as a "NEAR AI" key, then either point OutLayer at different code (`set_outlayer`) or turn `exclusive` off — after which forfeits signed by that key would pass. Each of these is a public transaction with an event (`set_tee_signers`, `set_outlayer`) | — on testnet this is the root of trust. On mainnet the plan is a DAO time-lock on the account, then removing the key |
+| **Owner key** | **Everything, via a code upgrade.** Without upgrading: register a key of its own as a "NEAR AI" key, then either point OutLayer at different code (`set_outlayer`) or turn `exclusive` off — after which forfeits signed by that key would pass. Each of these is a public transaction with an event (`set_tee_signers`, `set_outlayer`). Also: with **no** keys registered at all, the oracle route skips the signature check (that's how the sandbox money-path tests run) — so emptying the key list and turning `exclusive` off would let the oracle forfeit freely | — on testnet this is the root of trust. On mainnet the plan is a DAO time-lock on the account, then removing the key |
 | **OutLayer's worker** | Return a false enclave answer (the TDX attestation is what rules this out) | Forge NEAR AI's signature on a forfeit |
 | **GitHub** | Serve a false PR, merge state or CI result | — |
+
+## Attacks we tested
+
+Each row is a sandbox test against the real contract with a mock OutLayer that answers *later*, the
+way the real one does (yield and resume), so other transactions land while the enclave runs.
+[`contract/vault/tests/adversarial.rs`](../contract/vault/tests/adversarial.rs):
+
+| Attack | Result |
+|---|---|
+| Call the enclave callbacks (`on_tee_judgment`, `on_tee_rejudgment`, `on_tee_bounty`) or the payout callback directly | Refused — they're private to the contract |
+| A forfeit arrives from the enclave after the maintainer already refunded | Ignored (`already_decided`); the contributor keeps the refund |
+| Ask for a second judgment while one runs, to re-roll the verdict | Refused |
+| The owner changes the judge model, or turns OutLayer off, while a run is in flight | The late answer is dropped; nothing settles |
+| **Replay one genuine signed forfeit against a second deposit, relabelled by the relay** | **Found and fixed on 3 Nov:** the enclave routes didn't record used signatures (the oracle route did). Now every route spends a signed request once; the test fails on the old code |
+| Use a gateway key registered for the judge model to sign a first judgment | Refused — first judgments accept only a model's own enclave key |
+| Register a gateway key *bare* and use it for a dispute | Refused — a gateway signature counts only when registered for that model |
+| Rotate keys: remove a key, then submit its signature | Refused at once |
+| Two bounty claims at once; and the oracle paying the same bounty while a claim runs (with `exclusive` turned off) | The second claim is refused; the running claim finds nothing left — paid exactly once |
+| The oracle renames a linked repo (so another repo's forfeit matches), re-links it, changes its policy or withdraws | All refused |
+| Swap a bounty's recipient, PR or issue in the enclave's answer | Refused ([`bounty.rs`](../contract/vault/tests/bounty.rs)) |
+| Replay a signed forfeit through the oracle route, or use one about another PR | Refused ([`tee_proofs.rs`](../contract/vault/tests/tee_proofs.rs)) |
+
+Not covered yet:
+- **Head-commit binding.** A verdict covers the PR as it was when judged; the contract doesn't record the head commit, so commits pushed after a refund aren't re-judged.
+- Rounding and insolvency fuzzing of the vault accounting.
+- Relayer (NEP-366) abuse.
 
 ## Rebuilding the trusted enclave build
 

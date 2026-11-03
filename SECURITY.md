@@ -3,7 +3,7 @@
 PatchBond holds other people's money and accuses people of wasting time, so both the contract and
 the judge are built to fail safe: **no method in the current code lets us take a held bond or a
 vault, and when in doubt the contributor is refunded.** We do hold the upgrade key and the NEAR AI
-key registry on testnet — every power we keep, and every money path with what it rests on, is in
+key registry on testnet — every power we keep, and every money path with what it rests on, and the attacks we ran against them, are in
 [docs/TRUST.md](docs/TRUST.md). This page states what each key can and cannot do, the protections in place, and the
 known limits — honestly.
 

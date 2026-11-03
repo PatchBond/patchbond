@@ -197,6 +197,9 @@ impl PatchBond {
         let threshold = self.repo(repo_id).policy.forfeit_threshold_bps as u32;
         let signed_forfeit = out.model_verdict.as_deref() == Some("forfeit") && out.confidence_bps.unwrap_or(0) >= threshold && out.evidence.unwrap_or(0) > 0;
         let forfeit = signed_forfeit && (free || final_verdict == "forfeit");
+        if forfeit && !crate::outlayer::spend_signed_request(&req) {
+            return Err("this signed verdict was already used".into());
+        }
         let verdict = if forfeit { Verdict::Forfeit } else { Verdict::Refund };
         self.finish(repo_id, number, verdict, hash.clone(), d.status);
         let what = format!("{verdict:?}").to_lowercase();

@@ -216,9 +216,7 @@ impl PatchBond {
             about.repo.eq_ignore_ascii_case(&name) && about.number == number && about.kind == kind,
             format!("TEE proof rejected: the signed request is about {} {}#{}, not {name} {kind}#{number}", about.repo, about.kind, about.number)
         );
-        let used = format!("tu:{}", proof.request_sha256.to_lowercase()).into_bytes();
-        require!(!env::storage_has_key(&used), "TEE proof rejected: this signed verdict was already used");
-        env::storage_write(&used, &[1]);
+        require!(crate::outlayer::spend_signed_request(&proof.request_sha256), "TEE proof rejected: this signed verdict was already used");
         let signer = if by_enclave { signed.signer.clone() } else { signed.gateway_signer.clone().unwrap_or_default() };
         events::tee_verified(repo_id, number, &signer, &proof.model);
     }

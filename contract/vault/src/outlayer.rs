@@ -196,6 +196,9 @@ impl PatchBond {
             "forfeit" if signed_forfeit => Some(Verdict::Forfeit),
             _ => None,
         };
+        if held && decided == Some(Verdict::Forfeit) && !spend_signed_request(&req) {
+            return Err("this signed verdict was already used".into());
+        }
         let what = match (held, decided) {
             (true, Some(v)) => {
                 self.propose_ai_verdict(repo_id, number, v, verdict_hash.clone());
@@ -230,6 +233,18 @@ pub(crate) fn outlayer_call(cfg: &OutlayerConfig, input: Value) -> Promise {
         args["secrets_ref"] = json!({ "profile": profile, "account_id": owner });
     }
     Promise::new(cfg.account.clone()).function_call("request_execution".to_string(), args.to_string().into_bytes(), env::attached_deposit(), GAS_FOR_OUTLAYER)
+}
+
+/// Marks a signed request as used; false if it already was. Every route that forfeits on a NEAR AI
+/// signature spends it here, so one genuine forfeit can't settle two deposits — even if whoever
+/// relays it (the oracle, or an OutLayer worker) rewrote which deposit it's about.
+pub(crate) fn spend_signed_request(request_sha256: &str) -> bool {
+    let key = format!("tu:{}", request_sha256.to_lowercase()).into_bytes();
+    if env::storage_has_key(&key) {
+        return false;
+    }
+    env::storage_write(&key, &[1]);
+    true
 }
 
 pub(crate) fn outlayer_config() -> Option<OutlayerConfig> {

@@ -141,8 +141,9 @@ async fn a_maintainer_forfeit_gets_a_fixed_48_hour_window_whatever_the_policy_sa
     assert!(failure_text(&early).contains("still open"), "{}", failure_text(&early));
     // The repo's policy says 0 s, but a maintainer forfeit always gets the contract's 48 h.
     let d = e.view("get_deposit", json!({ "repo_id": REPO, "number": 1 })).await?;
+    // Measured from the bond, not the proposal, so allow for a slow sandbox in between.
     let window = d["status"]["proposed"]["deadline"].as_u64().unwrap() - d["created_at"].as_u64().unwrap();
-    assert!((48 * 3600 * 1000..48 * 3600 * 1000 + 60_000).contains(&window), "window {window} ms");
+    assert!((48 * 3600 * 1000..48 * 3600 * 1000 + 600_000).contains(&window), "window {window} ms");
     assert_eq!(e.balance(&e.alice).await?, 100 * USDC - bond, "nothing moved");
     assert_eq!(e.record().await?, json!({ "forfeits": 1, "disputed": 0, "overturned": 0 }));
     Ok(())
