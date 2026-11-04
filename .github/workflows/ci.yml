@@ -43,6 +43,7 @@ jobs:
       - run: cargo clippy -p patchbond-vault --all-targets -- -D warnings
       - run: cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml
       - run: cargo near build non-reproducible-wasm --manifest-path mock-ft/Cargo.toml
+      - run: cargo near build non-reproducible-wasm --manifest-path mock-outlayer/Cargo.toml
       - run: cargo test -p patchbond-vault
       - name: One-command demo (the README's first step) — output in the run summary
         run: |

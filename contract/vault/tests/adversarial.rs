@@ -120,7 +120,7 @@ fn event(r: &ExecutionFinalResult, name: &str, field: &str) -> String {
         .filter_map(|l| serde_json::from_str::<Value>(l.strip_prefix("EVENT_JSON:")?).ok())
         .filter(|v| v["event"] == name)
         .filter_map(|v| v["data"][0][field].as_str().map(String::from))
-        .last()
+        .next_back()
         .unwrap_or_default()
 }
 
@@ -212,6 +212,27 @@ async fn one_signed_forfeit_settles_one_deposit_even_if_the_relay_rewrites_which
     let r = t.call_now("rejudge_in_tee", json!({ "repo_id": REPO, "number": 4 }), T::answer(f["full_forfeit"].clone(), 4)).await?;
     assert!(event(&r, "tee_result", "detail").contains("already used"), "{:?}", r.logs());
     assert!(t.status(4).await?.get("challenged").is_some(), "still disputed: {}", t.status(4).await?);
+    Ok(())
+}
+
+/// A known limit, not a defence (docs/TRUST.md, "What the OutLayer callbacks verify"): the signature
+/// covers hashes, so the contract can't read what the model said. A compromised worker can pair a
+/// genuine signature from a refund with a forfeit label, and only OutLayer's attestation stops it.
+/// If this test ever fails, the contract has learned to read the verdict: update TRUST.md.
+#[tokio::test]
+async fn known_limit_the_contract_cannot_read_what_an_enclave_signature_covers() -> anyhow::Result<()> {
+    let t = setup_attack().await?;
+    let f = outlayer_fx();
+    t.signers(json!([f["genuine_signer"]])).await?;
+    t.bond(1).await?;
+    let mut a = f["genuine"].clone();
+    assert_eq!(a["verdict"], "refund", "this fixture is NEAR AI's signed refund");
+    a["verdict"] = json!("forfeit");
+    a["model_verdict"] = json!("forfeit");
+    a["confidence_bps"] = json!(9900);
+    a["evidence"] = json!(1);
+    let r = t.call_now("judge_in_tee", json!({ "repo_id": REPO, "number": 1 }), T::answer(a, 1)).await?;
+    assert_eq!(event(&r, "tee_result", "outcome"), "forfeit");
     Ok(())
 }
 

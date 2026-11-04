@@ -69,7 +69,7 @@ fn outcome(r: &ExecutionFinalResult) -> (String, String) {
         .filter_map(|l| serde_json::from_str::<Value>(l.strip_prefix("EVENT_JSON:")?).ok())
         .filter(|v| v["event"] == "bounty_claim" && v["data"][0]["outcome"] != "requested")
         .map(|v| (v["data"][0]["outcome"].as_str().unwrap().to_string(), v["data"][0]["detail"].as_str().unwrap().to_string()))
-        .last()
+        .next_back()
         .unwrap_or_default()
 }
 
