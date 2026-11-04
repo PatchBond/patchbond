@@ -119,7 +119,7 @@ async fn main() -> anyhow::Result<()> {
     ok(format!("a newcomer arriving now pays {} — one payer counts at most 2 toward everyone else's price", usd(e.quote(REPO, Some(&e.alice)).await?)));
 
     act("5 · Judged in an OutLayer enclave: our server leaves the loop");
-    let mock = e.worker.dev_deploy(&near_workspaces::compile_project("../mock-outlayer").await?).await?;
+    let mock = e.worker.dev_deploy(&wasm_of("../mock-outlayer", "mock_outlayer.wasm").await?).await?;
     e.owner
         .call(e.pb.id(), "set_outlayer")
         .args_json(json!({ "config": {

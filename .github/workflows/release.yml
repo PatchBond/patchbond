@@ -1,0 +1,56 @@
+name: Release demo
+
+# On a version tag: builds the sandbox demo and its contracts for Linux and macOS, runs each bundle
+# with no Rust build step, and attaches it to the release, so scripts/demo-fast.sh takes about a minute.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "Sandbox demo bundles for scripts/demo-fast.sh. Commit $GITHUB_SHA."
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  bundle:
+    needs: create
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x64 }
+          - { os: macos-14, target: macos-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contract
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/latest/download/cargo-near-installer.sh | sh
+      - name: Build the bundle
+        working-directory: contract
+        run: |
+          for c in vault mock-ft mock-outlayer; do cargo near build non-reproducible-wasm --manifest-path $c/Cargo.toml; done
+          cargo build -p patchbond-vault --example demo
+          mkdir -p ../bundle
+          cp target/debug/examples/demo ../bundle/
+          find target/near -name '*.wasm' -exec cp {} ../bundle/ \;
+      - name: Run it the way a screener will
+        run: PATCHBOND_PREBUILT_DIR=bundle bundle/demo
+      - name: Upload
+        run: |
+          f=patchbond-demo-${{ matrix.target }}.tar.gz
+          (cd bundle && shasum -a 256 *.wasm > SHA256SUMS && tar czf ../$f .)
+          shasum -a 256 $f > $f.sha256
+          gh release upload "$GITHUB_REF_NAME" $f $f.sha256
+        env:
+          GH_TOKEN: ${{ github.token }}

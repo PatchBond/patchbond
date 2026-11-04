@@ -11,6 +11,7 @@
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
     "dev": "bun scripts/dev.ts",
-    "demo": "cd contract && cargo run -q -p patchbond-vault --example demo"
+    "demo": "cd contract && cargo run -q -p patchbond-vault --example demo",
+    "demo:fast": "bash scripts/demo-fast.sh"
   }
 }

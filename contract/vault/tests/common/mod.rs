@@ -12,12 +12,21 @@ pub use serde_json::{json, Value};
 static VAULT_WASM: tokio::sync::OnceCell<Vec<u8>> = tokio::sync::OnceCell::const_new();
 static FT_WASM: tokio::sync::OnceCell<Vec<u8>> = tokio::sync::OnceCell::const_new();
 
+/// A contract's wasm: from `PATCHBOND_PREBUILT_DIR` (the release bundle, no Rust needed), else built
+/// from source.
+pub async fn wasm_of(project: &str, file: &str) -> anyhow::Result<Vec<u8>> {
+    match std::env::var("PATCHBOND_PREBUILT_DIR") {
+        Ok(dir) => Ok(std::fs::read(std::path::Path::new(&dir).join(file))?),
+        Err(_) => Ok(near_workspaces::compile_project(project).await?),
+    }
+}
+
 pub async fn vault_wasm() -> anyhow::Result<&'static [u8]> {
-    Ok(VAULT_WASM.get_or_try_init(|| near_workspaces::compile_project("./")).await?)
+    Ok(VAULT_WASM.get_or_try_init(|| wasm_of("./", "patchbond_vault.wasm")).await?)
 }
 
 pub async fn ft_wasm() -> anyhow::Result<&'static [u8]> {
-    Ok(FT_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-ft")).await?)
+    Ok(FT_WASM.get_or_try_init(|| wasm_of("../mock-ft", "mock_ft.wasm")).await?)
 }
 
 pub const USDC: u128 = 1_000_000;
