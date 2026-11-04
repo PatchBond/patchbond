@@ -145,6 +145,11 @@ Anyone can also call `judge_in_tee` themselves — the contributor, the maintain
 
 ## What's still trusted
 
+- **The enclave's answer itself.** The contract recovers NEAR AI's signature over the request and
+  response hashes, but never sees those bytes: verdict, confidence and evidence are fields the wasm
+  reports, and the contract gets no proof of which code ran. A compromised worker could pair a
+  genuine unused signature with a false "forfeit". Exact checks:
+  [docs/TRUST.md](TRUST.md#what-the-outlayer-callbacks-verify).
 - **OutLayer's registration of workers**: its register contract verifies each worker's TDX quote
   (Intel DCAP) and measurements against an allowlist OutLayer's admins control. Per-run attestation
   is checked off-chain (`outlayer-verify`, the dashboard).

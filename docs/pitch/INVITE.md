@@ -25,10 +25,12 @@
 > - slop → the bond goes to your repo's vault, which only you can withdraw;
 > - unpaid PRs close themselves after a 24 h notice; your team and collaborators never pay.
 >
-> No one can forfeit a bond on a whim: the NEAR contract forfeits only when NEAR AI's enclave signed
-> that verdict about *your* PR, and on our live contract the judge itself runs in an OutLayer enclave
-> that reads GitHub directly — our server can't forfeit at all. When in doubt it refunds or asks
-> you. Every verdict is public, with the exact bytes the model saw, and either side can dispute it.
+> The bond and the deadline do most of the filtering. The judge is deliberately cautious: it rarely
+> forfeits, and when it isn't sure it refunds or asks you. It runs in an OutLayer enclave that reads
+> GitHub directly, and our server has no route to forfeit on the live contract. You can propose a
+> forfeit yourself; the contributor can dispute it for free within 48 h. Every verdict is public, with
+> the exact bytes the model saw. It's early and no outside contributor has paid a bond yet, so your
+> feedback decides what it becomes.
 > On NEAR's own nearcore it judged 20 stranger PRs for under a cent in total.
 >
 > It runs on **testnet** right now, so no real money moves. Setup is install → sign in → link a
