@@ -1,0 +1,171 @@
+{
+  "total": 59.65,
+  "scenes": [
+    {
+      "id": "inbox",
+      "start": 0,
+      "dur": 5.85,
+      "lines": [
+        {
+          "text": "Open source runs on volunteers.",
+          "file": "vo3/00.wav",
+          "at": 0.15,
+          "dur": 2.5
+        },
+        {
+          "text": "Now AI lets anyone send code in seconds.",
+          "file": "vo3/01.wav",
+          "at": 2.77,
+          "dur": 2.88
+        }
+      ]
+    },
+    {
+      "id": "cost",
+      "start": 5.85,
+      "dur": 6.92,
+      "lines": [
+        {
+          "text": "Sending is free. But a person must check every one.",
+          "file": "vo3/02.wav",
+          "at": 0.15,
+          "dur": 3.38
+        },
+        {
+          "text": "About a quarter are now low quality AI output.",
+          "file": "vo3/03.wav",
+          "at": 3.65,
+          "dur": 3.08
+        }
+      ]
+    },
+    {
+      "id": "deposit",
+      "start": 12.77,
+      "dur": 4.75,
+      "lines": [
+        {
+          "text": "PatchBond adds a small refundable deposit, like the one on a rental.",
+          "file": "vo3/04.wav",
+          "at": 0.15,
+          "dur": 4.4
+        }
+      ]
+    },
+    {
+      "id": "pay",
+      "start": 17.52,
+      "dur": 6.57,
+      "lines": [
+        {
+          "text": "A stranger sends a change and pays under a dollar.",
+          "file": "vo3/05.wav",
+          "at": 0.15,
+          "dur": 3.27
+        },
+        {
+          "text": "No payment in a day? It closes itself.",
+          "file": "vo3/06.wav",
+          "at": 3.54,
+          "dur": 2.83
+        }
+      ]
+    },
+    {
+      "id": "judge",
+      "start": 24.09,
+      "dur": 4.78,
+      "lines": [
+        {
+          "text": "An AI, sealed in a locked box, reads the work and signs its verdict.",
+          "file": "vo3/07.wav",
+          "at": 0.15,
+          "dur": 4.42
+        }
+      ]
+    },
+    {
+      "id": "outcomes",
+      "start": 28.86,
+      "dur": 9.32,
+      "lines": [
+        {
+          "text": "Real work gets every cent back.",
+          "file": "vo3/08.wav",
+          "at": 0.15,
+          "dur": 2.33
+        },
+        {
+          "text": "Unsure? A person decides.",
+          "file": "vo3/09.wav",
+          "at": 2.6,
+          "dur": 2.08
+        },
+        {
+          "text": "Clear slop loses its deposit to the project, and it can be disputed.",
+          "file": "vo3/10.wav",
+          "at": 4.79,
+          "dur": 4.33
+        }
+      ]
+    },
+    {
+      "id": "flood",
+      "start": 38.17,
+      "dur": 3.08,
+      "lines": [
+        {
+          "text": "Flood a project, and your own price climbs.",
+          "file": "vo3/11.wav",
+          "at": 0.15,
+          "dur": 2.73
+        }
+      ]
+    },
+    {
+      "id": "agents",
+      "start": 41.25,
+      "dur": 4.63,
+      "lines": [
+        {
+          "text": "AI agents pay too, with a key that only spends inside your limits.",
+          "file": "vo3/12.wav",
+          "at": 0.15,
+          "dur": 4.28
+        }
+      ]
+    },
+    {
+      "id": "proof",
+      "start": 45.88,
+      "dur": 8.54,
+      "lines": [
+        {
+          "text": "On real pull requests, it took nothing from good work and caught only a few bad ones.",
+          "file": "vo3/13.wav",
+          "at": 0.15,
+          "dur": 5.08
+        },
+        {
+          "text": "So the deposit is the filter, not the AI",
+          "file": "vo3/14.wav",
+          "at": 5.35,
+          "dur": 3
+        }
+      ]
+    },
+    {
+      "id": "end",
+      "start": 54.42,
+      "dur": 5.23,
+      "lines": [
+        {
+          "text": "PatchBond, on NEAR. Maintainers, try it free on testnet.",
+          "file": "vo3/15.wav",
+          "at": 0.15,
+          "dur": 3.88
+        }
+      ]
+    }
+  ]
+}

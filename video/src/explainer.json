@@ -1,0 +1,16 @@
+{
+  "voice": "af_heart",
+  "speed": 1.18,
+  "scenes": [
+    { "id": "inbox", "lines": ["Open source runs on volunteers.", "Now A.I. lets anyone send code in seconds."] },
+    { "id": "cost", "lines": ["Sending is free. But a person must check every one.", "About a quarter are now low quality A.I. output."] },
+    { "id": "deposit", "lines": ["PatchBond adds a small refundable deposit, like the one on a rental."] },
+    { "id": "pay", "lines": ["A stranger sends a change and pays under a dollar.", "No payment in a day? It closes itself."] },
+    { "id": "judge", "lines": ["An A.I., sealed in a locked box, reads the work and signs its verdict."] },
+    { "id": "outcomes", "lines": ["Real work gets every cent back.", "Unsure? A person decides.", "Clear slop loses its deposit to the project, and it can be disputed."] },
+    { "id": "flood", "lines": ["Flood a project, and your own price climbs."] },
+    { "id": "agents", "lines": ["A.I. agents pay too, with a key that only spends inside your limits."] },
+    { "id": "proof", "lines": ["On real pull requests, it took nothing from good work and caught only a few bad ones.", "So the deposit is the filter, not the A.I."] },
+    { "id": "end", "lines": ["PatchBond, on NEAR. Maintainers, try it free on testnet."] }
+  ]
+}

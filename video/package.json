@@ -11,6 +11,8 @@
     "vo": "bun gen-vo.ts",
     "voice": "node gen-voice.mjs",
     "music": "bun gen-music.ts",
+    "explainer:voice": "node gen-explainer.mjs",
+    "render:explainer": "remotion render src/index.ts Explainer out/patchbond-explainer.mp4",
     "render:short": "remotion render src/index.ts Short out/patchbond-short.mp4",
     "render:short-music": "remotion render src/index.ts ShortMusic out/patchbond-short-music.mp4"
   },
