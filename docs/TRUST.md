@@ -2,7 +2,7 @@
 
 What the live testnet contract (`patchbond-dev.testnet`, config in [`deploy/testnet.json`](../deploy/testnet.json))
 enforces today, method by method, and what each guarantee still rests on. Live config: OutLayer
-`exclusive` **on**, enclave build `cfcd8707…` pinned. Every row names the code that enforces it.
+`exclusive` **on**, enclave build `13d05fdc…` pinned. Every row names the code that enforces it.
 
 ## Roles
 
@@ -92,15 +92,14 @@ Outside screening found these. Each fix has a test that failed first
 **The contract with them went live on 2026-11-05** (tx
 [`6G7R4DES…`](https://testnet.nearblocks.io/txns/6G7R4DES8ei9QRMnaVYaVfUzFMUMJY4xZ2Aag4UUdyo1)): a
 code-only upgrade, rehearsed from the live build in the sandbox, with config and totals identical
-before and after. **The pinned enclave is still `cfcd8707…`, which predates them.** Until build
-`13d05fdc…` is activated:
+before and after. Enclave build `13d05fdc…` was pinned the same day (tx
+[`5gVR78CR…`](https://testnet.nearblocks.io/txns/5gVR78CRXPDZwsZDwcEu36NHp98prpYW9nmCCPCsQsc2)) and
+[ran on the live contract](https://testnet.nearblocks.io/txns/BuapF8CcfHnJ9gWGKq6mkSDaf1vUqxtpkFZQ7nKukyWz)
+through `refresh_enclave_key`, with the enclave key unchanged. That run makes no model call.
 
-- **Live now:** the bounty line, the two-step forfeit, the on-chain exit and one definition of
-  "proven". Fixed terms apply to bonds paid from the upgrade on; older bonds use the repo's current
-  policy. The two-step forfeit has not yet run on a real enclave verdict on the live contract.
-- **Waiting on the new enclave build:** the old build doesn't report the PR's link to the payer, so
-  an enclave refund returns the bond but earns no reputation. It also reports no commit, so a
-  confirmed forfeit isn't matched to one.
+Fixed terms apply to bonds paid from the upgrade on; older bonds use the repo's current policy. The
+two-step forfeit and the payer and commit checks have not yet run on a real verdict on the live
+contract, only in sandbox tests.
 
 | Finding | Fix | What it still rests on |
 |---|---|---|
@@ -132,6 +131,6 @@ Not covered yet:
 ## Rebuilding the trusted enclave build
 
 The contract pins the wasm's sha256 (`get_outlayer` → `version_key`). To check it yourself:
-`git checkout e31f6f4 && bash outlayer/judge/build.sh` prints `cfcd8707a89b546f709e9182bfcf99c2b02dd351c0c4f99e27547b97dd398af8`
+`git checkout fab1e14 && bash outlayer/judge/build.sh` prints `13d05fdc42ea9264eddc255c9eac9333bdf42556aef62eb941abe8ba9e3a07d8`
 (Rust 1.97.1, pinned in `outlayer/judge/rust-toolchain.toml`; local paths are stripped, so the
 folder doesn't matter). The previous build, `eb3baa69…`, is the same command at `a448538`.

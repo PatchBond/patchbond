@@ -36,7 +36,7 @@ running" run clears the job so anyone can ask again; NEAR that OutLayer refused 
 
 **`exclusive: true`** turns the oracle's forfeit power off entirely: forfeits then come only from
 the enclave. The oracle can still refund (the safe direction), and maintainers keep their disputable
-proposal. **It is on for the live testnet contract since 1 Nov 2026**; the pinned build is `cfcd8707…` since 3 Nov (`eb3baa69…` before).
+proposal. **It is on for the live testnet contract since 1 Nov 2026**; the pinned build is `13d05fdc…` since 5 Nov (`cfcd8707…` from 3 Nov, `eb3baa69…` before).
 
 **Disputes are re-judged in the enclave too.** While a verdict is challenged, the contributor and the
 maintainer each post up to two statements on-chain (`add_statement`, signed by their own wallets).
@@ -112,8 +112,9 @@ bash outlayer/judge/build.sh     # → dist/patchbond-judge.wasm and its sha256
 
 Local paths are stripped, so the same source, `Cargo.lock` and Rust toolchain (1.97) give the same
 hash. The contract pins that hash (`version_key`); OutLayer's worker refuses bytes that don't match.
-The source now builds `13d05fdc…` (activation pending; see [TRUST.md](TRUST.md#screening-fixes-whats-live)). The build the live contract trusts is `cfcd8707…`: `git checkout e31f6f4 && bash outlayer/judge/build.sh`
-prints `cfcd8707a89b546f709e9182bfcf99c2b02dd351c0c4f99e27547b97dd398af8` (Rust 1.97.1). The earlier
+The build the live contract trusts is `13d05fdc…`: `git checkout fab1e14 && bash outlayer/judge/build.sh`
+prints `13d05fdc42ea9264eddc255c9eac9333bdf42556aef62eb941abe8ba9e3a07d8` (Rust 1.97.1). The earlier
+`cfcd8707…` is the same command at `e31f6f4`, and
 `eb3baa69…` is the same command at `a448538`. Compare with `get_outlayer` on `patchbond-dev.testnet`.
 
 ## Turning it on (testnet)

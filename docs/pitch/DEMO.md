@@ -47,12 +47,24 @@ on-chain) — it's real, local, and takes a minute.
 
 ## X post (with the video)
 
-> AI made sending pull requests free. Maintainers still pay with their time.
+> I've maintained an open-source project in the Stellar ecosystem for 10+ months, with 100+ contributors.
 >
-> PatchBond adds a small refundable deposit. Real work gets it back. Slop pays the project.
+> Lately it's a flood: tens of PRs on issues nobody was assigned, and PRs claiming to do things they don't.
 >
-> Built at NEAR HACKATHON, running on testnet.
+> AI should help open source, not drown it.
 >
-> github.com/PatchBond/patchbond
+> So I built PatchBond at NEAR HACKATHON: a refundable bond on unsolicited PRs.
+>
+> How it works:
+>
+> → A stranger opens a PR. A bot asks for a small deposit, under $1 on a quiet repo. Unpaid after 24 hours, the PR closes.
+> → An AI in a secure enclave reads the change. It checks if the code does what the PR claims, if it calls code that doesn't exist, and if CI passes.
+> → Real work gets every cent back. Clear slop pays the project. Unsure? A maintainer decides.
+> → Flood a repo and your own price climbs.
+>
+> Every verdict is signed and public, and either side can dispute it.
+>
+> Live on testnet: https://patchbond-production.up.railway.app
+> Code: https://github.com/PatchBond/patchbond
 >
 > @NEARProtocol #NEARHackathon
