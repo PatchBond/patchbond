@@ -37,7 +37,7 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             r#"\b(?:eval|exec|execSync|Function|spawn|system|popen|subprocess\.\w+)\s*\(.{0,80}\b(?:atob|b64decode|base64|fromCharCode|unhexlify|Buffer\.from\([^)]*['"](?:base64|hex)['"])"#,
             "i",
         ),
-        rule("pipes a download into a shell", "high", None, r"\b(?:curl|wget)\b[^|\n]{0,200}\|\s*(?:sudo\s+)?(?:ba|z)?sh\b|\biex\b.{0,40}DownloadString|Invoke-Expression.{0,80}(?:WebClient|Invoke-WebRequest|iwr)", "i"),
+        rule("pipes a download into a shell", "high", None, r#"\b(?:curl|wget)\b(?!(?:(?!:\/\/)[^|\n]){0,200}https:\/\/sh\.rustup\.rs\/?['"]?\s*\|)[^|\n]{0,200}\|\s*(?:sudo\s+)?(?:ba|z)?sh\b|\biex\b.{0,40}DownloadString|Invoke-Expression.{0,80}(?:WebClient|Invoke-WebRequest|iwr)"#, "i"),
         rule("reverse shell", "high", None, r"\/dev\/tcp\/\d|\bnc(?:at)?\s+(?:-\w+\s+)*-e\s|\bbash\s+-i\s+>&|socket\.socket\(.{0,120}subprocess", "i"),
         rule("crypto miner", "high", None, r"stratum\+tcp:\/\/|\bxmrig\b|\bcoinhive\b|\bcryptonight\b", "i"),
         rule("destructive delete outside the repo", "high", None, r"\brm\s+-[a-z]*r[a-z]*f?[a-z]*\s+(?:--no-preserve-root\s+)?(?:\/(?:\s|$|\*)|~\/?(?:\s|$)|\$HOME\b)", ""),

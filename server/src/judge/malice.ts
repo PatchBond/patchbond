@@ -24,7 +24,7 @@ const RULES: Rule[] = [
     severity: "high",
     test: /\b(?:eval|exec|execSync|Function|spawn|system|popen|subprocess\.\w+)\s*\(.{0,80}\b(?:atob|b64decode|base64|fromCharCode|unhexlify|Buffer\.from\([^)]*['"](?:base64|hex)['"])/i,
   },
-  { id: "pipes a download into a shell", severity: "high", test: /\b(?:curl|wget)\b[^|\n]{0,200}\|\s*(?:sudo\s+)?(?:ba|z)?sh\b|\biex\b.{0,40}DownloadString|Invoke-Expression.{0,80}(?:WebClient|Invoke-WebRequest|iwr)/i },
+  { id: "pipes a download into a shell", severity: "high", test: /\b(?:curl|wget)\b(?!(?:(?!:\/\/)[^|\n]){0,200}https:\/\/sh\.rustup\.rs\/?['"]?\s*\|)[^|\n]{0,200}\|\s*(?:sudo\s+)?(?:ba|z)?sh\b|\biex\b.{0,40}DownloadString|Invoke-Expression.{0,80}(?:WebClient|Invoke-WebRequest|iwr)/i },
   { id: "reverse shell", severity: "high", test: /\/dev\/tcp\/\d|\bnc(?:at)?\s+(?:-\w+\s+)*-e\s|\bbash\s+-i\s+>&|socket\.socket\(.{0,120}subprocess/i },
   { id: "crypto miner", severity: "high", test: /stratum\+tcp:\/\/|\bxmrig\b|\bcoinhive\b|\bcryptonight\b/i },
   { id: "destructive delete outside the repo", severity: "high", test: /\brm\s+-[a-z]*r[a-z]*f?[a-z]*\s+(?:--no-preserve-root\s+)?(?:\/(?:\s|$|\*)|~\/?(?:\s|$)|\$HOME\b)/ },
