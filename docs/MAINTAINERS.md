@@ -81,9 +81,7 @@ Not paid by the deadline → the PR closes itself; paying later reopens it.
 
 **Slop funds the fix.** If a forfeited PR claimed to fix issue #N ("Fixes #N"), its forfeit becomes a
 bounty on #N instead of going to your vault. When a real fix for #N is merged, the bounty goes to
-the account named on a line of its own in the PR description, `PatchBond: alice.testnet`. On the live
-testnet contract a bonded fix instead pays whoever paid its bond, until the fix in
-[TRUST.md](TRUST.md#fixed-in-the-source-not-live-yet) is deployed. Either way this is checked in the
+the account named on a line of its own in the PR description, `PatchBond: alice.testnet`. This is checked in the
 OutLayer enclave against GitHub, not decided by our server.
 
 **Who never pays:** your org's members, collaborators, people on your `exempt:` list, and
