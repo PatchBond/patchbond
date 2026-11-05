@@ -51,7 +51,7 @@ We ran PatchBond on **[near/nearcore](https://github.com/near/nearcore)**'s open
 | Server: facts, malicious scan, rules, bot vs fake GitHub, onboarding, spending guard, Intents, relayer | 100 | `cd server && bun test` |
 | OutLayer program: JS-semantics unit 2 · byte parity with the TS judge on 30 real PRs 1 · bounty check 6 · rejudge 1 · report 1 · sealed envelope 1 | 12 | `cd outlayer/judge && cargo test` |
 | MCP · shared | 13 · 10 | `cd mcp && bun test` · `cd shared && bun test` |
-| **End-to-end on real NEAR testnet** | 62 tx, run 2026-11-04 | `bun run --cwd server e2e:testnet` → [report](e2e/testnet-report.md) |
+| **End-to-end on real NEAR testnet** | 62 tx, run 2026-11-05 | `bun run --cwd server e2e:testnet` → [report](e2e/testnet-report.md) |
 
 ## Security summary
 

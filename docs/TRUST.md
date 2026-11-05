@@ -83,14 +83,24 @@ way the real one does (yield and resume), so other transactions land while the e
 | Replay a signed forfeit through the oracle route, or use one about another PR | Refused ([`tee_proofs.rs`](../contract/vault/tests/tee_proofs.rs)) |
 | Random use: 240 steps of bonds, tips, refunds, forfeits, bounties, withdrawals and payouts to an account that left the token contract | After every step the contract's balance equals what it owes, to the unit; failed payouts are booked as claimable ([`solvency.rs`](../contract/vault/tests/solvency.rs)) |
 | Send the relayer anything but a bond or challenge payment into PatchBond | Refused before it spends gas ([`relayer.test.ts`](../server/test/relayer.test.ts)) |
-| **A compromised OutLayer worker labels a genuine signed *refund* as a forfeit** | **Succeeds. This is a known limit, not a defence**: the test asserts the forfeit goes through, because only OutLayer's attestation stops it ([`adversarial.rs`](../contract/vault/tests/adversarial.rs), `known_limit_…`) |
+| **A compromised OutLayer worker labels a genuine signed *refund* as a forfeit** | **Refused since the 2026-11-05 upgrade**: the deposit moves only on signed bytes that show a forfeit ([`screening.rs`](../contract/vault/tests/screening.rs), `a_relabelled_refund_never_forfeits_…`). Sealed reports stay one step; see below |
 
-## Fixed in the source, not live yet
+## Screening fixes: what's live
 
-Outside screening found these. The fixes are in the code with tests that failed first
-([`screening.rs`](../contract/vault/tests/screening.rs), [`outlayer/judge/tests/bounty.rs`](../outlayer/judge/tests/bounty.rs)),
-but **the live testnet contract and enclave build `cfcd8707…` still behave as the tables above say**,
-until the contract is redeployed and a new enclave build is activated.
+Outside screening found these. Each fix has a test that failed first
+([`screening.rs`](../contract/vault/tests/screening.rs), [`outlayer/judge/tests/bounty.rs`](../outlayer/judge/tests/bounty.rs)).
+**The contract with them went live on 2026-11-05** (tx
+[`6G7R4DES…`](https://testnet.nearblocks.io/txns/6G7R4DES8ei9QRMnaVYaVfUzFMUMJY4xZ2Aag4UUdyo1)): a
+code-only upgrade, rehearsed from the live build in the sandbox, with config and totals identical
+before and after. **The pinned enclave is still `cfcd8707…`, which predates them.** Until build
+`13d05fdc…` is activated:
+
+- **Live now:** the bounty line, the two-step forfeit, the on-chain exit and one definition of
+  "proven". Fixed terms apply to bonds paid from the upgrade on; older bonds use the repo's current
+  policy. The two-step forfeit has not yet run on a real enclave verdict on the live contract.
+- **Waiting on the new enclave build:** the old build doesn't report the PR's link to the payer, so
+  an enclave refund returns the bond but earns no reputation. It also reports no commit, so a
+  confirmed forfeit isn't matched to one.
 
 | Finding | Fix | What it still rests on |
 |---|---|---|

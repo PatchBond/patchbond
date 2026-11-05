@@ -112,7 +112,7 @@ bash outlayer/judge/build.sh     # → dist/patchbond-judge.wasm and its sha256
 
 Local paths are stripped, so the same source, `Cargo.lock` and Rust toolchain (1.97) give the same
 hash. The contract pins that hash (`version_key`); OutLayer's worker refuses bytes that don't match.
-The build the live contract trusts is `cfcd8707…`: `git checkout e31f6f4 && bash outlayer/judge/build.sh`
+The source now builds `13d05fdc…` (activation pending; see [TRUST.md](TRUST.md#screening-fixes-whats-live)). The build the live contract trusts is `cfcd8707…`: `git checkout e31f6f4 && bash outlayer/judge/build.sh`
 prints `cfcd8707a89b546f709e9182bfcf99c2b02dd351c0c4f99e27547b97dd398af8` (Rust 1.97.1). The earlier
 `eb3baa69…` is the same command at `a448538`. Compare with `get_outlayer` on `patchbond-dev.testnet`.
 

@@ -11,7 +11,7 @@
   "wnear": "wrap.testnet",
   "deployed_at": "2026-10-28",
   "deploy_tx": "Azc5Frjk6bukbTKE2jueAViNJVhoqs81DDAaTHjkSiPw",
-  "upgraded_at": "2026-11-03 (each signed forfeit settles one deposit on every route \u2014 tx v9yY7s16uckVRP7TF6crnt5tFsjmX2BgQ5HmzpdMhCY); 2026-11-03 (bounties paid on the OutLayer enclave's check, claim_bounty_in_tee \u2014 tx GQjnVKTpgMtDMfEZj1f8JUcAuGxfHWgQpffoLmW2cQnM); 2026-11-01 (signed forfeits bound to repo + PR, one use each \u2014 tx FyZVV4zqE6z944szpAeBAXRffUJa3g3VWMpySh2vuA8q; per-payer queue cap \u2014 tx 6L1bZSVQZ8c3m6kNvAztAnLhLHvj5mhjCcxjgdFHrjrh); 2026-10-30 agent spending policy",
+  "upgraded_at": "2026-11-05 (screening fixes: bounty line, two-step enclave forfeit, on-chain exit for undecided bonds, terms fixed at deposit \u2014 tx 6G7R4DES8ei9QRMnaVYaVfUzFMUMJY4xZ2Aag4UUdyo1); 2026-11-03 (each signed forfeit settles one deposit on every route \u2014 tx v9yY7s16uckVRP7TF6crnt5tFsjmX2BgQ5HmzpdMhCY); 2026-11-03 (bounties paid on the OutLayer enclave's check, claim_bounty_in_tee \u2014 tx GQjnVKTpgMtDMfEZj1f8JUcAuGxfHWgQpffoLmW2cQnM); 2026-11-01 (signed forfeits bound to repo + PR, one use each \u2014 tx FyZVV4zqE6z944szpAeBAXRffUJa3g3VWMpySh2vuA8q; per-payer queue cap \u2014 tx 6L1bZSVQZ8c3m6kNvAztAnLhLHvj5mhjCcxjgdFHrjrh); 2026-10-30 agent spending policy",
   "outlayer": {
     "version_key": "cfcd8707a89b546f709e9182bfcf99c2b02dd351c0c4f99e27547b97dd398af8",
     "exclusive": true,

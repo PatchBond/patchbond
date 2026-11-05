@@ -22,7 +22,7 @@ Lead track: **AI Security & Defense**. Also submitted to Agent Economy and Priva
 
 ## Where it stands
 
-Testnet, as of 2026-11-04. Full list with transactions: [docs/STATUS.md](docs/STATUS.md).
+Testnet, as of 2026-11-05. Full list with transactions: [docs/STATUS.md](docs/STATUS.md).
 
 | | |
 |---|---|
