@@ -16,7 +16,7 @@
 
 A stranger's pull request needs a small **refundable bond** (USDC or NEAR) within 24 hours, or it closes itself. The price follows the repo's review queue on-chain, like a base fee, and each extra open PR from the same payer costs them 12.5% more.
 
-**The bond and the deadline do the filtering. The AI judge protects refunds.** A verifiable model in a TEE returns real work's bond automatically and sends doubtful cases to a person. It misses most slop. On a held-out set of 50 PRs that maintainers labelled AI slop it forfeited 3, sent 24 to a person and refunded 23. Of 48 good PRs it would have forfeited none but sent 13 to a person ([results and limits](docs/eval/README.md)). When a forfeit does happen, with evidence and a window to dispute, 90% goes to the repo and 10% to PatchBond.
+**The bond and the deadline are the filter; how far they deter real spammers isn't measured yet. The AI judge protects refunds.** A verifiable model in a TEE returns real work's bond automatically and sends doubtful cases to a person. It misses most slop. On a held-out set of 50 PRs that maintainers labelled AI slop it forfeited 3, sent 24 to a person and refunded 23. Of 48 good PRs it would have forfeited none but sent 13 to a person ([results and limits](docs/eval/README.md)). When a forfeit does happen, with evidence and a window to dispute, 90% goes to the repo and 10% to PatchBond.
 
 Lead track: **AI Security & Defense**. Also submitted to Agent Economy and Privacy.
 
@@ -28,13 +28,13 @@ Testnet, as of 2026-11-04. Full list with transactions: [docs/STATUS.md](docs/ST
 |---|---|
 | ✅ **Running on testnet** | Vault contract, GitHub App bot, web app, MCP server for agents, gasless bonds, enclave judging, enclave dispute re-judging, enclave bounty checks, sealed security reports |
 | 🟡 **Partly done** | Cross-chain payouts are quotes only (NEAR Intents has no testnet). Payout to a DAO's account works, but there is no proposal flow |
-| ❌ **Not shown yet** | Any outside contributor paying a bond. A forfeit on a real slop PR: the on-chain forfeits so far are on PRs we wrote. Any measured saving in maintainer time. Mainnet |
+| ❌ **Not shown yet** | Any outside contributor paying a bond. A forfeit on a real slop PR: the on-chain forfeits so far are on PRs we wrote. Whether the deposit deters real spammers, or saves maintainers time. Mainnet |
 
 ## Three claims you can check
 
 Each one holds under a condition, stated here rather than in a footnote.
 
-1. **Our server has no route to forfeit a bond.** With `exclusive` on, as it is live, the contract refuses the oracle's forfeit and bounty routes, and also refuses a forfeit with no signature, a forged one, or a spent one. The enclave route trusts OutLayer's attested worker for the verdict itself, because the contract sees only signed hashes there ([what the callback checks](docs/TRUST.md#what-the-outlayer-callbacks-verify)). A maintainer can still propose a forfeit with no signature: the contributor can dispute it for free, but **loses the bond if they don't within 48 h**. → `bun run demo`, [`outlayer.rs`](contract/vault/src/outlayer.rs)
+1. **Our server has no route to forfeit a bond.** With `exclusive` on, as it is live, the contract refuses the oracle's forfeit and bounty routes, and also refuses a forfeit with no signature, a forged one, or a spent one. The enclave route trusts OutLayer's attested worker for the verdict itself, because the contract sees only signed hashes there ([what the callback checks](docs/TRUST.md#what-the-outlayer-callbacks-verify)). A maintainer can still propose a forfeit with no signature: the contributor can dispute it for free, but **loses the bond if they don't within 48 h**. Open findings from screening, including a bounty path that isn't sound yet, are listed in [docs/TRUST.md](docs/TRUST.md#attacks-we-tested). → `bun run demo`, [`outlayer.rs`](contract/vault/src/outlayer.rs)
 2. **The judge can run without our server.** Anyone can call `judge_in_tee`: an Intel TDX enclave reads GitHub itself, asks NEAR AI, and the contract acts on the answer. Disputes are re-judged the same way. → [docs/OUTLAYER.md](docs/OUTLAYER.md), with testnet transactions
 3. **An agent can be given money without the keys.** Its function-call key can only pay bonds, within a daily cap, a per-bond limit and a repo list the contract enforces. → [`budget.rs`](contract/vault/src/budget.rs), the app's **Agents** page
 
@@ -82,11 +82,11 @@ bun run --cwd server e2e:testnet
         ▼
  Repo's CI finishes ──► verifiable model in a TEE ──► signed verdict
         ├── refund      ──► every cent back, on-chain reputation (proven contributors pay $0)
-        ├── needs_human ──► a maintainer decides (none in 14 days → refunded)
+        ├── needs_human ──► a maintainer decides (none in 14 days → our server refunds it)
         └── forfeit     ──► proposed on-chain ──► challenge window ──► 90% repo vault · 10% PatchBond
 ```
 
-An AI verdict stands after the repo's challenge window (72 h by default); either side can stake to have a stronger model re-judge it. A maintainer's forfeit is a separate 48 h proposal, disputable for free. Maintainers, collaborators and proven contributors (≥3 refunds on ≥2 repos, no recent forfeit) never pay. **When in doubt, PatchBond refunds.** More: [docs/DESIGN.md](docs/DESIGN.md).
+An AI verdict stands after the repo's challenge window (72 h by default, and a repo can shorten it); either side can stake to have a stronger model re-judge it. A maintainer's forfeit is a separate 48 h proposal, disputable for free. Maintainers, collaborators and proven contributors (≥3 refunds on ≥2 repos, no recent forfeit) never pay. **When in doubt, PatchBond refunds.** More: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Why this exists
 
@@ -118,12 +118,16 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 | Read | For |
 |---|---|
 | [docs/TRUST.md](docs/TRUST.md) | Who can move money, what each path checks, the attacks we tested |
-| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (209 tests), how to check our claims |
+| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (221 tests), how to check our claims |
 | [docs/eval/README.md](docs/eval/README.md) | Judge results, including what it misses |
 | [docs/DESIGN.md](docs/DESIGN.md) | Mechanisms, objections, costs, what comes next |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Every step from a clean clone, and running your own |
 | [SECURITY.md](SECURITY.md) | Threat model |
 | [docs/BUILD_LOG.md](docs/BUILD_LOG.md) | How it was built, including what we got wrong |
+
+## Built during the hackathon
+
+Two tags mark the work (Q-003): `pre-hackathon` is the first commit (`2ee2f14`), and `hackathon-submission` will be the final one. The full diff is [`pre-hackathon...hackathon-submission`](https://github.com/PatchBond/patchbond/compare/pre-hackathon...hackathon-submission); the link goes live when the final tag is added. Building started on 2026-10-28, inside the hackathon window (Q-001), so there is no earlier code.
 
 ## Libraries and AI-assisted code
 

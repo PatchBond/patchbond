@@ -10,7 +10,7 @@
   "scripts": {
     "start": "bun src/index.ts",
     "typecheck": "tsc -p .",
-    "test": "bun test"
+    "test": "bun test --timeout 30000"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

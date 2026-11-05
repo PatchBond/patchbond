@@ -11,6 +11,7 @@ enforces today, method by method, and what each guarantee still rests on. Live c
 | **Owner** | `patchbond-dev.testnet` | Register NEAR AI keys (`set_tee_signers`), configure OutLayer and turn `exclusive` on or off (`set_outlayer`), set the dispute model, rotate the oracle and treasury, pause new deposits, withdraw the treasury's 10%. **Holds the contract account's full-access key, so it can also deploy new code.** It can't withdraw a repo's vault or a held bond with any method in the current code. |
 | **Oracle** | `patchbond-oracle.testnet` | Register a repo, link an *unlinked* repo to a payout account (once), set its name (once), propose AI **refunds**, mark a PR reviewed (tip → vault), pay a bounty **only if `exclusive` is off**. With `exclusive` on it can't forfeit. |
 | **Repo's payout account** | set by `link_repo` | Withdraw the vault, set the bond policy, hand the repo to another account (`set_payout`), propose a forfeit (disputable), refund any bond. |
+| **OutLayer project owner** | `tester1604.testnet` | Owns the enclave project and its secrets (`judge`: NEAR AI and GitHub keys). It's a team member's account. It can publish new versions, but the contract pins which build it asks for (`version_key`). Holding the NEAR AI key means it can obtain genuine NEAR AI signatures. |
 | **Payer** | whoever paid the bond | Dispute a maintainer's forfeit for free, stake to challenge an AI verdict, post statements. |
 | **Anyone** | — | Ask the enclave to judge (`judge_in_tee`), re-judge a dispute (`rejudge_in_tee`), check a bounty claim (`claim_bounty_in_tee`), finalize after a window. Paying for the run gives no say in the result. |
 
@@ -24,7 +25,7 @@ enforces today, method by method, and what each guarantee still rests on. Live c
 | **Maintainer forfeit, not disputed** | Payout account → `settle(forfeit)`, then anyone → `finalize` after 48 h | **No model signature.** A 48 h proposal; a penalty is escrowed from the repo's vault in case it's overturned; the maintainer's forfeit and dispute counts are public | **The maintainer's honesty, and the payer noticing within 48 h.** This is the one forfeit path without a signature |
 | **Maintainer forfeit, disputed** | Payer → `dispute` (free), then anyone → `rejudge_in_tee` | A signature over the hashes, recovered to a key registered *for that model* and used once; the enclave's answer reporting the stronger model's forfeit ≥ threshold with evidence ([`rejudge.rs`](../contract/vault/src/rejudge.rs)). Otherwise refund, and the maintainer pays a penalty | Same as the enclave route, including for the verdict itself. A human already decided, so the AI's hard-fact rule isn't required here — by design |
 | **Staked challenge of an AI verdict** | Either side stakes → `rejudge_in_tee` | As above, **and** the enclave's rules (a hard fact) must report a forfeit; the loser's stake goes to the other side | Same as the enclave route |
-| **Bounty** | Anyone → `claim_bounty_in_tee` | The enclave confirms on GitHub: the fix is merged into this repo, its title or body says it fixes #N, and it's bound to the recipient — the bond's payer (author = the bond's GitHub user), or a `PatchBond: <account>` line in the PR ([`bounty.rs`](../contract/vault/src/bounty.rs), `check_fix` in [`lib.rs`](../outlayer/judge/src/lib.rs)). Paid once; the oracle's `pay_bounty` is refused while `exclusive` is on | **The maintainer's merge decision** — the enclave checks the PR was merged and claims the issue, not that the issue is really fixed. Repo admins can edit a PR description, so the payout line is as trustworthy as they are |
+| **Bounty** | Anyone → `claim_bounty_in_tee` | The enclave confirms on GitHub: the fix is merged into this repo, its title or body says it fixes #N, and it's bound to the recipient — the bond's payer (author = the GitHub user that payer declared, [not verified](#attacks-we-tested)), or a `PatchBond: <account>` line in the PR ([`bounty.rs`](../contract/vault/src/bounty.rs), `check_fix` in [`lib.rs`](../outlayer/judge/src/lib.rs)). Paid once; the oracle's `pay_bounty` is refused while `exclusive` is on | **The maintainer's merge decision** — the enclave checks the PR was merged and claims the issue, not that the issue is really fixed. Repo admins can edit a PR description, so the payout line is as trustworthy as they are |
 | **Tip** | Oracle → `mark_reviewed` | Review within the window → vault, else refunded | The oracle's report that a maintainer reviewed (from GitHub's review event) |
 | **Withdraw a vault** | Payout account only | `predecessor == payout` | — |
 | **Agent spending** | The agent's function-call key → `deposit_from_budget` | Daily cap, most per bond, allowed repos, frozen flag — all in the contract ([`budget.rs`](../contract/vault/src/budget.rs)) | The owner's policy |
@@ -84,9 +85,36 @@ way the real one does (yield and resume), so other transactions land while the e
 | Send the relayer anything but a bond or challenge payment into PatchBond | Refused before it spends gas ([`relayer.test.ts`](../server/test/relayer.test.ts)) |
 | **A compromised OutLayer worker labels a genuine signed *refund* as a forfeit** | **Succeeds. This is a known limit, not a defence**: the test asserts the forfeit goes through, because only OutLayer's attestation stops it ([`adversarial.rs`](../contract/vault/tests/adversarial.rs), `known_limit_…`) |
 
+## Fixed in the source, not live yet
+
+Outside screening found these. The fixes are in the code with tests that failed first
+([`screening.rs`](../contract/vault/tests/screening.rs), [`outlayer/judge/tests/bounty.rs`](../outlayer/judge/tests/bounty.rs)),
+but **the live testnet contract and enclave build `cfcd8707…` still behave as the tables above say**,
+until the contract is redeployed and a new enclave build is activated.
+
+| Finding | Fix | What it still rests on |
+|---|---|---|
+| **Bounty theft.** `github_user` is whatever the payer declares, so someone could bond a merged fix, name its real author and claim the bounty | Every bounty now needs the line `PatchBond: <account>` in the PR's own text, bonded or not. A bond no longer has any say, so a squatted bond can't block the real author either | The enclave's reading of GitHub; anyone with write access to the repo can edit a PR's text |
+| **Reputation on someone else's PR.** Paying first took the refund credit | With `exclusive` on, a refund earns reputation only if the enclave read the payer's name in the PR. The bond itself still comes back. The bot links a GitHub user to an account on the same evidence | The enclave's report: this field isn't signed |
+| **A relabelled verdict.** A compromised worker could report a genuine signed refund as a forfeit | An enclave forfeit is now two steps. The callback only stores the signed hashes; the deposit doesn't move until someone posts the matching request and response (`confirm_tee_forfeit`). Those go through the oracle route's check, so the verdict, confidence, evidence, repo and PR are read from the bytes NEAR AI signed. If nobody posts them, the bond is refunded at the timeout | See below |
+| **Which commit was judged.** Nothing tied a verdict to a commit | The commit is in the signed prompt, the enclave reports it, and a confirmed forfeit must match | The contract can't ask GitHub whether that commit is the PR's head |
+| **No on-chain exit for an undecided bond** | `refund_expired`: anyone can return a bond with no verdict 14 days after it was paid, or an unresolved dispute after 60. It earns no reputation | Nothing: it needs no server, maintainer or enclave |
+| **Policy can change after payment** | The challenge window, threshold and review window are copied when the bond is paid (`get_deposit_terms`). A repo can still set a window of 0 for *future* bonds | Bonds paid before the upgrade keep following the current policy |
+| **"Proven" differed by route** | One definition everywhere (3 refunds on 2 repos, no recent forfeit), including disputes and sealed reports, which used to say otherwise | — |
+
+**What the two-step forfeit doesn't close.** A compromised worker can still choose what the model is
+*shown*: it can send NEAR AI a doctored prompt naming the right repo and PR, and get a genuine
+signed forfeit. It can also report a hard fact the rules never found, or a false bounty check, which
+carries no signature at all. Sealed reports stay one step, since publishing their bytes would expose
+the report. So the worker is still trusted for the input, and OutLayer's attestation is what stands
+behind that. The fix removes one attack, relabelling, and it fails safe: a forfeit nobody can prove
+becomes a refund.
+
+**Evidence from live runs.** Both live enclave transactions inspected in screening were sent by our
+oracle account. Anyone can call `judge_in_tee`, and the code has no caller check, but no run by an
+outside account has been shown yet.
+
 Not covered yet:
-- **Head-commit binding.** A verdict covers the PR as it was when judged; the contract doesn't record the head commit, so commits pushed after a refund aren't re-judged.
-- **The enclave route can't check the verdict on-chain** (above). Closing this means sending the signed response to the contract and a new enclave build.
 - **Relayer gas.** Its limit is one payment per account every 10 seconds, with no overall cap, so many accounts sending payments the contract refuses could spend its NEAR. The money isn't at risk; gasless bonds would stop until it's refilled.
 - **Economic attacks.** Sybil accounts and reputation farming are described in [SECURITY.md](../SECURITY.md), not measured.
 - **No outside review.** Every test here was written by the team.

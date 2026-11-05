@@ -19,7 +19,10 @@ if [ -n "${PATCHBOND_DEMO_TARBALL:-}" ]; then
   cp "$PATCHBOND_DEMO_TARBALL" "$dir/$file"
 else
   base=https://github.com/PatchBond/patchbond/releases/latest/download
-  curl -fsSL "$base/$file" -o "$dir/$file"
+  curl -fsSL "$base/$file" -o "$dir/$file" || {
+    echo "Couldn't download $file: no release has been published yet. Use: bun run demo" >&2
+    exit 1
+  }
   curl -fsSL "$base/$file.sha256" -o "$dir/$file.sha256"
   (cd "$dir" && shasum -a 256 -c "$file.sha256")
 fi

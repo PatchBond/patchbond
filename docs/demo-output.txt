@@ -9,7 +9,7 @@ PatchBond — local sandbox demo (starting a NEAR sandbox and deploying the vaul
 ── 2 · Slop pays the maintainer — but only if the enclave signed it ──
   ✓ bob opens slop PR #2 and pays $0.77
   ✗ PatchBond's own server tries to forfeit with no signature → "A forfeit needs the NEAR AI TEE proof (proof: model, request_sha256, response, signature)"
-  ✗ …with one byte of the signed answer changed: the signature now recovers to a stranger's key → "TEE proof rejected: 0x9467dfbf2fb63f1691f6f7c91e1e75f09a489a92 isn't a registered NEAR AI enclave key"
+  ✗ …with one byte of the signed answer changed: the signature now recovers to a stranger's key → "TEE proof rejected: 0x9467dfbf2fb63f1691f6f7c91e1e75f09a489a92 isn't a registered NEAR AI enclave key, nor is 0x764aa06c6b8af8a739de5afbf33f32f85718eaee@z-ai/glm-5.3-flash"
   ✗ …with a genuine NEAR AI signature on a *refund* → "TEE proof rejected: the model said 'refund', not 'forfeit'"
   ✓ with NEAR AI's enclave-signed forfeit ("pipes a remote script into a shell… none of the claimed work", confidence 0.99): $0.70 to the repo's vault, $0.07 to PatchBond
   ✓ bob's record is on-chain: his next bond here costs $1.55 (was $0.77)
@@ -27,6 +27,6 @@ PatchBond — local sandbox demo (starting a NEAR sandbox and deploying the vaul
   ✓ anyone (here: bob) asks the contract to judge alice's PR #3 in OutLayer
   ✓ the enclave's answer — a real run on tcpdump#1471 — carries NEAR AI's signature; the contract recovered 0x3b753b4406613c5e70ae640508632b600424fa0c on-chain: ✓ genuine
   ✓ verdict refund → alice holds $100.00 again
-  ✗ bob pays $10.26 on PR #4; with `exclusive` on, even a signed forfeit from our server is refused → "Forfeits on this contract come only from the OutLayer enclave (judge_in_tee); the oracle can only refund"
+  ✗ bob pays $1.97 on PR #4; with `exclusive` on, even a signed forfeit from our server is refused → "Forfeits on this contract come only from the OutLayer enclave (judge_in_tee); the oracle can only refund"
 
 Done. Every line above was a real transaction on a local NEAR node. Tests: `cargo test -p patchbond-vault`.

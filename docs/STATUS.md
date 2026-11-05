@@ -40,16 +40,16 @@ We ran PatchBond on **[near/nearcore](https://github.com/near/nearcore)**'s open
 
 ## Testing
 
-**209 automated tests** at the commit this file was last updated: contract 79, TypeScript 119, enclave program 11. All pass, and CI runs them on every push. This is the only place the breakdown is kept.
+**221 automated tests** at the commit this file was last updated: contract 86, TypeScript 123, enclave program 12. All pass, and CI runs them on every push. This is the only place the breakdown is kept.
 
 | Suite | Count | Command |
 |---|---|---|
 | Contract unit (curve, money-split property test, TEE parsing, signed-request subject) | 13 | `cd contract && cargo test -p patchbond-vault --lib` |
 | Contract sandbox: money paths 16 · NEAR bonds 7 · optimistic & agents 9 · maintainer safeguards 4 · TEE proofs 5 · OutLayer 4 · disputes 3 · bounties 3 · sealed reports 1 | 52 | `cd contract && cargo test -p patchbond-vault` |
-| Contract attacks and solvency: adversarial 8 · random-use solvency 2 | 10 | `cargo test -p patchbond-vault --test adversarial --test solvency` |
-| Contract upgrades (replay each older live build) | 4 | [`tests/migrate.rs`](../contract/vault/tests/migrate.rs) |
-| Server: facts, malicious scan, rules, bot vs fake GitHub, onboarding, spending guard, Intents, relayer | 96 | `cd server && bun test` |
-| OutLayer program: JS-semantics unit 2 · byte parity with the TS judge on 30 real PRs 1 · bounty check 5 · rejudge 1 · report 1 · sealed envelope 1 | 11 | `cd outlayer/judge && cargo test` |
+| Contract attacks and solvency: adversarial 7 · screening findings 7 · random-use solvency 2 | 16 | `cargo test -p patchbond-vault --test adversarial --test screening --test solvency` |
+| Contract upgrades (replay each older live build; each skips unless its old wasm is supplied) | 5 | [`tests/migrate.rs`](../contract/vault/tests/migrate.rs) |
+| Server: facts, malicious scan, rules, bot vs fake GitHub, onboarding, spending guard, Intents, relayer | 100 | `cd server && bun test` |
+| OutLayer program: JS-semantics unit 2 · byte parity with the TS judge on 30 real PRs 1 · bounty check 6 · rejudge 1 · report 1 · sealed envelope 1 | 12 | `cd outlayer/judge && cargo test` |
 | MCP · shared | 13 · 10 | `cd mcp && bun test` · `cd shared && bun test` |
 | **End-to-end on real NEAR testnet** | 62 tx, run 2026-11-04 | `bun run --cwd server e2e:testnet` → [report](e2e/testnet-report.md) |
 
