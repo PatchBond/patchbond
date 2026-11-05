@@ -3,33 +3,39 @@
 //! 88ff441 (v0.3-pre, before `unsettled`) as `PATCHBOND_V3PRE_WASM`, commit a611282 (v0.3, before the
 //! maintainer-forfeit safeguards) as `PATCHBOND_V3_WASM`, commit 8ad5007 (v0.4, before TEE proofs) as
 //! `PATCHBOND_V4_WASM`. `PATCHBOND_LIVE_WASM` is the build on the live account, for an upgrade that
-//! keeps the layout and so calls no `migrate`. Each case is skipped when unset.
-//! Run: `PATCHBOND_V2_WASM=… PATCHBOND_V3PRE_WASM=… cargo test -p patchbond-vault --test migrate`
+//! keeps the layout and so calls no `migrate`. A plain `cargo test` reports these as ignored; run
+//! with the builds set, and a missing one fails: a replay can't pass without running.
+//! Run: `PATCHBOND_V2_WASM=… PATCHBOND_V3PRE_WASM=… cargo test -p patchbond-vault --test migrate -- --ignored`
 
 mod common;
 use common::*;
 
 #[tokio::test]
+#[ignore = "needs PATCHBOND_V2_WASM"]
 async fn v2_state_survives_the_upgrade() -> anyhow::Result<()> {
     upgrade_from("PATCHBOND_V2_WASM", json!({})).await
 }
 
 #[tokio::test]
+#[ignore = "needs PATCHBOND_V3PRE_WASM"]
 async fn v3_pre_state_survives_the_upgrade() -> anyhow::Result<()> {
     upgrade_from("PATCHBOND_V3PRE_WASM", json!({ "wnear": null })).await
 }
 
 #[tokio::test]
+#[ignore = "needs PATCHBOND_V3_WASM"]
 async fn v3_state_survives_the_upgrade() -> anyhow::Result<()> {
     upgrade_from("PATCHBOND_V3_WASM", json!({ "wnear": null })).await
 }
 
 #[tokio::test]
+#[ignore = "needs PATCHBOND_V4_WASM"]
 async fn v4_state_survives_the_upgrade() -> anyhow::Result<()> {
     upgrade_from("PATCHBOND_V4_WASM", json!({ "wnear": null })).await
 }
 
 #[tokio::test]
+#[ignore = "needs PATCHBOND_LIVE_WASM"]
 async fn live_state_survives_a_code_only_upgrade() -> anyhow::Result<()> {
     upgrade(env_wasm("PATCHBOND_LIVE_WASM"), json!({ "wnear": null }), false).await
 }
@@ -40,16 +46,11 @@ async fn upgrade_from(var: &str, extra_init: Value) -> anyhow::Result<()> {
     upgrade(env_wasm(var), extra_init, true).await
 }
 
-fn env_wasm(var: &str) -> Option<String> {
-    let path = std::env::var(var).ok();
-    if path.is_none() {
-        eprintln!("{var} not set; skipping");
-    }
-    path
+fn env_wasm(var: &str) -> String {
+    std::env::var(var).unwrap_or_else(|_| panic!("{var} isn't set, so this upgrade can't be replayed"))
 }
 
-async fn upgrade(path: Option<String>, extra_init: Value, migrate: bool) -> anyhow::Result<()> {
-    let Some(path) = path else { return Ok(()) };
+async fn upgrade(path: String, extra_init: Value, migrate: bool) -> anyhow::Result<()> {
     let worker = near_workspaces::sandbox().await?;
     let ft = worker.dev_deploy(ft_wasm().await?).await?;
     ft.call("new").transact().await?.into_result()?;

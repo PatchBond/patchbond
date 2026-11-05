@@ -47,12 +47,12 @@ on-chain) — it's real, local, and takes a minute.
 
 ## X post (with the video)
 
-> AI made sending free. Maintainers still pay with their time.
+> AI made sending pull requests free. Maintainers still pay with their time.
 >
-> PatchBond puts a refundable bond on outside PRs. A NEAR AI judge in a TEE reviews them — real work is
-> refunded, slop pays the maintainer. And the contract only forfeits if the enclave signed it.
+> PatchBond adds a small refundable deposit. Real work gets it back. Slop pays the project.
 >
-> Live on my 120+-contributor repo. Built at NEAR HACKATHON.
-> Try it: patchbond-production.up.railway.app · code: github.com/PatchBond/patchbond
+> Built at NEAR HACKATHON, running on testnet.
 >
-> @NEARProtocol @near_ai #NEARHackathon
+> github.com/PatchBond/patchbond
+>
+> @NEARProtocol #NEARHackathon

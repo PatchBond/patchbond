@@ -127,7 +127,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 
 ## Built during the hackathon
 
-Two tags mark the work (Q-003): `pre-hackathon` is the first commit (`2ee2f14`), and `hackathon-submission` will be the final one. The full diff is [`pre-hackathon...hackathon-submission`](https://github.com/PatchBond/patchbond/compare/pre-hackathon...hackathon-submission); the link goes live when the final tag is added. Building started on 2026-10-28, inside the hackathon window (Q-001), so there is no earlier code.
+Two tags mark the work (Q-003): `pre-hackathon` is the first commit (`2ee2f14`), and `hackathon-submission` is the final one. The full diff is [`pre-hackathon...hackathon-submission`](https://github.com/PatchBond/patchbond/compare/pre-hackathon...hackathon-submission). Building started on 2026-10-28, inside the hackathon window (Q-001), so there is no earlier code.
 
 ## Libraries and AI-assisted code
 

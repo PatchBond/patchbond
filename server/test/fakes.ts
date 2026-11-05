@@ -137,7 +137,7 @@ export function fakeChain(repoId: number) {
       if (proof) chain.proofs.set(key(r, n), proof);
       const d = deposits.get(key(r, n))!;
       d.verdict_hash = hash;
-      d.status = verdict === "void" ? { settled: { verdict, at: Date.now() } } : { proposed: { verdict, deadline: Date.now() + 400 } };
+      d.status = verdict === "void" ? { settled: { verdict, at: Date.now() } } : { proposed: { verdict, deadline: Date.now() + 3_600_000 } };
       return undefined as never;
     },
     markReviewed: async (r, n) => {

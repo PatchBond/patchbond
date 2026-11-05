@@ -31,6 +31,12 @@ let chain: ReturnType<typeof fakeChain>;
 let bot: Bot;
 let store: Store;
 
+/** Ends a proposed verdict's challenge window, so no test depends on how fast the machine is. */
+const endWindow = (number: number) => {
+  const status = chain.deposits.get(`${REPO.id}/${number}`)!.status as { proposed: { deadline: number } };
+  status.proposed.deadline = Date.now() - 1;
+};
+
 beforeEach(() => {
   gh = fakeGithub(REPO, PRS);
   chain = fakeChain(REPO.id);
@@ -109,7 +115,7 @@ describe("GitHub bot", () => {
     expect(comments().at(-1)).toContain("verify the signature yourself");
     await bot.tick();
     expect(chain.log).not.toContain(`finalize ${REPO.id}#1`); // window still open
-    await Bun.sleep(450); // the fake challenge window is 400 ms
+    endWindow(1);
     await bot.tick();
     expect(chain.log).toContain(`finalize ${REPO.id}#1`);
     expect(store.submission(REPO.id, 1)?.state).toBe("settled");
@@ -145,7 +151,7 @@ describe("GitHub bot", () => {
     await bot.tick();
     await bot.tick();
     expect(gh.posted(/\/pulls\/2$/)).toEqual([]); // proposed: the window is still open
-    await Bun.sleep(450);
+    endWindow(2);
     await bot.tick();
     expect(chain.log).toContain(`finalize ${REPO.id}#2`);
     expect(gh.posted(/\/pulls\/2$/).at(-1)?.body).toEqual({ state: "closed" });
@@ -158,7 +164,7 @@ describe("GitHub bot", () => {
     chain.pay(2, "slop.testnet", "slopbot");
     await bot.tick();
     await bot.tick();
-    await Bun.sleep(450);
+    endWindow(2);
     await bot.tick();
     expect(chain.log).toContain(`finalize ${REPO.id}#2`);
     expect(gh.posted(/\/pulls\/2$/)).toEqual([]);
@@ -476,7 +482,7 @@ describe("GitHub bot", () => {
 
     // The contract's callback accepted `real` (and refunded): the bot announces exactly that record.
     jobs.set(`${REPO.id}/1`, { state: "judged", verdict_hash: real.verdict_hash });
-    chain.deposits.get(`${REPO.id}/1`)!.status = { proposed: { verdict: "refund", deadline: Date.now() + 400 } };
+    chain.deposits.get(`${REPO.id}/1`)!.status = { proposed: { verdict: "refund", deadline: Date.now() + 3_600_000 } };
     await bot.tick();
     expect(store.submission(REPO.id, 1)?.state).toBe("judged");
     expect(store.verdict(real.id)?.runner).toBe("outlayer-tdx");
