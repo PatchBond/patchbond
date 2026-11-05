@@ -21,6 +21,7 @@ mod payout;
 mod queue;
 mod rejudge;
 mod settle;
+mod terms;
 pub mod tee;
 pub mod types;
 

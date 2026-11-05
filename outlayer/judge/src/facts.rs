@@ -26,6 +26,9 @@ pub struct OpenItem {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Contribution {
     pub number: u64,
+    /// The commit being judged; empty for fixtures from before it was in the prompt.
+    #[serde(default)]
+    pub head_sha: String,
     pub title: String,
     pub body: String,
     pub diff: String,

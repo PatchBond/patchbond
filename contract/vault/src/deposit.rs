@@ -149,6 +149,7 @@ impl PatchBond {
         fixes_issue: Option<Number>,
         harness: Option<String>,
     ) {
+        self.fix_terms(repo_id, number);
         let currency = self.currency_of(repo_id);
         if currency != Currency::Usdc {
             self.deposit_currency.insert((repo_id, number), currency);

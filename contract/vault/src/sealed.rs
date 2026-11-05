@@ -104,15 +104,13 @@ impl PatchBond {
         require!(env::attached_deposit() > NearToken::from_yoctonear(0), "Attach NEAR to pay for the OutLayer run (~0.01 NEAR; the unused part is refunded)");
         env::storage_write(&job_key(repo_id, number), REQUESTED);
 
-        let rep = self.reputation.get(&d.payer).cloned().unwrap_or_default();
-        let reputation = if rep.forfeits > 0 { "has_forfeits" } else if rep.refunds > 0 { "proven" } else { "new" };
         let input = json!({
             "mode": "report",
             "repo_id": repo_id,
             "number": number,
             "github_user": d.github_user,
-            "reputation": reputation,
-            "threshold_bps": self.repo(repo_id).policy.forfeit_threshold_bps,
+            "reputation": self.reputation_of(&d.payer),
+            "threshold_bps": self.terms_of(repo_id, number).forfeit_threshold_bps,
             "model": cfg.model,
             "record_url": cfg.record_url,
             "sealed": sealed,

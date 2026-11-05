@@ -135,8 +135,8 @@ async fn only_a_forfeit_the_model_signed_strongly_enough_takes_the_bond() -> any
         t.bond(n).await?;
     }
     let r = t.judge(1, Some(f["forfeit"].clone())).await?;
-    assert!(outcome(&r).starts_with("forfeit|"), "{}", outcome(&r));
-    assert_eq!(t.status(1).await?["settled"]["verdict"], "forfeit");
+    assert!(outcome(&r).starts_with("forfeit_pending|"), "{}", outcome(&r));
+    assert_eq!(t.status(1).await?, "held", "it stands only once its signed bytes are on-chain (tests/screening.rs)");
 
     // The rules reached forfeit but the model said refund, or the model wasn't confident enough:
     // nothing moves, a maintainer decides (and no re-roll).

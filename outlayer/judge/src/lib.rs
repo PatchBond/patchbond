@@ -35,6 +35,8 @@ pub struct Input {
     pub number: u64,
     /// GitHub login the bond was paid for; the PR's author must match.
     pub github_user: String,
+    /// The NEAR account that paid the bond: does the PR name it (`PatchBond: <account>`)?
+    pub payer: String,
     /// "new" | "proven" | "has_forfeits", from the payer's on-chain reputation.
     pub reputation: String,
     pub threshold_bps: u32,
@@ -80,8 +82,9 @@ pub struct BountyOutput {
 }
 
 /// Is `pr` (GitHub's pull request JSON) a merged fix for issue `input.number` in repo
-/// `input.repo_id`, bound to `input.recipient`? Bound means: the bond's GitHub user wrote it, or —
-/// with no bond — the PR names the account on a line of its own (`PatchBond: alice.near`).
+/// `input.repo_id`, bound to `input.recipient`? Bound means the PR names the account on a line of
+/// its own (`PatchBond: alice.near`), bonded or not: a bond names a GitHub user but proves nothing,
+/// since anyone can pay one on someone else's PR.
 pub fn check_fix(input: &Input, pr: &serde_json::Value) -> BountyOutput {
     let skip = |reason: String| BountyOutput { repo_id: input.repo_id, number: input.number, status: "skip", reason: Some(js::slice16(&reason, 300).to_string()), fix: input.fix, recipient: None, author: None };
     let author = pr["user"]["login"].as_str().unwrap_or("ghost").to_string();
@@ -95,11 +98,7 @@ pub fn check_fix(input: &Input, pr: &serde_json::Value) -> BountyOutput {
     if facts::linked_issue(&text) != Some(input.number) {
         return skip(format!("#{} doesn't say it fixes #{} (\"Fixes #{}\" in its title or body)", input.fix, input.number, input.number));
     }
-    if !input.github_user.is_empty() {
-        if !author.eq_ignore_ascii_case(&input.github_user) {
-            return skip(format!("#{} is by {author}, but its bond was paid for {}", input.fix, input.github_user));
-        }
-    } else if !names_payout(pr["body"].as_str().unwrap_or(""), &input.recipient) {
+    if !names_payout(pr["body"].as_str().unwrap_or(""), &input.recipient) {
         return skip(format!("#{} doesn't name {} (add a line \"PatchBond: {}\" to its description)", input.fix, input.recipient, input.recipient));
     }
     BountyOutput { repo_id: input.repo_id, number: input.number, status: "fix_ok", reason: None, fix: input.fix, recipient: Some(input.recipient.clone()), author: Some(author) }
@@ -224,6 +223,12 @@ pub struct Output {
     pub signature: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verdict_hash: Option<String>,
+    /// The PR's own text names the payer, so a refund counts towards the payer's reputation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub author_linked: Option<bool>,
+    /// The commit that was judged; it is also in the signed prompt.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub head_sha: Option<String>,
 }
 
 impl Output {
@@ -243,6 +248,8 @@ impl Output {
             response_sha256: None,
             signature: None,
             verdict_hash: None,
+            author_linked: None,
+            head_sha: None,
         }
     }
 
@@ -266,6 +273,8 @@ impl Output {
             response_sha256: Some(sha256_hex(response_body)),
             signature: Some(sig.signature.clone()),
             verdict_hash: Some(verdict_hash.to_string()),
+            author_linked: None,
+            head_sha: None,
         }
     }
 }

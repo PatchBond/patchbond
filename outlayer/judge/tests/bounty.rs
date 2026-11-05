@@ -33,8 +33,8 @@ fn the_real_unmerged_pr_is_refused() {
 }
 
 #[test]
-fn a_bonded_merged_fix_by_the_bonds_author_passes() {
-    let out = check_fix(&input("gbangbolaoluwagbemiga", "alice.testnet"), &merged("Fixes #1 with a real lock and a test."));
+fn a_bonded_merged_fix_that_names_the_account_passes() {
+    let out = check_fix(&input("gbangbolaoluwagbemiga", "alice.testnet"), &merged("Fixes #1 with a real lock and a test.\n\nPatchBond: alice.testnet"));
     assert_eq!(out.status, "fix_ok");
     assert_eq!(out.recipient.as_deref(), Some("alice.testnet"));
     assert_eq!(out.author.as_deref(), Some("Gbangbolaoluwagbemiga"));
@@ -42,8 +42,7 @@ fn a_bonded_merged_fix_by_the_bonds_author_passes() {
 }
 
 #[test]
-fn someone_elses_pr_or_another_repo_or_issue_is_refused() {
-    assert_eq!(reason(&input("mallory", "m.testnet"), &merged("Fixes #1")), "#2 is by Gbangbolaoluwagbemiga, but its bond was paid for mallory");
+fn another_repo_or_issue_is_refused() {
     let mut other = merged("Fixes #1");
     other["base"]["repo"]["id"] = json!(42);
     assert!(reason(&input("", "a.testnet"), &other).contains("isn't a pull request into this repo"));
@@ -53,7 +52,7 @@ fn someone_elses_pr_or_another_repo_or_issue_is_refused() {
 }
 
 #[test]
-fn without_a_bond_the_pr_must_name_the_account() {
+fn the_pr_must_name_the_account() {
     let unnamed = merged("Fixes #1 with a lock.");
     assert!(reason(&input("", "alice.testnet"), &unnamed).contains("add a line \"PatchBond: alice.testnet\""));
     let named = merged("Fixes #1 with a lock.\n\nPatchBond: alice.testnet\n");
@@ -69,4 +68,12 @@ fn the_payout_line_is_a_line_of_its_own() {
     assert!(!names_payout("Pay PatchBond: alice.near please", "alice.near"));
     assert!(!names_payout("PatchBond: alice.near.evil", "alice.near"));
     assert!(!names_payout("PatchBond:", ""));
+}
+
+/// A bond names a GitHub user but proves nothing: anyone can pay one on a merged PR, naming its real
+/// author, then claim the bounty for themselves. Only the PR's own text can say who gets paid.
+#[test]
+fn a_bond_on_someone_elses_merged_fix_cant_take_its_bounty() {
+    let squatter = input("Gbangbolaoluwagbemiga", "squatter.testnet");
+    assert_eq!(check_fix(&squatter, &merged("Fixes #1 with a real loop")).status, "skip");
 }

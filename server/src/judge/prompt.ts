@@ -51,7 +51,7 @@ export function userMessage(repo: RepoContext, facts: Facts, c: Contribution, ch
     neutralise((repo.contributing ?? "(no CONTRIBUTING.md)").slice(0, 4_000)),
     `</repo>`,
     `<facts>${JSON.stringify(facts)}</facts>`,
-    `<contribution kind="${c.kind}" number="${c.number}" author_reputation="${facts.author_reputation}">`,
+    `<contribution kind="${c.kind}" number="${c.number}"${c.head_sha ? ` head="${c.head_sha}"` : ""} author_reputation="${facts.author_reputation}">`,
     `Title: ${neutralise(c.title)}`,
     `Body:\n${neutralise(c.body || "(empty)")}`,
     c.kind === "pr" ? `Files (${c.files.length}): ${c.files.join(", ")}` : "",

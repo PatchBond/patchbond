@@ -39,13 +39,24 @@ An AI judge running in a verified enclave (NEAR AI Cloud) reviews the PR after C
 <sub>[What is PatchBond?](${o.webUrl}) · ${o.closeAt ? "Maintainers can still review an unpaid PR before it closes." : "Not paying? The PR stays open; a maintainer can still review it."}</sub>`;
 }
 
-export function depositPaidComment(o: { maintainer: string | null; author: string; amount: string; tip: string | null; reviewHours: number; reopened: boolean }) {
+/** The account a PR names on a line of its own (`PatchBond: alice.near`); mirrors the enclave's `names_payout`. */
+export function namedPayout(body: string | null | undefined): string | null {
+  for (const line of (body ?? "").split("\n")) {
+    const m = line.trim().toLowerCase().match(/^patchbond(?: payout)?:\s*`?([a-z0-9._-]+)`?$/);
+    if (m) return m[1]!;
+  }
+  return null;
+}
+
+export function depositPaidComment(o: { maintainer: string | null; author: string; amount: string; tip: string | null; reviewHours: number; reopened: boolean; unlinked?: string }) {
   const who = o.maintainer ? `@${o.maintainer} — ` : "";
   const tip = o.tip ? ` A review within ${o.reviewHours} h earns the repo the ${o.tip} priority tip.` : "";
   return `${MARKER}
 💰 ${who}@${o.author} paid a **${o.amount}** refundable deposit on this PR${o.reopened ? ", so it's reopened" : ""}.${tip}
 
-The AI judge reviews it once CI finishes; the verdict appears here. Filter paid PRs with the \`patchbond: deposit paid\` label.`;
+The AI judge reviews it once CI finishes; the verdict appears here. Filter paid PRs with the \`patchbond: deposit paid\` label.${o.unlinked ? `
+
+@${o.author}: add a line \`PatchBond: ${o.unlinked}\` to the PR description if that account is yours. Without it a refund still comes back, but it earns no reputation and the PR can't claim a bounty.` : ""}`;
 }
 
 export function unpaidClosedComment(o: { link: string }) {

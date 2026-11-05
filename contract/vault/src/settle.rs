@@ -6,6 +6,8 @@
 //!   ├──window 0──────────────────────────────────────────────────▶ Settled
 //!   └──maintainer forfeit──▶ Proposed (48 h, fixed) ──free dispute──▶ Challenged
 //!
+//! Nothing stays locked for ever: `refund_expired` lets anyone return a bond no one decided.
+//!
 //! A maintainer can always *refund* at once, but can never take a contributor's bond on their own
 //! say-so: their forfeit is a proposal the contributor can dispute for free, a re-judge decides,
 //! and an overturned maintainer forfeit pays the contributor a penalty escrowed from the vault.
@@ -27,7 +29,7 @@ impl PatchBond {
     pub fn mark_reviewed(&mut self, repo_id: RepoId, number: Number) {
         self.assert_oracle();
         let now = env::block_timestamp_ms();
-        let window_ms = self.repo(repo_id).policy.review_window_sec * 1000;
+        let window_ms = self.terms_of(repo_id, number).review_window_sec * 1000;
         let d = self.unsettled_mut(repo_id, number);
         require!(d.reviewed_at.is_none(), "This submission is already marked as reviewed");
         d.reviewed_at = Some(now);
@@ -107,6 +109,25 @@ impl PatchBond {
         }
     }
 
+    /// Anyone: nobody decided this bond in time, so it goes back to the payer. It earns no reputation,
+    /// or waiting would pay. A dispute gets longer, since a re-judge can follow a 30-day window; an
+    /// unresolved dispute counts as a refund, so the stakes settle the way a refund's would.
+    pub fn refund_expired(&mut self, repo_id: RepoId, number: Number) {
+        let d = self.unsettled_mut(repo_id, number);
+        let (status, created_at) = (d.status.clone(), d.created_at);
+        let limit = match status {
+            DepositStatus::Held => UNDECIDED_TIMEOUT_MS,
+            DepositStatus::Challenged { .. } => DISPUTE_TIMEOUT_MS,
+            _ => env::panic_str("A proposed verdict stands when its window ends: use finalize"),
+        };
+        let expires = created_at + limit;
+        require!(
+            env::block_timestamp_ms() > expires,
+            format!("This bond can still be decided until {expires} (ms since epoch)")
+        );
+        self.finish_with(repo_id, number, Verdict::Refund, "0".repeat(64), status, false);
+    }
+
     /// Oracle (after the stronger model re-judged with both sides' statements), or the maintainer
     /// for a contributor's challenge: the final verdict on a challenged deposit.
     pub fn resolve_challenge(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, proof: Option<TeeProof>) {
@@ -165,7 +186,7 @@ impl PatchBond {
     /// An AI verdict on a held deposit: proposed for the repo's challenge window, or settled at once
     /// if the window is 0. Callers have already checked who may post it and, for a forfeit, the proof.
     pub(crate) fn propose_ai_verdict(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String) {
-        let window_ms = self.repo(repo_id).policy.challenge_window_sec * 1000;
+        let window_ms = self.terms_of(repo_id, number).challenge_window_sec * 1000;
         let status = self.unsettled_mut(repo_id, number).status.clone();
         require!(status == DepositStatus::Held, format!("#{number} on repo {repo_id} already has a verdict; challenge it instead"));
         if window_ms == 0 {
@@ -182,7 +203,7 @@ impl PatchBond {
     /// Once TEE signers are registered, the oracle can only forfeit what a registered NEAR AI enclave
     /// signed as a forfeit — with the repo's confidence threshold and at least one piece of evidence.
     /// A compromised server can still refund (harmless), but can no longer invent a forfeit.
-    fn assert_tee_forfeit(&self, repo_id: RepoId, number: Number, proof: Option<&TeeProof>) {
+    pub(crate) fn assert_tee_forfeit(&self, repo_id: RepoId, number: Number, proof: Option<&TeeProof>) {
         if self.tee_signers.is_empty() {
             return;
         }
@@ -199,7 +220,7 @@ impl PatchBond {
             )
         );
         require!(signed.verdict == "forfeit", format!("TEE proof rejected: the model said \"{}\", not \"forfeit\"", signed.verdict));
-        let threshold = self.repo(repo_id).policy.forfeit_threshold_bps as u32;
+        let threshold = self.terms_of(repo_id, number).forfeit_threshold_bps as u32;
         require!(
             signed.confidence_bps >= threshold,
             format!("TEE proof rejected: confidence {} bps is below the repo's {} bps", signed.confidence_bps, threshold)
@@ -288,6 +309,11 @@ impl PatchBond {
 
     /// Settle with the final `verdict`, sorting out any challenge stake first.
     pub(crate) fn finish(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, from: DepositStatus) {
+        self.finish_with(repo_id, number, verdict, verdict_hash, from, true)
+    }
+
+    /// `credit`: a refund may count towards the payer's reputation.
+    fn finish_with(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, from: DepositStatus, credit: bool) {
         if from == DepositStatus::Held {
             self.leave_queue(repo_id, number);
         }
@@ -323,13 +349,14 @@ impl PatchBond {
             }
             events::resolved(repo_id, number, verdict, overturned, &challenger, stake.0);
         }
-        self.execute(repo_id, number, verdict, verdict_hash);
+        self.execute(repo_id, number, verdict, verdict_hash, credit);
     }
 
     /// The only place a bond and tip move. The deposit must not be Settled yet.
-    fn execute(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String) {
+    fn execute(&mut self, repo_id: RepoId, number: Number, verdict: Verdict, verdict_hash: String, credit: bool) {
         let now = env::block_timestamp_ms();
-        let window_ms = self.repo(repo_id).policy.review_window_sec * 1000;
+        let window_ms = self.terms_of(repo_id, number).review_window_sec * 1000;
+        crate::outlayer::drop_pending_forfeit(repo_id, number);
         let d = self.unsettled_mut(repo_id, number);
         d.status = DepositStatus::Settled { verdict, at: now };
         d.verdict_hash = Some(verdict_hash.clone());
@@ -380,8 +407,11 @@ impl PatchBond {
             Verdict::Forfeit => totals.forfeited = U128(totals.forfeited.0 + bond),
             _ => totals.refunded = U128(totals.refunded.0 + to_payer),
         }
-        self.record_reputation(&d.payer, repo_id, verdict, now);
-        self.record_agent(&d.payer, d.harness.as_deref(), verdict);
+        // A refund is only to the payer's credit if the PR is theirs; a forfeit always counts.
+        if verdict != Verdict::Refund || (credit && crate::outlayer::author_confirmed(repo_id, number, &d.payer)) {
+            self.record_reputation(&d.payer, repo_id, verdict, now);
+            self.record_agent(&d.payer, d.harness.as_deref(), verdict);
+        }
 
         events::settle(repo_id, number, verdict, &verdict_hash, to_payer, to_vault, to_bounty, to_treasury, currency);
         self.pay_out(d.payer, to_payer, d.from_budget, currency);

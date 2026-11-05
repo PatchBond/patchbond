@@ -120,22 +120,13 @@ async fn a_refused_or_mismatched_check_pays_nothing_and_the_bounty_stays_claimab
 }
 
 #[tokio::test]
-async fn a_bonded_fix_pays_only_the_account_that_paid_its_bond() -> anyhow::Result<()> {
+async fn the_enclave_is_asked_about_the_recipient_not_about_any_bond() -> anyhow::Result<()> {
     let t = setup_bounty().await?;
     let e = &t.e;
-    // alice (whose slop made the bounty) comes back with a real fix #12 and bonds it.
-    let bond = e.quote(REPO, Some(&e.alice)).await?;
-    e.pay(&e.alice, REPO, 12, bond, json!({})).await?.into_result()?;
-
-    let r = t.claim(12, &e.bob, ok(12, &e.bob)).await?;
-    assert!(failure_text(&r).contains("goes to the account that paid it"), "{}", failure_text(&r));
-
-    let before = e.balance(&e.alice).await?;
     t.claim(12, &e.alice, ok(12, &e.alice)).await?.into_result()?;
     let (args, _): (String, NearToken) = t.ol.view("last_request").await?.json()?;
     let input: Value = serde_json::from_str(serde_json::from_str::<Value>(&args)?["input_data"].as_str().unwrap())?;
     assert_eq!(input["mode"], "bounty");
-    assert_eq!(input["github_user"], "alice", "the enclave is told whose PR it must be");
-    assert_eq!(e.balance(&e.alice).await? - before, t.share);
+    assert_eq!(input["recipient"], e.alice.id().to_string());
     Ok(())
 }

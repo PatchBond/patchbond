@@ -13,6 +13,9 @@ static MOCK_WASM: tokio::sync::OnceCell<Vec<u8>> = tokio::sync::OnceCell::const_
 fn outlayer_fx() -> Value {
     serde_json::from_str(include_str!("fixtures/outlayer.json")).unwrap()
 }
+fn proofs_fx() -> Value {
+    serde_json::from_str(include_str!("fixtures/proofs.json")).unwrap()
+}
 fn rejudge_fx() -> Value {
     serde_json::from_str(include_str!("fixtures/rejudge.json")).unwrap()
 }
@@ -193,46 +196,24 @@ async fn one_run_at_a_time_and_admin_changes_mid_run_void_the_answer() -> anyhow
 #[tokio::test]
 async fn one_signed_forfeit_settles_one_deposit_even_if_the_relay_rewrites_which() -> anyhow::Result<()> {
     let t = setup_attack().await?;
+    let f = proofs_fx();
+    t.signers(json!([f["enclave_signer"]])).await?;
     t.bond(1).await?;
     t.bond(2).await?;
-    let r = t.call_now("judge_in_tee", json!({ "repo_id": REPO, "number": 1 }), T::answer(outlayer_fx()["forfeit"].clone(), 1)).await?;
-    assert_eq!(event(&r, "tee_result", "outcome"), "forfeit");
-    // A compromised worker replays the same signed answer, relabelled as deposit #2.
-    let r = t.call_now("judge_in_tee", json!({ "repo_id": REPO, "number": 2 }), T::answer(outlayer_fx()["forfeit"].clone(), 2)).await?;
-    assert!(event(&r, "tee_result", "detail").contains("already used"), "{:?}", r.logs());
+    let signed = &f["forfeit"]["1"];
+    let r = t.call_now("judge_in_tee", json!({ "repo_id": REPO, "number": 1 }), T::answer(signed["output"].clone(), 1)).await?;
+    assert_eq!(event(&r, "tee_result", "outcome"), "forfeit_pending");
+    // A compromised worker replays the same signed answer, relabelled as deposit #2: the signed
+    // request says #1, so its bytes can't confirm #2.
+    let r = t.call_now("judge_in_tee", json!({ "repo_id": REPO, "number": 2 }), T::answer(signed["output"].clone(), 2)).await?;
+    assert_eq!(event(&r, "tee_result", "outcome"), "forfeit_pending");
+    let confirm = |n: u64| t.e.bob.call(t.e.pb.id(), "confirm_tee_forfeit").args_json(json!({ "repo_id": REPO, "number": n, "proof": signed["proof"] })).gas(Gas::from_tgas(150)).transact();
+    let r = confirm(2).await?;
+    assert!(failure_text(&r).contains("the signed request is about"), "{}", failure_text(&r));
     assert_eq!(t.status(2).await?, "held");
 
-    // The same for disputes: one signed re-judge forfeit, one deposit.
-    let f = rejudge_fx();
-    t.signers(json!([format!("{}@{}", f["test_signer"].as_str().unwrap(), f["model"].as_str().unwrap())])).await?;
-    t.disputed(3).await?;
-    t.disputed(4).await?;
-    let r = t.call_now("rejudge_in_tee", json!({ "repo_id": REPO, "number": 3 }), T::answer(f["full_forfeit"].clone(), 3)).await?;
-    assert_eq!(event(&r, "tee_result", "outcome"), "forfeit");
-    let r = t.call_now("rejudge_in_tee", json!({ "repo_id": REPO, "number": 4 }), T::answer(f["full_forfeit"].clone(), 4)).await?;
-    assert!(event(&r, "tee_result", "detail").contains("already used"), "{:?}", r.logs());
-    assert!(t.status(4).await?.get("challenged").is_some(), "still disputed: {}", t.status(4).await?);
-    Ok(())
-}
-
-/// A known limit, not a defence (docs/TRUST.md, "What the OutLayer callbacks verify"): the signature
-/// covers hashes, so the contract can't read what the model said. A compromised worker can pair a
-/// genuine signature from a refund with a forfeit label, and only OutLayer's attestation stops it.
-/// If this test ever fails, the contract has learned to read the verdict: update TRUST.md.
-#[tokio::test]
-async fn known_limit_the_contract_cannot_read_what_an_enclave_signature_covers() -> anyhow::Result<()> {
-    let t = setup_attack().await?;
-    let f = outlayer_fx();
-    t.signers(json!([f["genuine_signer"]])).await?;
-    t.bond(1).await?;
-    let mut a = f["genuine"].clone();
-    assert_eq!(a["verdict"], "refund", "this fixture is NEAR AI's signed refund");
-    a["verdict"] = json!("forfeit");
-    a["model_verdict"] = json!("forfeit");
-    a["confidence_bps"] = json!(9900);
-    a["evidence"] = json!(1);
-    let r = t.call_now("judge_in_tee", json!({ "repo_id": REPO, "number": 1 }), T::answer(a, 1)).await?;
-    assert_eq!(event(&r, "tee_result", "outcome"), "forfeit");
+    confirm(1).await?.into_result()?;
+    assert_eq!(t.status(1).await?["settled"]["verdict"], "forfeit");
     Ok(())
 }
 

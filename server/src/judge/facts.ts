@@ -18,6 +18,8 @@ export interface OpenItem {
 export interface Contribution {
   kind: "pr" | "issue";
   number: number;
+  /** The commit being judged; it goes in the signed prompt. */
+  head_sha?: string;
   title: string;
   body: string;
   /** Unified diff (PRs only). */

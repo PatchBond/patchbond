@@ -11,7 +11,7 @@ import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
 import { parseRepoRules, type RepoRules } from "../judge/facts";
 import { gatherPr } from "./gather";
-import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, money, payLink, unpaidClosedComment, utc, verdictComment } from "./text";
+import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, money, namedPayout, payLink, unpaidClosedComment, utc, verdictComment } from "./text";
 
 const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 /** Labels maintainers can filter on: review the paid queue, ignore the rest. */
@@ -23,7 +23,7 @@ export type ChainPort = Pick<
   Chain,
   "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
 > &
-  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee" | "claimBountyInTee">>;
+  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getPendingForfeit" | "confirmTeeForfeit" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee" | "claimBountyInTee">>;
 
 /** What the contract acts on at once: refunds, and forfeits the model itself signed. */
 function actsOnChain(r: VerdictRecord): boolean {
@@ -234,13 +234,16 @@ export class Bot {
       this.log(`voided deposit by ${d.payer} for ${d.github_user} on PR by ${s.author}`);
       return;
     }
-    this.store.linkGithub(s.author, d.payer);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    // Paying a bond proves nothing about who wrote the PR; only the PR's own text can say so.
+    const { data: pr } = await gh.rest.pulls.get({ owner, repo, pull_number: s.number });
+    const linked = namedPayout(pr.body) === d.payer;
+    if (linked) this.store.linkGithub(s.author, d.payer);
     const wasClosed = s.state === "closed_unpaid";
     this.store.setState(s.repo_id, s.number, "deposit_received", { deposit_seen_at: Date.now() });
     const repoOnChain = await this.chain.getRepo(s.repo_id);
     const currency = repoOnChain?.currency ?? "usdc";
     await this.updateCheck(gh, s, "in_progress", null, checkSummary("received", `Deposit of ${money(d.bond, currency)} from ${d.payer}. The AI judge runs once CI finishes.`));
-    const [owner, repo] = s.full_name.split("/") as [string, string];
     if (wasClosed) await gh.rest.pulls.update({ owner, repo, pull_number: s.number, state: "open" }).catch(() => {});
     await gh.rest.issues.removeLabel({ owner, repo, issue_number: s.number, name: LABEL.awaiting }).catch(() => {});
     await gh.rest.issues.addLabels({ owner, repo, issue_number: s.number, labels: [LABEL.paid] }).catch(() => {});
@@ -248,6 +251,7 @@ export class Bot {
     await gh.rest.issues.createComment({
       owner, repo, issue_number: s.number,
       body: depositPaidComment({
+        unlinked: linked ? undefined : d.payer,
         maintainer: this.store.repoMaintainer(s.repo_id),
         author: s.author,
         amount: money(d.bond, currency),
@@ -326,7 +330,7 @@ export class Bot {
     const rep = payer ? await this.chain.getReputation(payer) : undefined;
     const input = await gatherPr(gh, { owner, repo, number: s.number }, {
       threshold,
-      authorReputation: rep && rep.forfeits > 0 ? "has_forfeits" : rep && rep.refunds > 0 ? "proven" : "new",
+      authorReputation: rep && rep.forfeits > 0 ? "has_forfeits" : payer && (await this.chain.isExempt(payer)) ? "proven" : "new",
     });
     const ciDone = !input.checkRuns.some((c) => c.status !== "completed" && !c.name.startsWith(CHECK_NAME));
     const timedOut = Date.now() - (s.deposit_seen_at ?? 0) > this.cfg.ciTimeoutMs;
@@ -373,6 +377,7 @@ export class Bot {
     if (job.state !== "judged") return;
     const record = await this.tee!.confirmed(s.repo_id, s.number);
     if (!record) return; // the enclave's published record hasn't arrived yet
+    await this.confirmPendingForfeit(s, record);
     this.teeAsked.delete(key);
     await this.announce(s, gh, record, repoOnChain, actsOnChain(record));
   }
@@ -384,12 +389,25 @@ export class Bot {
   private async rejudgeInEnclave(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string, freeDispute: boolean) {
     const key = `${s.repo_id}/${s.number}`;
     if (!this.disputes.has(key)) this.disputes.set(key, { seen: Date.now(), proposed, challenger: challengerAccount, free: freeDispute });
-    if (await this.chain.getRejudgeJob!(s.repo_id, s.number)) return; // running, or done (then the deposit is settled)
+    const job = await this.chain.getRejudgeJob!(s.repo_id, s.number);
+    if (job) {
+      // Running, or done: settled already, unless a forfeit still needs its signed bytes on-chain.
+      const record = job.state === "judged" ? await this.tee!.confirmed(s.repo_id, s.number, true) : undefined;
+      if (record) await this.confirmPendingForfeit(s, record);
+      return;
+    }
     if (Date.now() - this.disputes.get(key)!.seen < this.cfg.rejudgeDelayMs) return;
     if (Date.now() - (this.teeAsked.get(`rj:${key}`) ?? 0) < 3 * 60_000) return;
     this.teeAsked.set(`rj:${key}`, Date.now());
     await this.chain.rejudgeInTee!(s.repo_id, s.number);
     this.log(`asked the contract to re-judge ${s.full_name}#${s.number} in OutLayer`);
+  }
+
+  /** An enclave forfeit stands only once its signed bytes are on-chain. Anyone can post them; we do. */
+  private async confirmPendingForfeit(s: Submission, record: VerdictRecord) {
+    if (!(await this.chain.getPendingForfeit?.(s.repo_id, s.number))) return;
+    await this.chain.confirmTeeForfeit!(s.repo_id, s.number, teeProof(record));
+    this.log(`posted the signed bytes of the forfeit on ${s.full_name}#${s.number}`);
   }
 
   /** The contract's callback resolved a dispute: announce the enclave's record. False = not yet. */
@@ -497,9 +515,8 @@ export class Bot {
     const issue = Number(m[1]);
     const bounty = await this.chain.getBounty(repoId, issue);
     if (!bounty || bounty === "0") return;
-    // A bonded fix pays whoever paid its bond; otherwise the account the author linked.
-    const deposit = await this.chain.getDeposit(repoId, pr.number);
-    const recipient = deposit?.kind === "pr" ? deposit.payer : pr.user && this.store.nearAccountOf(pr.user.login);
+    // The account the PR names; the enclave checks the same line. A bond can't say who wrote a PR.
+    const recipient = namedPayout(pr.body) ?? (!this.tee && pr.user && this.store.nearAccountOf(pr.user.login));
     if (!recipient) return;
     if (this.tee && this.chain.claimBountyInTee) {
       // The enclave checks the merge on GitHub and the contract pays on its answer — not on our word.

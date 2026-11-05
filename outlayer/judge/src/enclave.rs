@@ -5,7 +5,7 @@ use crate::http;
 
 use base64::Engine;
 use patchbond_judge::facts::{self, CheckRun, Contribution, Issue, OpenItem, SymbolIndex};
-use patchbond_judge::{check_fix, compute_facts, decide, record, rejudge_request_for, report, rules, sealed, symbols, verdict_hash, Gathered, Input, NearAiSignature, Output};
+use patchbond_judge::{check_fix, compute_facts, decide, names_payout, record, rejudge_request_for, report, rules, sealed, symbols, verdict_hash, Gathered, Input, NearAiSignature, Output};
 use serde_json::Value;
 
 const GITHUB: &str = "https://api.github.com";
@@ -103,6 +103,7 @@ fn judge(input: &Input) -> Result<Output, String> {
 
     let contribution = Contribution {
         number: input.number,
+        head_sha: head.clone(),
         title: pr["title"].as_str().unwrap_or("").to_string(),
         body: pr["body"].as_str().unwrap_or("").to_string(),
         diff,
@@ -122,7 +123,9 @@ fn judge(input: &Input) -> Result<Output, String> {
 
     let (chat_id, response_body, sig) = near_ai(&key, &input.model, &request_body)?;
     let j = decide(input, &g, facts, &response_body, &sig.text);
-    let out = Output::judged(input, &j, &request_body, &response_body, &sig);
+    let mut out = Output::judged(input, &j, &request_body, &response_body, &sig);
+    out.author_linked = Some(names_payout(&g.contribution.body, &input.payer));
+    out.head_sha = Some(head);
 
     if let Some(url) = &input.record_url {
         let rec = record(input, &g, &j, &chat_id, &request_body, &response_body, &sig, &now_iso());

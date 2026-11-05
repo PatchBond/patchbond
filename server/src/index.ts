@@ -127,7 +127,8 @@ app.post("/api/tee-records", async (c) => {
 // Pre-flight: the judge's facts as advice before paying. Free — no model call.
 const preflightAt = new Map<string, number>();
 app.post("/api/preflight", async (c) => {
-  const { url } = await c.req.json<{ url: string }>().catch(() => ({ url: "" }));
+  const { url = "" } = await c.req.json<{ url?: string }>().catch(() => ({ url: "" }));
+  if (!url) return c.json({ error: 'Send a pull request URL, like {"url":"https://github.com/owner/repo/pull/123"}.' }, 400);
   const ip = c.req.header("x-forwarded-for") ?? "local";
   if (Date.now() - (preflightAt.get(ip) ?? 0) < 5_000) return c.json({ error: "One pre-flight every 5 seconds, please." }, 429);
   preflightAt.set(ip, Date.now());

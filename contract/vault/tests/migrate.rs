@@ -2,7 +2,8 @@
 //! Needs the old wasm builds: commit 52d3fae (v0.2, USDC only) as `PATCHBOND_V2_WASM` and commit
 //! 88ff441 (v0.3-pre, before `unsettled`) as `PATCHBOND_V3PRE_WASM`, commit a611282 (v0.3, before the
 //! maintainer-forfeit safeguards) as `PATCHBOND_V3_WASM`, commit 8ad5007 (v0.4, before TEE proofs) as
-//! `PATCHBOND_V4_WASM`. Each case is skipped when unset.
+//! `PATCHBOND_V4_WASM`. `PATCHBOND_LIVE_WASM` is the build on the live account, for an upgrade that
+//! keeps the layout and so calls no `migrate`. Each case is skipped when unset.
 //! Run: `PATCHBOND_V2_WASM=… PATCHBOND_V3PRE_WASM=… cargo test -p patchbond-vault --test migrate`
 
 mod common;
@@ -28,13 +29,27 @@ async fn v4_state_survives_the_upgrade() -> anyhow::Result<()> {
     upgrade_from("PATCHBOND_V4_WASM", json!({ "wnear": null })).await
 }
 
+#[tokio::test]
+async fn live_state_survives_a_code_only_upgrade() -> anyhow::Result<()> {
+    upgrade(env_wasm("PATCHBOND_LIVE_WASM"), json!({ "wnear": null }), false).await
+}
+
 /// Deploy the old wasm, make a forfeit and a held deposit, upgrade, check nothing moved.
 /// `extra_init` = whatever the old `new` needs beyond owner/oracle/treasury/token.
 async fn upgrade_from(var: &str, extra_init: Value) -> anyhow::Result<()> {
-    let Ok(path) = std::env::var(var) else {
+    upgrade(env_wasm(var), extra_init, true).await
+}
+
+fn env_wasm(var: &str) -> Option<String> {
+    let path = std::env::var(var).ok();
+    if path.is_none() {
         eprintln!("{var} not set; skipping");
-        return Ok(());
-    };
+    }
+    path
+}
+
+async fn upgrade(path: Option<String>, extra_init: Value, migrate: bool) -> anyhow::Result<()> {
+    let Some(path) = path else { return Ok(()) };
     let worker = near_workspaces::sandbox().await?;
     let ft = worker.dev_deploy(ft_wasm().await?).await?;
     ft.call("new").transact().await?.into_result()?;
@@ -89,7 +104,9 @@ async fn upgrade_from(var: &str, extra_init: Value) -> anyhow::Result<()> {
 
     // Upgrade in place.
     pb.as_account().deploy(vault_wasm().await?).await?.into_result()?;
-    pb.call("migrate").args_json(json!({ "wnear": wnear.id() })).transact().await?.into_result()?;
+    if migrate {
+        pb.call("migrate").args_json(json!({ "wnear": wnear.id() })).transact().await?.into_result()?;
+    }
 
     let after: Value = pb.view("get_repo").args_json(json!({ "repo_id": REPO })).await?.json()?;
     for k in ["vault", "open", "policy", "stats", "payout"] {
@@ -97,7 +114,9 @@ async fn upgrade_from(var: &str, extra_init: Value) -> anyhow::Result<()> {
     }
     assert_eq!(after["currency"], "usdc");
     let cfg: Value = pb.view("get_config").args_json(json!({})).await?.json()?;
-    assert_eq!(cfg["wnear"], wnear.id().to_string());
+    if migrate {
+        assert_eq!(cfg["wnear"], wnear.id().to_string());
+    }
     let totals: Value = pb.view("get_totals").args_json(json!({})).await?.json()?;
     assert_eq!(totals["deposits"], 2);
     assert_eq!(u(&cfg["treasury_balance"]), u(&totals["forfeited"]) / 10, "10% fee kept");

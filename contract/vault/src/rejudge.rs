@@ -107,8 +107,9 @@ impl PatchBond {
             "repo_id": repo_id,
             "number": number,
             "github_user": d.github_user,
-            "reputation": "new",
-            "threshold_bps": self.repo(repo_id).policy.forfeit_threshold_bps,
+            "payer": d.payer,
+            "reputation": self.reputation_of(&d.payer),
+            "threshold_bps": self.terms_of(repo_id, number).forfeit_threshold_bps,
             "model": rejudge_model(),
             "record_url": cfg.record_url,
             "proposed": format!("{verdict:?}").to_lowercase(),
@@ -194,13 +195,19 @@ impl PatchBond {
         // above the repo's threshold, with evidence. A disputed *maintainer* forfeit (free) stands on
         // that alone — a human already decided; an AI verdict also needs the rules (a hard fact) to
         // agree. Anything less resolves as a refund: when in doubt, refund.
-        let threshold = self.repo(repo_id).policy.forfeit_threshold_bps as u32;
+        if out.author_linked == Some(true) {
+            crate::outlayer::confirm_author(repo_id, number, &d.payer);
+        }
+        let threshold = self.terms_of(repo_id, number).forfeit_threshold_bps as u32;
         let signed_forfeit = out.model_verdict.as_deref() == Some("forfeit") && out.confidence_bps.unwrap_or(0) >= threshold && out.evidence.unwrap_or(0) > 0;
         let forfeit = signed_forfeit && (free || final_verdict == "forfeit");
-        if forfeit && !crate::outlayer::spend_signed_request(&req) {
-            return Err("this signed verdict was already used".into());
+        if forfeit {
+            // Stands only once its signed bytes are on-chain (`confirm_tee_forfeit`).
+            crate::outlayer::hold_forfeit(repo_id, number, &crate::outlayer::PendingForfeit { model, request_sha256: req, response_sha256: resp, verdict_hash: hash.clone(), head_sha: out.head_sha, rejudge: true });
+            events::tee_result(repo_id, number, "forfeit_pending", &hash);
+            return Ok("forfeit_pending".into());
         }
-        let verdict = if forfeit { Verdict::Forfeit } else { Verdict::Refund };
+        let verdict = Verdict::Refund;
         self.finish(repo_id, number, verdict, hash.clone(), d.status);
         let what = format!("{verdict:?}").to_lowercase();
         events::tee_result(repo_id, number, &what, &hash);

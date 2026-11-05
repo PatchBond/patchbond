@@ -48,6 +48,7 @@ export async function gatherPr(
     contribution: {
       kind: "pr",
       number,
+      head_sha: pr.head.sha,
       title: pr.title,
       body: pr.body ?? "",
       diff,

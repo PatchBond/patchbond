@@ -55,7 +55,7 @@ pub fn user_message(repo: &RepoContext, facts: &Facts, c: &Contribution, challen
         neutralise(js::slice16(contributing, 4_000)),
         "</repo>".into(),
         format!("<facts>{}</facts>", serde_json::to_string(facts).expect("facts serialize")),
-        format!(r#"<contribution kind="pr" number="{}" author_reputation="{}">"#, c.number, facts.author_reputation),
+        format!(r#"<contribution kind="pr" number="{}"{} author_reputation="{}">"#, c.number, if c.head_sha.is_empty() { String::new() } else { format!(r#" head="{}""#, c.head_sha) }, facts.author_reputation),
         format!("Title: {}", neutralise(&c.title)),
         format!("Body:\n{}", neutralise(body)),
         format!("Files ({}): {}", c.files.len(), c.files.join(", ")),

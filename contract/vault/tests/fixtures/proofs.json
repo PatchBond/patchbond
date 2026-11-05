@@ -1,0 +1,108 @@
+{
+  "note": "Synthetic, about acme/widget. forfeit: signed forfeits for PRs 1-3. relabelled: NEAR AI signed a refund, the worker reports a forfeit. rejudge: gateway-signed forfeit for PR 4.",
+  "repo": "acme/widget",
+  "enclave_signer": "0xe8debdbc941439224600f93c4b1c4650ee8f6061",
+  "gateway_signer": "0x6fb595794a73159e481f7543a04e2ff248fa4365@moonshotai/kimi-k3",
+  "forfeit": {
+    "1": {
+      "output": {
+        "status": "judged",
+        "verdict": "forfeit",
+        "model_verdict": "forfeit",
+        "confidence_bps": 9500,
+        "evidence": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "request_sha256": "bc8e35d811371e8a82c95889dcb65c45dbfad6e0ada7d608e1af50cf3b8a36b2",
+        "response_sha256": "aaeb879deca8a0d0726e76513879ac061ad322d07e288d6c71a06d96bc2d7d8d",
+        "signature": "0x45dfd0923852cfb8f378b3958412a4ac660eff94d7e1e1f6d62ce82bcc804a0312a774fc1e4994e1fd4e82735a13b97ed603879832209a8921b0b1478f4f7b791c"
+      },
+      "proof": {
+        "model": "z-ai/glm-5.3-flash",
+        "request_sha256": "bc8e35d811371e8a82c95889dcb65c45dbfad6e0ada7d608e1af50cf3b8a36b2",
+        "response": "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.95,\\\"evidence\\\":[\\\"CI fails on every target\\\"]}\"}}]}",
+        "request": "{\"model\":\"z-ai/glm-5.3-flash\",\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{\\\"ci\\\":\\\"failure\\\"}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nbody\\n</contribution>\"}]}",
+        "signature": "0x45dfd0923852cfb8f378b3958412a4ac660eff94d7e1e1f6d62ce82bcc804a0312a774fc1e4994e1fd4e82735a13b97ed603879832209a8921b0b1478f4f7b791c"
+      }
+    },
+    "2": {
+      "output": {
+        "status": "judged",
+        "verdict": "forfeit",
+        "model_verdict": "forfeit",
+        "confidence_bps": 9500,
+        "evidence": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "request_sha256": "489655ca185d217e48944340eeed33a91a0cb881245ecf5d77f8196d1629926b",
+        "response_sha256": "aaeb879deca8a0d0726e76513879ac061ad322d07e288d6c71a06d96bc2d7d8d",
+        "signature": "0xe2bd72537ae3d308f1b463609b56c381b4a9e29c9dfed1e6eb7fde6baac45d874693ceb8bcc0e1dca25bad53193cb129b1b08878ad5fcd5035e805d466c641161c"
+      },
+      "proof": {
+        "model": "z-ai/glm-5.3-flash",
+        "request_sha256": "489655ca185d217e48944340eeed33a91a0cb881245ecf5d77f8196d1629926b",
+        "response": "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.95,\\\"evidence\\\":[\\\"CI fails on every target\\\"]}\"}}]}",
+        "request": "{\"model\":\"z-ai/glm-5.3-flash\",\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{\\\"ci\\\":\\\"failure\\\"}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"2\\\" author_reputation=\\\"new\\\">\\nbody\\n</contribution>\"}]}",
+        "signature": "0xe2bd72537ae3d308f1b463609b56c381b4a9e29c9dfed1e6eb7fde6baac45d874693ceb8bcc0e1dca25bad53193cb129b1b08878ad5fcd5035e805d466c641161c"
+      }
+    },
+    "3": {
+      "output": {
+        "status": "judged",
+        "verdict": "forfeit",
+        "model_verdict": "forfeit",
+        "confidence_bps": 9500,
+        "evidence": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "request_sha256": "f4b6f6b16d52e26e0ca09f8489d5c2a9d64cb7229ee201a0c90e2d97960e31cd",
+        "response_sha256": "aaeb879deca8a0d0726e76513879ac061ad322d07e288d6c71a06d96bc2d7d8d",
+        "signature": "0xdb6d401eee5cf55f5e19e6dff60f513187147b8259a9558fd1fec9c291ea40e901d98962bc0a4de77fba43773392b785ea91b7f6b983767481ef0baa4086876d1b"
+      },
+      "proof": {
+        "model": "z-ai/glm-5.3-flash",
+        "request_sha256": "f4b6f6b16d52e26e0ca09f8489d5c2a9d64cb7229ee201a0c90e2d97960e31cd",
+        "response": "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.95,\\\"evidence\\\":[\\\"CI fails on every target\\\"]}\"}}]}",
+        "request": "{\"model\":\"z-ai/glm-5.3-flash\",\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{\\\"ci\\\":\\\"failure\\\"}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"3\\\" author_reputation=\\\"new\\\">\\nbody\\n</contribution>\"}]}",
+        "signature": "0xdb6d401eee5cf55f5e19e6dff60f513187147b8259a9558fd1fec9c291ea40e901d98962bc0a4de77fba43773392b785ea91b7f6b983767481ef0baa4086876d1b"
+      }
+    }
+  },
+  "relabelled": {
+    "output": {
+      "status": "judged",
+      "verdict": "forfeit",
+      "model_verdict": "forfeit",
+      "confidence_bps": 9500,
+      "evidence": 1,
+      "model": "z-ai/glm-5.3-flash",
+      "request_sha256": "bc8e35d811371e8a82c95889dcb65c45dbfad6e0ada7d608e1af50cf3b8a36b2",
+      "response_sha256": "57f815c9a1387ecf0bda9da35ae424063d9231e0ab0b1de54ec9d0e4f390b714",
+      "signature": "0x2ae5ca41f742bcf6b751b9cc225960cd750cb166ccbc579e9239f5236e841eb56944d404355811acd5711b236c47d79f07c25dd080f35d4862b8f3dac8efb1761b"
+    },
+    "proof": {
+      "model": "z-ai/glm-5.3-flash",
+      "request_sha256": "bc8e35d811371e8a82c95889dcb65c45dbfad6e0ada7d608e1af50cf3b8a36b2",
+      "response": "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"refund\\\",\\\"confidence\\\":0.95,\\\"evidence\\\":[\\\"CI fails on every target\\\"]}\"}}]}",
+      "request": "{\"model\":\"z-ai/glm-5.3-flash\",\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{\\\"ci\\\":\\\"failure\\\"}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"1\\\" author_reputation=\\\"new\\\">\\nbody\\n</contribution>\"}]}",
+      "signature": "0x2ae5ca41f742bcf6b751b9cc225960cd750cb166ccbc579e9239f5236e841eb56944d404355811acd5711b236c47d79f07c25dd080f35d4862b8f3dac8efb1761b"
+    }
+  },
+  "rejudge": {
+    "output": {
+      "status": "judged",
+      "verdict": "forfeit",
+      "model_verdict": "forfeit",
+      "confidence_bps": 9500,
+      "evidence": 1,
+      "model": "moonshotai/kimi-k3",
+      "request_sha256": "40e4dd08b852ff819c4a5e43239819fb28b82961eca5c267849b527602431aae",
+      "response_sha256": "aaeb879deca8a0d0726e76513879ac061ad322d07e288d6c71a06d96bc2d7d8d",
+      "signature": "0xffd4d86e7181f1e895e6fbd864f7a27119fa51025f995f3ef9dbe94629cd8e421ed2454f8419ea8febc6db9e7ab6a9d97f8f452cf7149c9ccab117bef90ed3491c"
+    },
+    "proof": {
+      "model": "moonshotai/kimi-k3",
+      "request_sha256": "40e4dd08b852ff819c4a5e43239819fb28b82961eca5c267849b527602431aae",
+      "response": "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"verdict\\\":\\\"forfeit\\\",\\\"confidence\\\":0.95,\\\"evidence\\\":[\\\"CI fails on every target\\\"]}\"}}]}",
+      "request": "{\"model\":\"moonshotai/kimi-k3\",\"messages\":[{\"role\":\"system\",\"content\":\"judge\"},{\"role\":\"user\",\"content\":\"<repo name=\\\"acme/widget\\\" policy=\\\"default\\\">\\n(no CONTRIBUTING.md)\\n</repo>\\n<facts>{\\\"ci\\\":\\\"failure\\\"}</facts>\\n<contribution kind=\\\"pr\\\" number=\\\"4\\\" author_reputation=\\\"new\\\">\\nbody\\n</contribution>\"}]}",
+      "signature": "0xffd4d86e7181f1e895e6fbd864f7a27119fa51025f995f3ef9dbe94629cd8e421ed2454f8419ea8febc6db9e7ab6a9d97f8f452cf7149c9ccab117bef90ed3491c"
+    }
+  }
+}

@@ -3,9 +3,9 @@
 //! enclave reads GitHub itself — the fix PR is merged into this repo, its title or body says it
 //! fixes #N, and it's bound to the recipient — and the contract pays only on that answer.
 //!
-//! Who gets paid: if the fix PR had a bond, whoever paid it (the enclave checks the PR's author is
-//! the GitHub user the bond named). Otherwise the PR must name the NEAR account on a line of its
-//! own, `PatchBond: alice.near`. Only the author and the repo's admins can edit a PR's text.
+//! Who gets paid: the NEAR account the PR names on a line of its own, `PatchBond: alice.near`, bonded
+//! or not. A bond proves nothing here: anyone can pay one on someone else's PR. Only the author and
+//! people with write access to the repo can edit a PR's text.
 //!
 //! There's no model here, so no NEAR AI signature: what's trusted is OutLayer's attested worker
 //! running the pinned wasm, and GitHub. With `exclusive` on, the oracle can't pay bounties at all.
@@ -50,14 +50,6 @@ impl PatchBond {
         require!(fix != issue, "The fix is a pull request, not the issue itself");
         require!(env::storage_read(&job_key(repo_id, issue)).is_none(), "A claim on this bounty is already being checked");
         require!(env::attached_deposit() > NearToken::from_yoctonear(0), "Attach NEAR to pay for the OutLayer run (~0.01 NEAR; the unused part is refunded)");
-        // A bonded fix binds the GitHub author to the account that paid its bond.
-        let github_user = match self.deposits.get(&(repo_id, fix)) {
-            Some(d) if d.kind == Kind::Pr => {
-                require!(d.payer == recipient, format!("#{fix} had a bond, so its bounty goes to the account that paid it ({})", d.payer));
-                d.github_user.clone()
-            }
-            _ => String::new(),
-        };
         env::storage_write(&job_key(repo_id, issue), REQUESTED);
         let input = json!({
             "mode": "bounty",
@@ -65,7 +57,6 @@ impl PatchBond {
             "number": issue,
             "fix": fix,
             "recipient": recipient,
-            "github_user": github_user,
         });
         events::bounty_claim(repo_id, issue, fix, &recipient, "requested", "");
         outlayer_call(&cfg, input).then(

@@ -40,6 +40,17 @@ fn recent_forfeit(rep: &Reputation, now: TimestampMs) -> bool {
         .is_some_and(|at| now.saturating_sub(at) < FORFEIT_MEMORY_MS)
 }
 
+/// The label the judge sees. "proven" means what it means everywhere: `is_exempt`.
+pub fn reputation_label(rep: &Reputation, now: TimestampMs) -> &'static str {
+    if rep.forfeits > 0 {
+        "has_forfeits"
+    } else if is_exempt(rep, now) {
+        "proven"
+    } else {
+        "new"
+    }
+}
+
 /// 0 = exempt; 1 = normal; 2–4 = recently forfeited (one step per forfeit, capped).
 pub fn multiplier(rep: &Reputation, now: TimestampMs) -> u128 {
     if is_exempt(rep, now) {

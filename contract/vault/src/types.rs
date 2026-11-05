@@ -44,6 +44,10 @@ impl Currency {
 /// Share of every forfeit that goes to the PatchBond treasury (inference + gas), in basis points.
 pub const TREASURY_FEE_BPS: u128 = 1_000;
 pub const BPS: u128 = 10_000;
+/// After this long undecided, anyone can return a held bond (`refund_expired`).
+pub const UNDECIDED_TIMEOUT_MS: u64 = 14 * 24 * 3_600_000;
+/// The same for a dispute nobody resolved: past the longest window, with time for a re-judge.
+pub const DISPUTE_TIMEOUT_MS: u64 = 60 * 24 * 3_600_000;
 /// Longest window a repo may promise or a challenge may stay open.
 pub const MAX_WINDOW_SEC: u64 = 30 * 24 * 3600;
 /// A maintainer's own forfeit only *proposes*; the contributor has this long to dispute it.

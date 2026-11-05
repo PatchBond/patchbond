@@ -128,8 +128,8 @@ async fn a_disputed_forfeit_is_rejudged_in_the_enclave_with_both_sides_statement
     // human already decided this one), so the maintainer's forfeit stands.
     let r = t.rejudge(1, f["model_forfeit_no_hard_fact"].clone()).await?;
     assert!(r.is_success(), "{:?}", r.failures());
-    assert_eq!(outcome(&r), "forfeit");
-    assert_eq!(t.status(1).await?["settled"]["verdict"], "forfeit");
+    assert_eq!(outcome(&r), "forfeit_pending");
+    assert!(t.status(1).await?.get("challenged").is_some(), "it stands once its signed bytes are on-chain (tests/screening.rs)");
     assert_eq!(t.e.view("get_rejudge_job", json!({ "repo_id": REPO, "number": 1 })).await?["state"], "judged");
 
     // Everything the enclave got came from the contract.
@@ -221,8 +221,8 @@ async fn a_staked_challenge_needs_the_rules_to_agree_before_a_forfeit() -> anyho
     assert_eq!(status(1).await?["status"]["settled"]["verdict"], "refund");
     // Model and rules both say forfeit → the challenge wins: forfeit.
     let r = rejudge(2, f["full_forfeit"].clone()).await?;
-    assert_eq!(outcome(&r), "forfeit");
-    assert_eq!(status(2).await?["status"]["settled"]["verdict"], "forfeit");
+    assert_eq!(outcome(&r), "forfeit_pending");
+    assert!(status(2).await?["status"].get("challenged").is_some());
     assert!(stake > 0);
     Ok(())
 }

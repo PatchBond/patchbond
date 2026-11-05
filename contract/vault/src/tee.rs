@@ -55,6 +55,8 @@ pub struct Subject {
     pub repo: String,
     pub kind: String,
     pub number: u64,
+    /// The commit judged, from the tag's `head` attribute (absent on records from before it).
+    pub head: Option<String>,
 }
 
 pub fn subject(request: &str) -> Result<Subject, String> {
@@ -79,7 +81,11 @@ pub fn subject(request: &str) -> Result<Subject, String> {
         (Some(" number="), Some(n)) => n.parse::<u64>().map_err(|_| "The contribution number isn't a number".to_string())?,
         _ => return Err("The request doesn't give the contribution's number".into()),
     };
-    Ok(Subject { repo: repo.to_string(), kind: kind.to_string(), number })
+    let head = match (parts.next(), parts.next()) {
+        (Some(" head="), Some(h)) => Some(h.to_string()),
+        _ => None,
+    };
+    Ok(Subject { repo: repo.to_string(), kind: kind.to_string(), number, head })
 }
 
 /// Verifies `proof` and returns who signed and what the model said, or why it can't be trusted.
@@ -179,7 +185,7 @@ mod tests {
     #[test]
     fn a_request_names_its_repo_and_contribution() {
         let user = "<repo name=\"near/nearcore\" policy=\"default\">\n(no CONTRIBUTING.md)\n</repo>\n<facts>{\"ci\":\"success\"}</facts>\n<contribution kind=\"pr\" number=\"14321\" author_reputation=\"new\">\nTitle: x\n</contribution>";
-        assert_eq!(subject(&req(user)).unwrap(), Subject { repo: "near/nearcore".into(), kind: "pr".into(), number: 14321 });
+        assert_eq!(subject(&req(user)).unwrap(), Subject { repo: "near/nearcore".into(), kind: "pr".into(), number: 14321, head: None });
     }
 
     #[test]

@@ -61,7 +61,7 @@ pub fn report_facts(report: &str, tree: &HashSet<String>, index: Option<Box<dyn 
     // Calls the report mentions (`name(…)`), checked like phantom code in a PR: as if they were added lines.
     let as_diff: String = report.lines().map(|l| format!("+{l}\n")).collect();
     let (phantom, unresolved) = facts::symbol_facts(&as_diff, || index);
-    let injection = facts::injection_markers(&facts::Contribution { number: 0, title: String::new(), body: report.into(), diff: String::new(), files: vec![], additions: 0, deletions: 0 });
+    let injection = facts::injection_markers(&facts::Contribution { number: 0, head_sha: String::new(), title: String::new(), body: report.into(), diff: String::new(), files: vec![], additions: 0, deletions: 0 });
     ReportFacts {
         mentioned_files: mentioned,
         missing_files: missing,
