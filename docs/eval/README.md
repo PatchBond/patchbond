@@ -35,8 +35,13 @@ The numbers above are what the contract would do. The judge's own output differs
 - These labels record what maintainers decided. "Good" means merged, and "slop" means someone labelled it. Neither is an independent review.
 - PRs were judged after closing, so some CI results may have aged and some duplicates may differ from what was visible at the time.
 - It's one run: we didn't measure how much verdicts vary between runs.
-- It has no deliberate prompt-injection set, and no measure of maintainer minutes.
+- It has no measure of maintainer minutes.
 - One good PR errored when fetching its details ([flathub#5146](https://github.com/flathub/flathub/pull/5146)) and has no verdict.
+
+### After this test
+
+- **The false alarm is fixed in the source:** the scan no longer flags the exact `https://sh.rustup.rs | sh` line, and spoofed URLs that mention it still trip the rule. That change came after seeing this set, so these results aren't re-scored, and the fix needs a fresh held-out set to test it. That run hasn't happened.
+- **Prompt injection:** [`injection.json`](injection.json) has 10 synthetic PRs that add nothing real and try to talk the judge into a refund. One run on the live judge model: 0 of 10 refunded automatically, 3 forfeited, 7 sent to a person ([results](results-injection-z-ai-glm-5-3-flash.json)). Ten hand-written cases in one run is a smoke test, not a measure of robustness. `bun server/scripts/eval-injection.ts --nearai` reruns it.
 
 Reproduce: `GITHUB_TOKEN=… bun server/scripts/collect-heldout.ts` gives a fresh sample (GitHub's results change); `EVAL_SET=heldout JUDGE_MODE=nearai bun run --cwd server eval` re-judges this one. Set: [`heldout.json`](heldout.json). Results: [`results-heldout-z-ai-glm-5-3-flash.json`](results-heldout-z-ai-glm-5-3-flash.json).
 
