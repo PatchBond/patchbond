@@ -73,6 +73,10 @@ model signature, because nothing is judged. A repo's admins can edit a PR's desc
 payout line is only as trustworthy as they are (they could also have kept the forfeit by not
 linking an issue). With `exclusive` on, `pay_bounty` (the oracle's route) is refused.
 
+**The two-step forfeit, live, 6 Nov 2026** (our own test PR, [demo-widget#5](https://github.com/PatchBond/demo-widget/pull/5): it imports a module that doesn't exist, so CI fails, and its description claims tests and README changes that aren't in the diff). The payer, `patchbond-e2e.testnet`, called `judge_in_tee` ([tx](https://testnet.nearblocks.io/txns/64nTqptKEPjAYLhqFBvs4V9EerMQvFLZACRHQVed3qzf)) on build `13d05fdc…`. The contract verified NEAR AI's signature and stored `forfeit_pending` with the PR's head commit `737e6b1`, and the $3 bond didn't move. A third account, `patchbond-e2e-fund.testnet`, then posted the signed bytes with `confirm_tee_forfeit` ([tx](https://testnet.nearblocks.io/txns/6qn3VuFZW1AX8nkSJN5ksiVL1Pry5Z3MsDAKy711fiAc)). The contract checked them against the stored hashes and the commit, read the forfeit from them, and only then settled: $2.70 to the repo's vault, $0.30 to the treasury ([public verdict](https://patchbond-production.up.railway.app/v/2ea3fd344e767358)). Neither call came from our oracle or server.
+
+The run also found an outage. The NEAR AI key the enclave used had hit its $10 spend limit, so three earlier attempts on #5 came back `not_judged`. The bond stayed held each time, and the job cleared so it could be asked again. The key has since been replaced.
+
 **Live on testnet, 3 Nov 2026** (our own test PRs on [PatchBond/demo-widget](https://github.com/PatchBond/demo-widget), not outside users):
 [#3](https://github.com/PatchBond/demo-widget/pull/3) claimed to fix #1 but calls a `MutexPool` that
 doesn't exist (CI fails). Its bond was **$2, not $1** — the payer already had a forfeit, so the

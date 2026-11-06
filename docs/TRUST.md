@@ -98,8 +98,8 @@ before and after. Enclave build `13d05fdc…` was pinned the same day (tx
 through `refresh_enclave_key`, with the enclave key unchanged. That run makes no model call.
 
 Fixed terms apply to bonds paid from the upgrade on; older bonds use the repo's current policy. The
-two-step forfeit and the payer and commit checks have not yet run on a real verdict on the live
-contract, only in sandbox tests.
+two-step forfeit and the commit check ran on a real verdict on 6 Nov
+([demo-widget#5](OUTLAYER.md), our own test PR). The payer check (refund credit) has run only in sandbox tests so far.
 
 | Finding | Fix | What it still rests on |
 |---|---|---|
@@ -120,8 +120,9 @@ behind that. The fix removes one attack, relabelling, and it fails safe: a forfe
 becomes a refund.
 
 **Evidence from live runs.** Both live enclave transactions inspected in screening were sent by our
-oracle account. Anyone can call `judge_in_tee`, and the code has no caller check, but no run by an
-outside account has been shown yet.
+oracle account. On 6 Nov the payer's own account called `judge_in_tee` on demo-widget#5 and a third
+account confirmed the forfeit; neither is our oracle or server. Both are still team test accounts, not
+an outside user.
 
 Not covered yet:
 - **Relayer gas.** Its limit is one payment per account every 10 seconds, with no overall cap, so many accounts sending payments the contract refuses could spend its NEAR. The money isn't at risk; gasless bonds would stop until it's refilled.
