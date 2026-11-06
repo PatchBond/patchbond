@@ -1,7 +1,7 @@
 name: Release demo
 
 # On a version tag: builds the sandbox demo and its contracts for Linux and macOS, runs each bundle
-# with no Rust build step, and attaches it to the release, so scripts/demo-fast.sh takes about a minute.
+# with no Rust build step, and attaches it to the release, so scripts/demo-fast.sh takes about 2 minutes.
 on:
   push:
     tags: ["v*"]

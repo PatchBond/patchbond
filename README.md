@@ -68,7 +68,7 @@ The real contract on a local NEAR sandbox, using recorded NEAR AI signatures.
 git clone https://github.com/PatchBond/patchbond && cd patchbond && bash scripts/demo-fast.sh
 ```
 
-With a published release this runs a prebuilt bundle for Linux x64 or Apple Silicon, with nothing to install. Without one, or on another system, the script builds from source instead: that needs Bun, Rust and `cargo-near`, and takes about 10 minutes the first time (9.5 on 8 cores from a clean clone). It shows a bond refunded, our own server refused a forfeit three ways, a genuine signed forfeit paying the maintainer, the oracle failing to touch the vault, and a 16-PR flood pricing mostly its own sender ([sample output](docs/demo-output.txt)).
+With a published release this runs a prebuilt bundle for Linux x64 or Apple Silicon, with nothing to install: about 2 minutes, download included. Without one, or on another system, the script builds from source instead: that needs Bun, Rust and `cargo-near`, and takes about 10 minutes the first time (9.5 on 8 cores from a clean clone). It shows a bond refunded, our own server refused a forfeit three ways, a genuine signed forfeit paying the maintainer, the oracle failing to touch the vault, and a 16-PR flood pricing mostly its own sender ([sample output](docs/demo-output.txt)).
 
 **On real testnet**: deploys a throwaway copy of the contract and sends every money path through it, one explorer link per transaction, then deletes its accounts. Needs a funded testnet account; it costs test NEAR only. It doesn't call NEAR AI or OutLayer: those runs are recorded with transactions in [docs/OUTLAYER.md](docs/OUTLAYER.md).
 
