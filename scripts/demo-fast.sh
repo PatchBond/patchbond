@@ -39,4 +39,4 @@ else
 fi
 
 tar xzf "$dir/$file" -C "$dir"
-PATCHBOND_PREBUILT_DIR="$dir" "$dir/demo"
+PATCHBOND_PREBUILT_DIR="$dir" NEAR_SANDBOX_BIN_PATH="$dir/near-sandbox" "$dir/demo"

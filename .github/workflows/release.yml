@@ -44,12 +44,25 @@ jobs:
           mkdir -p ../bundle
           cp target/debug/examples/demo ../bundle/
           find target/near -name '*.wasm' -exec cp {} ../bundle/ \;
+      # The demo binary otherwise looks for the NEAR sandbox node under this runner's build folder,
+      # which no other machine has, so the bundle carries it (2.14.0, near-sandbox's default).
+      - name: Add the NEAR sandbox node
+        run: |
+          case "${{ matrix.target }}" in linux-x64) p=Linux-x86_64 ;; macos-arm64) p=Darwin-arm64 ;; esac
+          curl -fsSL "https://s3-us-west-1.amazonaws.com/build.nearprotocol.com/nearcore/$p/2.14.0/near-sandbox.tar.gz" | tar xz -C bundle --strip-components=1
+          chmod +x bundle/near-sandbox
       - name: Run it the way a screener will
-        run: PATCHBOND_PREBUILT_DIR=bundle bundle/demo
+        run: |
+          # With the build folder moved away, as on a screener's machine
+          mv contract/target "$RUNNER_TEMP/target"
+          status=0
+          PATCHBOND_PREBUILT_DIR=$PWD/bundle NEAR_SANDBOX_BIN_PATH=$PWD/bundle/near-sandbox bundle/demo || status=$?
+          mv "$RUNNER_TEMP/target" contract/target
+          exit $status
       - name: Upload
         run: |
           f=patchbond-demo-${{ matrix.target }}.tar.gz
-          (cd bundle && shasum -a 256 *.wasm > SHA256SUMS && tar czf ../$f .)
+          (cd bundle && shasum -a 256 *.wasm near-sandbox > SHA256SUMS && tar czf ../$f .)
           shasum -a 256 $f > $f.sha256
           gh release upload "$GITHUB_REF_NAME" $f $f.sha256
         env:
