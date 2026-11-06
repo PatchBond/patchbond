@@ -35,7 +35,9 @@ else
   base=https://github.com/PatchBond/patchbond/releases/latest/download
   curl -fsSL "$base/$file" -o "$dir/$file" || from_source "Couldn't download $file (no release published yet, or no network)."
   curl -fsSL "$base/$file.sha256" -o "$dir/$file.sha256"
-  (cd "$dir" && shasum -a 256 -c "$file.sha256")
+  # sha256sum on Linux (minimal images have no shasum), shasum on macOS
+  if command -v sha256sum >/dev/null; then sum="sha256sum"; else sum="shasum -a 256"; fi
+  (cd "$dir" && $sum -c "$file.sha256")
 fi
 
 tar xzf "$dir/$file" -C "$dir"

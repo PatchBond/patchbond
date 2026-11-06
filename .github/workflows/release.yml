@@ -21,6 +21,7 @@ jobs:
   bundle:
     needs: create
     strategy:
+      fail-fast: false # a Mac runner that never starts shouldn't cancel the Linux bundle
       matrix:
         include:
           - { os: ubuntu-latest, target: linux-x64 }
@@ -53,11 +54,12 @@ jobs:
           chmod +x bundle/near-sandbox
       - name: Run it the way a screener will
         run: |
-          # With the build folder moved away, as on a screener's machine
-          mv contract/target "$RUNNER_TEMP/target"
+          # With the source and build folders moved away and run from elsewhere, as on a screener's machine
+          mv contract "$RUNNER_TEMP/contract"
+          cp -R bundle "$RUNNER_TEMP/bundle"
           status=0
-          PATCHBOND_PREBUILT_DIR=$PWD/bundle NEAR_SANDBOX_BIN_PATH=$PWD/bundle/near-sandbox bundle/demo || status=$?
-          mv "$RUNNER_TEMP/target" contract/target
+          (cd "$RUNNER_TEMP" && PATCHBOND_PREBUILT_DIR=$PWD/bundle NEAR_SANDBOX_BIN_PATH=$PWD/bundle/near-sandbox bundle/demo) || status=$?
+          mv "$RUNNER_TEMP/contract" contract
           exit $status
       - name: Upload
         run: |

@@ -34,7 +34,10 @@ fn reason(r: &ExecutionFinalResult) -> String {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    std::env::set_current_dir(env!("CARGO_MANIFEST_DIR"))?; // the shared helpers build ./ and ../mock-*
+    // The shared helpers build ./ and ../mock-*; a release bundle has its wasm and no source folder
+    if std::env::var_os("PATCHBOND_PREBUILT_DIR").is_none() {
+        std::env::set_current_dir(env!("CARGO_MANIFEST_DIR"))?;
+    }
     println!("\x1b[1mPatchBond — local sandbox demo\x1b[0m (starting a NEAR sandbox and deploying the vault…)");
     let e = setup().await?;
     let tee: Value = serde_json::from_str(include_str!("../tests/fixtures/tee.json"))?;
