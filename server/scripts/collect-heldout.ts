@@ -5,9 +5,10 @@
 //         repo's team, the author's only merged PR there.
 // PRs we can't fetch are listed under `skipped`. Output: docs/eval/heldout.json.
 //   GITHUB_TOKEN=$(gh auth token) bun server/scripts/collect-heldout.ts
+// A later set: HELDOUT_OUT=heldout-2. PRs in candidates.json or any earlier heldout*.json are never picked.
 
 import { Octokit } from "octokit";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "../..");
@@ -17,8 +18,13 @@ const LABELS = ["ai slop", "ai-slop", "llm slop"];
 const gh = new Octokit({ auth: process.env.GITHUB_TOKEN });
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const old = JSON.parse(readFileSync(join(ROOT, "docs/eval/candidates.json"), "utf8"));
-const seen = new Set<string>([...old.slop_prs, ...old.good_first_prs].map((p: { repo: string; number: number }) => `${p.repo}#${p.number}`));
+const OUT = process.env.HELDOUT_OUT ?? "heldout";
+const used = readdirSync(join(ROOT, "docs/eval")).filter((f) => f === "candidates.json" || (/^heldout.*\.json$/.test(f) && f !== `${OUT}.json`));
+const seen = new Set<string>();
+for (const f of used) {
+  const old = JSON.parse(readFileSync(join(ROOT, "docs/eval", f), "utf8"));
+  for (const p of [...old.slop_prs, ...old.good_first_prs] as { repo: string; number: number }[]) seen.add(`${p.repo}#${p.number}`);
+}
 const isBot = (u?: { type?: string; login?: string } | null) => u?.type === "Bot" || /\[bot\]$|-bot$/i.test(u?.login ?? "");
 const repoOf = (url: string) => url.replace("https://api.github.com/repos/", "");
 
@@ -91,7 +97,7 @@ for (const [repo, n] of perRepo) {
 }
 
 writeFileSync(
-  join(ROOT, "docs/eval/heldout.json"),
-  JSON.stringify({ about: "Held-out PRs, selected by server/scripts/collect-heldout.ts before any was judged. Labels are the maintainers' own actions.", collected: new Date().toISOString().slice(0, 10), slop_prs: slop, good_first_prs: good, skipped }, null, 2),
+  join(ROOT, "docs/eval", `${OUT}.json`),
+  JSON.stringify({ about: "Held-out PRs, selected by server/scripts/collect-heldout.ts before any was judged. Labels are the maintainers' own actions. None appears in candidates.json or an earlier held-out set.", collected: new Date().toISOString().slice(0, 10), slop_prs: slop, good_first_prs: good, skipped }, null, 2),
 );
 console.log(`\n${slop.length} slop, ${good.length} good, ${skipped.length} skipped, ${perRepo.size} repos`);

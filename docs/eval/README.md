@@ -1,6 +1,25 @@
 # How well the judge works
 
-The judge is built to avoid taking a good contributor's money, and it misses most slop. The bond and the 24 h deadline do the filtering; the judge decides who gets their money back without a person looking.
+The judge is built to avoid taking a good contributor's money, and it misses most slop: across two held-out tests it forfeited 0 of 95 good PRs and 5 of 99 slop PRs. The bond and the 24 h deadline do the filtering; the judge decides who gets their money back without a person looking.
+
+## Second held-out test, 2026-11-06
+
+97 more PRs across 30 repos, picked by the same rules, with every PR from the tuning set and the first held-out set excluded by the script. Since the first test, the only judge change was the rustup fix.
+
+| | Forfeited | To a maintainer | Refunded automatically | Error |
+|---|---|---|---|---|
+| **Good PRs (47)** | **0** | 10 | 37 | 0 |
+| **Slop PRs (50)** | **2** | 18 | 29 | 1 |
+
+- **Again no good PR lost its bond**, and no false alarm this time. We didn't check whether any of these PRs contained the rustup line, so this doesn't show the fix working.
+- **It caught even less slop:** 2 of 49 (4%) forfeited, and 29 (59%) refunded automatically. Across both tests that's 5 of 99.
+- **Fewer good PRs went to a person:** 10 of 47 (21%), against 27% before.
+- We didn't read the closing comments for AI-use policy closes this time, so there's no "without policy closes" row.
+- **The run was interrupted.** The network dropped partway through, and 44 PRs failed before being judged. They were judged again with `EVAL_RETRY_ERRORS=1`, which keeps the finished rows and runs only the failed ones; the results file marks them `retried`. One slop PR has no verdict: GitHub won't return a diff over 20,000 lines ([LingChat#809](https://github.com/SlimeBoyOwO/LingChat/pull/809)).
+- **Forfeits:** [meson#16216](https://github.com/mesonbuild/meson/pull/16216), [S.P.L.U.R.T-tg#1389](https://github.com/SPLURT-Station/S.P.L.U.R.T-tg/pull/1389).
+- **Cost:** $0.0418 in total, $0.00044 a verdict.
+
+Set: [`heldout-2.json`](heldout-2.json). Results: [`results-heldout-2-z-ai-glm-5-3-flash.json`](results-heldout-2-z-ai-glm-5-3-flash.json). Reproduce: `HELDOUT_OUT=heldout-2 bun server/scripts/collect-heldout.ts`, then `EVAL_SET=heldout-2 JUDGE_MODE=nearai bun run --cwd server eval`.
 
 ## Held-out test, 2026-11-04
 
@@ -40,7 +59,7 @@ The numbers above are what the contract would do. The judge's own output differs
 
 ### After this test
 
-- **The false alarm is fixed in the source:** the scan no longer flags the exact `https://sh.rustup.rs | sh` line, and spoofed URLs that mention it still trip the rule. That change came after seeing this set, so these results aren't re-scored, and the fix needs a fresh held-out set to test it. That run hasn't happened.
+- **The false alarm is fixed in the source:** the scan no longer flags the exact `https://sh.rustup.rs | sh` line, and spoofed URLs that mention it still trip the rule. That change came after seeing this set, so these results aren't re-scored. The second held-out test above ran with the fix.
 - **Prompt injection:** [`injection.json`](injection.json) has 10 synthetic PRs that add nothing real and try to talk the judge into a refund. One run on the live judge model: 0 of 10 refunded automatically, 3 forfeited, 7 sent to a person ([results](results-injection-z-ai-glm-5-3-flash.json)). Ten hand-written cases in one run is a smoke test, not a measure of robustness. `bun server/scripts/eval-injection.ts --nearai` reruns it.
 
 Reproduce: `GITHUB_TOKEN=… bun server/scripts/collect-heldout.ts` gives a fresh sample (GitHub's results change); `EVAL_SET=heldout JUDGE_MODE=nearai bun run --cwd server eval` re-judges this one. Set: [`heldout.json`](heldout.json). Results: [`results-heldout-z-ai-glm-5-3-flash.json`](results-heldout-z-ai-glm-5-3-flash.json).

@@ -5,6 +5,7 @@
 //   bun run eval            (JUDGE_MODE=mock measures the deterministic facts layer)
 //   JUDGE_MODE=nearai bun run eval   (the real verifiable model; needs NEAR AI credits)
 //   EVAL_SET=heldout JUDGE_MODE=nearai bun run eval   (the held-out set from scripts/collect-heldout.ts)
+//   EVAL_RETRY_ERRORS=1 …   (keeps the saved results and judges again only the rows that errored)
 
 import { Octokit } from "octokit";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -27,8 +28,14 @@ const store = new Store(cfg.dataDir);
 /** USD per token, from NEAR AI's public price list (GET /v1/model/list). */
 const PRICE: Record<string, [number, number]> = { "z-ai/glm-5.3-flash": [80e-9, 500e-9], "moonshotai/kimi-k3": [3300e-9, 16500e-9] };
 
-const rows: Array<Item & { verdict: string; model: string; phantom: string[]; ci: string; ms: number; usd: number; id?: string; error?: string }> = [];
-const queue = [...items];
+type Row = Item & { verdict: string; model: string; phantom: string[]; ci: string; ms: number; usd: number; id?: string; error?: string; retried?: boolean };
+const out = join(cfg.root, "docs/eval", `results-${setName === "candidates" ? "" : `${setName}-`}${inference.mock ? "facts-only" : inference.model.replace(/\W+/g, "-")}.json`);
+// A network failure says nothing about the judge: those rows can be judged again, the rest are kept.
+const kept: Row[] = process.env.EVAL_RETRY_ERRORS ? (JSON.parse(readFileSync(out, "utf8")).rows as Row[]).filter((r) => r.verdict !== "error") : [];
+const done = new Set(kept.map((r) => `${r.repo}#${r.number}`));
+const rows: Row[] = [...kept];
+const queue = items.filter((it) => !done.has(`${it.repo}#${it.number}`));
+const retried = process.env.EVAL_RETRY_ERRORS ? queue.length : 0;
 await Promise.all(
   Array.from({ length: 4 }, async () => {
     for (let it = queue.shift(); it; it = queue.shift()) {
@@ -41,7 +48,7 @@ await Promise.all(
         const usage = (JSON.parse(r.response_body) as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage ?? {};
         const [pin, pout] = PRICE[r.model] ?? [0, 0];
         const usd = (usage.prompt_tokens ?? 0) * pin + (usage.completion_tokens ?? 0) * pout;
-        rows.push({ ...it, verdict: r.final.verdict, model: r.model_verdict?.verdict ?? "invalid", phantom: r.facts.phantom_symbols, ci: r.facts.ci, ms: performance.now() - t0, usd, id: r.id });
+        rows.push({ ...it, retried: retried > 0 || undefined, verdict: r.final.verdict, model: r.model_verdict?.verdict ?? "invalid", phantom: r.facts.phantom_symbols, ci: r.facts.ci, ms: performance.now() - t0, usd, id: r.id });
       } catch (e) {
         rows.push({ ...it, verdict: "error", model: "-", phantom: [], ci: "-", ms: performance.now() - t0, usd: 0, error: (e as Error).message.slice(0, 120) });
       }
@@ -70,9 +77,9 @@ const summary = {
   avg_seconds: +(ok.reduce((a, r) => a + r.ms, 0) / Math.max(ok.length, 1) / 1000).toFixed(1),
   total_usd: +rows.reduce((a, r) => a + r.usd, 0).toFixed(4),
   usd_per_verdict: +(rows.reduce((a, r) => a + r.usd, 0) / Math.max(ok.length, 1)).toFixed(5),
+  ...(retried ? { judged_again_after_errors: retried } : {}),
 };
 console.log("\n" + JSON.stringify(summary, null, 2));
 console.table(rows.map((r) => ({ label: r.label, verdict: r.verdict, model: r.model, ci: r.ci, phantom: r.phantom.join(" ").slice(0, 50), pr: `${r.repo}#${r.number}`, error: r.error ?? "" })));
-const out = join(cfg.root, "docs/eval", `results-${setName === "candidates" ? "" : `${setName}-`}${inference.mock ? "facts-only" : inference.model.replace(/\W+/g, "-")}.json`);
 writeFileSync(out, JSON.stringify({ at: new Date().toISOString(), summary, rows }, null, 2));
 console.log(`saved ${out}`);

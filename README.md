@@ -16,7 +16,7 @@
 
 A stranger's pull request needs a small **refundable bond** (USDC or NEAR) within 24 hours, or it closes itself. The price follows the repo's review queue on-chain, like a base fee, and each extra open PR from the same payer costs them 12.5% more.
 
-**The bond and the deadline are the filter; how far they deter real spammers isn't measured yet. The AI judge protects refunds.** A verifiable model in a TEE returns real work's bond automatically and sends doubtful cases to a person. It misses most slop. On a held-out set of 50 PRs that maintainers labelled AI slop it forfeited 3, sent 24 to a person and refunded 23. Of 48 good PRs it would have forfeited none but sent 13 to a person ([results and limits](docs/eval/README.md)). When a forfeit does happen, with evidence and a window to dispute, 90% goes to the repo and 10% to PatchBond.
+**The bond and the deadline are the filter; how far they deter real spammers isn't measured yet. The AI judge protects refunds.** A verifiable model in a TEE returns real work's bond automatically and sends doubtful cases to a person. It misses most slop. On two held-out sets, 99 labelled AI slop PRs judged, it forfeited 5, sent 42 to a person and refunded 52. Of 95 good PRs judged it forfeited none and sent 23 to a person ([results and limits](docs/eval/README.md)). When a forfeit does happen, with evidence and a window to dispute, 90% goes to the repo and 10% to PatchBond.
 
 Lead track: **AI Security & Defense**. Also submitted to Agent Economy and Privacy.
 
@@ -28,7 +28,7 @@ Testnet, as of 2026-11-05. Full list with transactions: [docs/STATUS.md](docs/ST
 |---|---|
 | ✅ **Running on testnet** | Vault contract, GitHub App bot, web app, MCP server for agents, gasless bonds, enclave judging, enclave dispute re-judging, enclave bounty checks, sealed security reports |
 | 🟡 **Partly done** | Cross-chain payouts are quotes only (NEAR Intents has no testnet). Payout to a DAO's account works, but there is no proposal flow |
-| ❌ **Not shown yet** | Any outside contributor paying a bond. A forfeit on a real slop PR: the on-chain forfeits so far are on PRs we wrote. Whether the deposit deters real spammers, or saves maintainers time. Mainnet |
+| ❌ **Not shown yet** | Any outside contributor paying a bond. A forfeit on a real slop PR from outside: the on-chain forfeits so far are on test PRs we wrote. Whether the deposit deters real spammers, or saves maintainers time. Mainnet |
 
 ## Three claims you can check
 
