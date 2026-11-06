@@ -8,7 +8,7 @@ Everything here works from a clean clone on macOS or Linux.
 
 **Fastest:** open the [live demo](https://patchbond-production.up.railway.app), press ⌘K, paste any public PR URL, then **Verify signature** on the verdict.
 
-**The whole money story in one command** — no wallet, no keys, no GitHub. `bash scripts/demo-fast.sh` runs the release bundle with nothing to compile; to build from source (needs Rust + `cargo-near`, 9.5 minutes from a clean clone on 8 cores):
+**The whole money story in one command** — no wallet, no keys, no GitHub. `bash scripts/demo-fast.sh` runs the release bundle with nothing to compile, and builds from source by itself when no bundle is published for your system; to build from source directly (needs Rust + `cargo-near`, 9.5 minutes from a clean clone on 8 cores):
 
 ```bash
 git clone https://github.com/PatchBond/patchbond && cd patchbond && bun install && bun run demo

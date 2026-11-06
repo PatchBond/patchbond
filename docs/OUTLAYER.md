@@ -64,10 +64,9 @@ $0.10 to the treasury. No PatchBond server call decided it.
 **Bounties are paid on the enclave's check too.** A forfeit on a PR that claimed to fix #N is a
 bounty on #N. Anyone calls `claim_bounty_in_tee(repo_id, issue, fix, recipient)`; the enclave runs
 in "bounty" mode — no model, just GitHub — and answers `fix_ok` only if PR `fix` is merged into this
-repo, its title or body says it fixes #N, and it's bound to `recipient`: if the fix had a bond, its
-author must be the GitHub user that bond named (and the contract only lets the bond's payer be the
-recipient); otherwise the PR's description must name the account on a line of its own,
-`PatchBond: alice.near`. The contract checks the answer is about exactly this claim, then pays.
+repo, its title or body says it fixes #N, and its description names `recipient` on a line of its own,
+`PatchBond: alice.near`, bonded or not. It doesn't check that the change really fixes #N: the
+maintainer's merge counts as the fix. The contract checks the answer is about exactly this claim, then pays.
 What's trusted here is OutLayer's attested worker running the pinned wasm, and GitHub — there's no
 model signature, because nothing is judged. A repo's admins can edit a PR's description, so the
 payout line is only as trustworthy as they are (they could also have kept the forfeit by not

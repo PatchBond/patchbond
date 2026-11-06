@@ -42,34 +42,54 @@ Each one holds under a condition, stated here rather than in a footnote.
 
 ## Try it
 
-**No keys, no wallet** — the real contract on a local NEAR sandbox, using recorded NEAR AI signatures.
+### Judge it in 5 minutes: a browser, nothing installed
+
+1. Open a live forfeit: **[patchbond-production.up.railway.app/v/2ea3fd344e767358](https://patchbond-production.up.railway.app/v/2ea3fd344e767358)**. It's [demo-widget#5](https://github.com/PatchBond/demo-widget/pull/5), our own test PR: it imports a module that doesn't exist, so CI fails, and it claims tests that aren't in the diff.
+2. Press **Verify signature**. Your browser checks the record itself, and you should see six ✓:
+
+   ```
+   ✓ Request bytes match the signature
+   ✓ Response bytes match the signature
+   ✓ Signed by the stated model            (z-ai/glm-5.3-flash)
+   ✓ Signature recovers to the signing address   (0x3b75…fa0c, NEAR AI's enclave key)
+   ✓ Model verdict is inside the signed response (forfeit)
+   ✓ On-chain hash matches this record
+   ```
+3. See the money move in two steps. [`judge_in_tee`](https://testnet.nearblocks.io/txns/64nTqptKEPjAYLhqFBvs4V9EerMQvFLZACRHQVed3qzf) ends in `forfeit_pending`, and the $3 bond doesn't move. [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/6qn3VuFZW1AX8nkSJN5ksiVL1Pry5Z3MsDAKy711fiAc), sent by a third account, posts the signed bytes; only then does the `settle` event pay $2.70 to the repo and $0.30 to PatchBond.
+4. Optional: press ⌘K, paste any public PR URL, and get a fresh signed verdict in about a minute.
+
+Offline, the same checks on 9 signed records: `bun install && bun scripts/verify-record.ts docs/eval/examples/*.json`.
+
+### The sandbox demo: no keys, no wallet
+
+The real contract on a local NEAR sandbox, using recorded NEAR AI signatures.
 
 ```bash
 git clone https://github.com/PatchBond/patchbond && cd patchbond && bash scripts/demo-fast.sh
 ```
 
-That runs the release bundle for Linux x64 or Apple Silicon and needs nothing installed: 31 s on our Mac once the sandbox binary is downloaded. To build it yourself, `bun install && bun run demo` needs Bun, Rust and `cargo-near`, and took 9.5 minutes from a clean clone on 8 cores (71 s after that). It shows a bond refunded, our own server refused a forfeit three ways, a genuine signed forfeit paying the maintainer, the oracle failing to touch the vault, and a 16-PR flood pricing mostly its own sender ([sample output](docs/demo-output.txt)).
+With a published release this runs a prebuilt bundle for Linux x64 or Apple Silicon, with nothing to install. Without one, or on another system, the script builds from source instead: that needs Bun, Rust and `cargo-near`, and takes about 10 minutes the first time (9.5 on 8 cores from a clean clone). It shows a bond refunded, our own server refused a forfeit three ways, a genuine signed forfeit paying the maintainer, the oracle failing to touch the vault, and a 16-PR flood pricing mostly its own sender ([sample output](docs/demo-output.txt)).
 
-**On real testnet** — deploys a throwaway copy of the contract and sends every money path through it, one explorer link per transaction, then deletes its accounts. Needs a funded testnet account; it costs test NEAR only. It doesn't call NEAR AI or OutLayer: those runs are recorded with transactions in [docs/OUTLAYER.md](docs/OUTLAYER.md).
+**On real testnet**: deploys a throwaway copy of the contract and sends every money path through it, one explorer link per transaction, then deletes its accounts. Needs a funded testnet account; it costs test NEAR only. It doesn't call NEAR AI or OutLayer: those runs are recorded with transactions in [docs/OUTLAYER.md](docs/OUTLAYER.md).
 
 ```bash
 bun run --cwd server e2e:testnet
 ```
 
-**Fastest look:** open the [hosted demo](https://patchbond-production.up.railway.app), press ⌘K, paste a public PR URL, then **Verify signature**. **Maintainers:** [docs/MAINTAINERS.md](docs/MAINTAINERS.md). All steps: [docs/REPRODUCE.md](docs/REPRODUCE.md).
+**Maintainers:** [docs/MAINTAINERS.md](docs/MAINTAINERS.md). All steps: [docs/REPRODUCE.md](docs/REPRODUCE.md).
 
 <!-- live:start -->
 ### Live now — [patchbond-production.up.railway.app](https://patchbond-production.up.railway.app)
 
 | | |
 |---|---|
-| Bonds paid on-chain | **10** |
+| Bonds paid on-chain | **11** |
 | Refunded to contributors | **$2.00** |
-| Forfeited to maintainers | **$5.00** |
+| Forfeited to maintainers | **$8.00** |
 | Unpaid PRs closed after their 24 h notice | **0** |
-| TEE-signed verdicts on the hosted service | **7** (PRs handled there: 4) · the contract trusts 3 NEAR AI keys |
+| TEE-signed verdicts on the hosted service | **8** (PRs handled there: 4) · the contract trusts 3 NEAR AI keys |
 
-<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-11-04 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service. So far these are the team's own test PRs and test accounts — no outside contributor has paid a bond yet</sub>
+<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-11-06 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service. So far these are the team's own test PRs and test accounts — no outside contributor has paid a bond yet</sub>
 <!-- live:end -->
 
 ## How it works
@@ -92,7 +112,7 @@ An AI verdict stands after the repo's challenge window (72 h by default, and a r
 
 One of us maintains [Sanctifier](https://github.com/HyperSafeD/Sanctifier), with 120+ contributors and 570 pull requests. People keep opening tens of PRs for issues they were never assigned, or describing changes their PR doesn't contain, and each one costs a maintainer time. A Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** ([Phoronix](https://www.phoronix.com/news/Linux-Foundation-25p-AI-Slop), [The Register](https://www.theregister.com/ai-and-ml/2026/10/21/ai-cuts-coding-time-but-its-also-filling-open-sources-inbox-with-crap/5304389)). PatchBond is installed on Sanctifier, with one test PR through it so far, paid from the maintainer's own second account.
 
-Free slop detectors exist, and PatchBond isn't a code reviewer. What's different is the mechanism, enforced by one contract: queue pricing, disputable verdicts, forfeits that fund a bounty on the issue, and capped agent wallets. Nobody is ever paid for submitting, and there is no token.
+Free slop detectors exist, and PatchBond isn't a code reviewer. What's different is the mechanism, enforced by one contract: queue pricing, disputable verdicts, forfeits that fund a bounty on the issue (paid when the maintainer merges a PR that says it fixes the issue and names a payout account; nothing checks the fix itself), and capped agent wallets. Nobody is ever paid for submitting, and there is no token.
 
 ## Tracks
 
@@ -118,7 +138,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 | Read | For |
 |---|---|
 | [docs/TRUST.md](docs/TRUST.md) | Who can move money, what each path checks, the attacks we tested |
-| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (221 tests), how to check our claims |
+| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (228 tests, and how to get each count), how to check our claims |
 | [docs/eval/README.md](docs/eval/README.md) | Judge results, including what it misses |
 | [docs/DESIGN.md](docs/DESIGN.md) | Mechanisms, objections, costs, what comes next |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Every step from a clean clone, and running your own |
