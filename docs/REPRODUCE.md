@@ -18,6 +18,8 @@ A local NEAR sandbox runs the real contract with real token transfers: a real PR
 
 If the NEAR sandbox download times out, download the binary yourself and set `NEAR_SANDBOX_BIN_PATH` to it.
 
+**Contract tests stalling, or a sandbox that can't write outside the repo?** `bash scripts/test-contract.sh` builds the three contracts once and runs every contract test one at a time against those builds, writing nothing outside the repo (`cargo near`'s config goes under `contract/target/`). On an M-series Mac: 81 passed, 5 upgrade replays ignored, about 17 minutes. One suite: `bash scripts/test-contract.sh --test screening`.
+
 From a clean clone (macOS or Linux). **Prerequisites:** [Bun](https://bun.sh) ≥ 1.4, Rust stable with `wasm32-unknown-unknown`, [`cargo-near`](https://github.com/near/cargo-near) ≥ 0.22; optionally `near-cli-rs` and `gh`.
 
 ```bash

@@ -29,7 +29,7 @@ struct T {
 /// to amaka.
 async fn setup_attack() -> anyhow::Result<T> {
     let e = setup().await?;
-    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-outlayer")).await?).await?;
+    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| wasm_of("../mock-outlayer", "mock_outlayer.wasm")).await?).await?;
     let t = T { e, ol };
     t.signers(json!([outlayer_fx()["test_signer"]])).await?;
     t.configure(true, "z-ai/glm-5.3-flash").await?;
@@ -258,7 +258,7 @@ async fn a_bounty_is_paid_once_however_the_claims_race() -> anyhow::Result<()> {
     e.pay(&e.alice, REPO, 10, bond, json!({ "fixes_issue": 7 })).await?.into_result()?;
     e.settle(REPO, 10, "forfeit").await?.into_result()?;
     let share = bond - bond / 10;
-    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-outlayer")).await?).await?;
+    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| wasm_of("../mock-outlayer", "mock_outlayer.wasm")).await?).await?;
     let t = T { e, ol };
     t.configure(true, "z-ai/glm-5.3-flash").await?;
     let claim = |to: &Account| json!({ "repo_id": REPO, "issue": 7, "fix": 11, "recipient": to.id() });

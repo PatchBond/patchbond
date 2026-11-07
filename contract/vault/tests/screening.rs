@@ -23,7 +23,7 @@ async fn setup_screening() -> anyhow::Result<T> {
 }
 
 async fn configure(e: Env) -> anyhow::Result<T> {
-    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-outlayer")).await?).await?;
+    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| wasm_of("../mock-outlayer", "mock_outlayer.wasm")).await?).await?;
     let f = fx();
     e.owner.call(e.pb.id(), "set_tee_signers").args_json(json!({ "signers": [f["enclave_signer"], f["gateway_signer"]] })).transact().await?.into_result()?;
     e.owner

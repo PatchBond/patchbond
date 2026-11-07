@@ -40,9 +40,9 @@ We ran PatchBond on **[near/nearcore](https://github.com/near/nearcore)**'s open
 
 ## Testing
 
-**228 automated tests run by default**, all passing, counted on 2026-11-06: contract 81 (13 unit, 68 sandbox), TypeScript 138 (server 103, shared 22, MCP 13), enclave program 12. CI runs all of them on every push. Five more, the contract upgrade replays, need old builds and run separately. The web app has **no tests of its own**; the verifier its "Verify signature" button runs is `shared/src/verify.ts`, tested on 9 real NEAR AI-signed records. This is the only place the breakdown is kept.
+**231 automated tests run by default**, all passing, counted on 2026-11-07: contract 81 (13 unit, 68 sandbox), TypeScript 138 (server 103, shared 22, MCP 13), enclave program 12. CI runs all of them on every push. Five more, the contract upgrade replays, need old builds and run separately. The web app has **no tests of its own**; the verifier its "Verify signature" button runs is `shared/src/verify.ts`, tested on 9 real NEAR AI-signed records. This is the only place the breakdown is kept.
 
-**Getting a smaller number?** The 68 sandbox tests start a local NEAR node, which `near-workspaces` downloads on first use. Without it, `cargo test` runs the 13 unit tests and the sandbox suites fail to start. If the download times out, see [REPRODUCE.md](REPRODUCE.md) (`NEAR_SANDBOX_BIN_PATH`). And `bun test` from the repo root runs only one package: use `bun run test`, which runs each package.
+**Getting a smaller number?** The 68 sandbox tests start a local NEAR node, which `near-workspaces` downloads on first use. Without it, `cargo test` runs the 13 unit tests and the sandbox suites fail to start. If the download times out, see [REPRODUCE.md](REPRODUCE.md) (`NEAR_SANDBOX_BIN_PATH`). If parallel sandbox tests stall, or your environment can't write outside the repo, `bash scripts/test-contract.sh` runs all 81 one at a time against prebuilt contracts (about 17 minutes on an M-series Mac). And `bun test` from the repo root runs only one package: use `bun run test`, which runs each package.
 
 | Suite | Count | Command |
 |---|---|---|

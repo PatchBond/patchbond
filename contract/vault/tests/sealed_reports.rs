@@ -26,7 +26,7 @@ async fn answer(ol: &Contract, v: Value) -> anyhow::Result<()> {
 #[tokio::test]
 async fn a_sealed_report_is_bound_to_its_ciphertext_and_judged_in_the_enclave() -> anyhow::Result<()> {
     let e = setup().await?;
-    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-outlayer")).await?).await?;
+    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| wasm_of("../mock-outlayer", "mock_outlayer.wasm")).await?).await?;
     let fx: Value = serde_json::from_str(include_str!("fixtures/outlayer.json"))?;
     e.owner.call(e.pb.id(), "set_tee_signers").args_json(json!({ "signers": [fx["genuine_signer"]] })).transact().await?.into_result()?;
     e.owner

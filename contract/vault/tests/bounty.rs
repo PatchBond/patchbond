@@ -24,7 +24,7 @@ async fn setup_bounty() -> anyhow::Result<T> {
     let share = bond - bond / 10;
     assert_eq!(u(&e.view("get_bounty", json!({ "repo_id": REPO, "issue": 7 })).await?), share);
 
-    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-outlayer")).await?).await?;
+    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| wasm_of("../mock-outlayer", "mock_outlayer.wasm")).await?).await?;
     e.owner
         .call(e.pb.id(), "set_outlayer")
         .args_json(json!({ "config": {

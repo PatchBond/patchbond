@@ -21,7 +21,7 @@ struct T {
 
 async fn setup_outlayer(exclusive: bool) -> anyhow::Result<T> {
     let e = setup().await?;
-    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| near_workspaces::compile_project("../mock-outlayer")).await?).await?;
+    let ol = e.worker.dev_deploy(MOCK_WASM.get_or_try_init(|| wasm_of("../mock-outlayer", "mock_outlayer.wasm")).await?).await?;
     let f = fx();
     e.owner
         .call(e.pb.id(), "set_tee_signers")
