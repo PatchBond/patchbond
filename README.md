@@ -36,7 +36,7 @@ Each one holds under a condition, stated here rather than in a footnote.
 
 1. **Our server has no route to forfeit a bond.** With `exclusive` on, as it is live, the contract refuses the oracle's forfeit and bounty routes, and also refuses a forfeit with no signature, a forged one, or a spent one. The enclave route trusts OutLayer's attested worker for the verdict itself, because the contract sees only signed hashes there ([what the callback checks](docs/TRUST.md#what-the-outlayer-callbacks-verify)). A maintainer can still propose a forfeit with no signature: the contributor can dispute it for free, but **loses the bond if they don't within 48 h**. Open findings from screening, including a bounty path that isn't sound yet, are listed in [docs/TRUST.md](docs/TRUST.md#attacks-we-tested). → `bun run demo`, [`outlayer.rs`](contract/vault/src/outlayer.rs)
 2. **The judge can run without our server.** Anyone can call `judge_in_tee`: an Intel TDX enclave reads GitHub itself, asks NEAR AI, and the contract acts on the answer. Disputes are re-judged the same way. → [docs/OUTLAYER.md](docs/OUTLAYER.md), with testnet transactions
-3. **An agent can be given money without the keys.** Its function-call key can only pay bonds, within a daily cap, a per-bond limit and a repo list the contract enforces. → [`budget.rs`](contract/vault/src/budget.rs), the app's **Agents** page
+3. **An agent can be given money without the keys.** Its function-call key can only pay bonds, within a daily cap, a per-bond limit and a repo list the contract enforces. The sandbox demo's last section has a prompt-injected agent try to drain its budget five ways; each is refused. → [`budget.rs`](contract/vault/src/budget.rs), `bash scripts/demo-fast.sh`, the app's **Agents** page
 
 **What we still control:** the owner key can upgrade the code, change which NEAR AI keys are trusted, repoint OutLayer and turn `exclusive` off. So "non-custodial" describes today's code, not a promise that can't change. Every power, every money path and the attacks we ran are in **[docs/TRUST.md](docs/TRUST.md)**.
 
@@ -74,7 +74,7 @@ The real contract on a local NEAR sandbox, using recorded NEAR AI signatures.
 git clone https://github.com/PatchBond/patchbond && cd patchbond && bash scripts/demo-fast.sh
 ```
 
-With a published release this runs a prebuilt bundle for Linux x64 or Apple Silicon, with nothing to install: about 2 minutes, download included. Without one, or on another system, the script builds from source instead: that needs Bun, Rust and `cargo-near`, and takes about 10 minutes the first time (9.5 on 8 cores from a clean clone). It shows a bond refunded, our own server refused a forfeit three ways, a genuine signed forfeit paying the maintainer, the oracle failing to touch the vault, and a 16-PR flood pricing mostly its own sender ([sample output](docs/demo-output.txt)).
+With a published release this runs a prebuilt bundle for Linux x64 or Apple Silicon, with nothing to install: about 2 minutes, download included. Without one, or on another system, the script builds from source instead: that needs Bun, Rust and `cargo-near`, and takes about 10 minutes the first time (9.5 on 8 cores from a clean clone). It shows a bond refunded, our own server refused a forfeit three ways, a genuine signed forfeit paying the maintainer, the oracle failing to touch the vault, a 16-PR flood pricing mostly its own sender, and a prompt-injected agent stopped five ways by its budget policy and its function-call key ([sample output](docs/demo-output.txt)).
 
 **On real testnet**: deploys a throwaway copy of the contract and sends every money path through it, one explorer link per transaction, then deletes its accounts. Needs a funded testnet account; it costs test NEAR only. It doesn't call NEAR AI or OutLayer: those runs are recorded with transactions in [docs/OUTLAYER.md](docs/OUTLAYER.md).
 
@@ -124,7 +124,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 
 | Track | What the work is | Where |
 |---|---|---|
-| **AI Security & Defense** | Function-call keys under a spending policy the contract enforces; forfeits only through signed enclave verdicts and disputable proposals; attacks run against every money path | [`budget.rs`](contract/vault/src/budget.rs), [`outlayer.rs`](contract/vault/src/outlayer.rs), [docs/TRUST.md](docs/TRUST.md) |
+| **AI Security & Defense** | Function-call keys under a spending policy the contract enforces, shown stopping a prompt-injected agent in the sandbox demo; forfeits only through signed enclave verdicts and disputable proposals; attacks run against every money path | [`budget.rs`](contract/vault/src/budget.rs), [`outlayer.rs`](contract/vault/src/outlayer.rs), [docs/TRUST.md](docs/TRUST.md) |
 | **Agent Economy** | Agents pay for attention from capped budgets, declare a passport, and build a public record per agent and harness | [`mcp/`](mcp/src), the app's **Agents** page |
 | **Privacy & Private AI** | Sealed security reports, encrypted in the reporter's browser to the maintainer and an enclave key, judged in OutLayer | [`outlayer/judge`](outlayer/judge), [docs/OUTLAYER.md](docs/OUTLAYER.md#sealed-security-reports) |
 

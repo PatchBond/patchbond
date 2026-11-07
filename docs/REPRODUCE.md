@@ -14,7 +14,7 @@ Everything here works from a clean clone on macOS or Linux.
 git clone https://github.com/PatchBond/patchbond && cd patchbond && bun install && bun run demo
 ```
 
-A local NEAR sandbox runs the real contract with real token transfers: a real PR's bond refunded; our own server **refused** a forfeit with no signature, a tampered one, and a genuine NEAR AI signature on a *refund*; then **NEAR AI's own enclave-signed forfeit** pays the maintainer 90%; the oracle can't withdraw the vault, the maintainer can; one account's 16-PR flood prices *its own* bonds from $0.77 to $4.56 while a newcomer still pays $0.98; and an OutLayer enclave verdict recovered on-chain to NEAR AI's GLM key. [Sample output](demo-output.txt).
+A local NEAR sandbox runs the real contract with real token transfers: a real PR's bond refunded; our own server **refused** a forfeit with no signature, a tampered one, and a genuine NEAR AI signature on a *refund*; then **NEAR AI's own enclave-signed forfeit** pays the maintainer 90%; the oracle can't withdraw the vault, the maintainer can; one account's 16-PR flood prices *its own* bonds from $0.77 to $4.56 while a newcomer still pays $0.98; an OutLayer enclave verdict recovered on-chain to NEAR AI's GLM key; and an agent told by a PR to "send everything to drainer" is refused five times: a repo off its list, its daily cap, and three things its function-call key can't sign (another method, a USDC transfer, a NEAR transfer). [Sample output](demo-output.txt).
 
 If the NEAR sandbox download times out, download the binary yourself and set `NEAR_SANDBOX_BIN_PATH` to it.
 

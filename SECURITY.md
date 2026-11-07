@@ -21,6 +21,8 @@ don't open a public issue.
 | **Agent function-call key** | Call `deposit_from_budget` on the PatchBond contract, within the budget's daily cap | Attach tokens; call any other method or contract; withdraw or raise its own budget |
 | **Anyone** | Pay a bond; finalize a verdict whose challenge window passed; stake a challenge (payer on a forfeit, maintainer on a refund) | Fake a deposit (`ft_on_transfer` only accepts the configured USDC contract) |
 
+**Limits of the agent's key.** NEAR enforces the key's scope: one contract, one method, no attached deposit, and a NEAR allowance that only pays gas. The contract enforces the budget: daily cap, most per bond, allowed repos, freeze. When the allowance runs out the key stops working, and the owner adds a new one; the budget isn't touched. The agent's account should keep a full-access key held by its owner, never by the agent: an account with only function-call keys can't add keys or transfer NEAR, so an exhausted allowance would lock it out. The sandbox demo's last section shows a prompt-injected agent refused five ways (`bash scripts/demo-fast.sh`).
+
 ## Protections (each has a test)
 
 - **Vault isolation** — only the linked payout account withdraws; owner and oracle are refused. ([money_paths.rs](contract/vault/tests/money_paths.rs))
