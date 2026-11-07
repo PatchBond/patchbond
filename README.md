@@ -58,7 +58,13 @@ Each one holds under a condition, stated here rather than in a footnote.
 3. See the money move in two steps. [`judge_in_tee`](https://testnet.nearblocks.io/txns/64nTqptKEPjAYLhqFBvs4V9EerMQvFLZACRHQVed3qzf) ends in `forfeit_pending`, and the $3 bond doesn't move. [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/6qn3VuFZW1AX8nkSJN5ksiVL1Pry5Z3MsDAKy711fiAc), sent by a third account, posts the signed bytes; only then does the `settle` event pay $2.70 to the repo and $0.30 to PatchBond.
 4. Optional: press ⌘K, paste any public PR URL, and get a fresh signed verdict in about a minute.
 
-Offline, the same checks on 9 signed records: `bun install && bun scripts/verify-record.ts docs/eval/examples/*.json`.
+**No browser, or a screening agent?** Fetching the page only shows that it loads: the checks run in your browser when you press the button. The same checks from a terminal, on this record and on 9 more signed ones (each prints six ✓; any ✗ exits 1):
+
+```bash
+bun install
+bun scripts/verify-record.ts https://patchbond-production.up.railway.app/api/verdicts/2ea3fd344e767358
+bun scripts/verify-record.ts docs/eval/examples/*.json
+```
 
 ### The sandbox demo: no keys, no wallet
 

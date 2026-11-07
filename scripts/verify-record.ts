@@ -4,11 +4,12 @@
 // the on-chain verdict hash matches. Compare the signer with NEAR AI's attestation report
 // (GET https://cloud-api.near.ai/v1/attestation/report?model=<model>&signing_algo=ecdsa).
 //   bun scripts/verify-record.ts docs/eval/examples/constructed-slop-forfeit.json
+//   bun scripts/verify-record.ts https://patchbond-production.up.railway.app/api/verdicts/2ea3fd344e767358
 import { readFileSync } from "node:fs";
 import { verifyRecord, type VerdictRecord } from "../shared/src/index";
 
 for (const file of process.argv.slice(2)) {
-  const json = JSON.parse(readFileSync(file, "utf8"));
+  const json = /^https?:\/\//.test(file) ? await (await fetch(file)).json() : JSON.parse(readFileSync(file, "utf8"));
   const r: VerdictRecord = json.record ?? json;
   const checks = await verifyRecord(r);
   console.log(`\n${file}\n  ${r.repo.full_name}#${r.number}: ${r.final.verdict} (model said ${r.model_verdict?.verdict ?? "nothing valid"}) — signed by ${r.signature.signing_address}`);
