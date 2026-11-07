@@ -20,6 +20,8 @@ A stranger's pull request needs a small **refundable bond** (USDC or NEAR) withi
 
 Lead track: **AI Security & Defense**. Also submitted to Agent Economy and Privacy.
 
+**A prompt-injected agent tries to drain its budget on the live testnet contract, and is refused.** The contract refuses a repo off its list ([tx](https://testnet.nearblocks.io/txns/EwFydECUFVX28muR344xGB3sX9bChmyFBgVuyfJVFay9)) and a bond past its daily cap ([tx](https://testnet.nearblocks.io/txns/9cgJ15GLC8Z3HTFDLTLmP7vbtuBVUL1ezHuvAc1BGjhV)); NEAR won't accept its key for another method, a USDC transfer or a NEAR transfer. The attempts are scripted; the refusals are the chain's. [Every step](docs/e2e/agent-attack-report.md) · rerun: `cd server && bun run e2e:agent-attack`
+
 ## Where it stands
 
 Testnet, as of 2026-11-05. Full list with transactions: [docs/STATUS.md](docs/STATUS.md).
@@ -124,7 +126,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 
 | Track | What the work is | Where |
 |---|---|---|
-| **AI Security & Defense** | Function-call keys under a spending policy the contract enforces, shown stopping a prompt-injected agent in the sandbox demo; forfeits only through signed enclave verdicts and disputable proposals; attacks run against every money path | [`budget.rs`](contract/vault/src/budget.rs), [`outlayer.rs`](contract/vault/src/outlayer.rs), [docs/TRUST.md](docs/TRUST.md) |
+| **AI Security & Defense** | Function-call keys under a spending policy the contract enforces, shown stopping a prompt-injected agent in the sandbox demo and on the live testnet contract ([every transaction](docs/e2e/agent-attack-report.md)); forfeits only through signed enclave verdicts and disputable proposals; attacks run against every money path | [`budget.rs`](contract/vault/src/budget.rs), [`outlayer.rs`](contract/vault/src/outlayer.rs), [docs/TRUST.md](docs/TRUST.md) |
 | **Agent Economy** | Agents pay for attention from capped budgets, declare a passport, and build a public record per agent and harness | [`mcp/`](mcp/src), the app's **Agents** page |
 | **Privacy & Private AI** | Sealed security reports, encrypted in the reporter's browser to the maintainer and an enclave key, judged in OutLayer | [`outlayer/judge`](outlayer/judge), [docs/OUTLAYER.md](docs/OUTLAYER.md#sealed-security-reports) |
 
