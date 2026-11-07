@@ -11,7 +11,7 @@ import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
 import { parseRepoRules, type RepoRules } from "../judge/facts";
 import { gatherPr } from "./gather";
-import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, money, namedPayout, payLink, unpaidClosedComment, utc, verdictComment } from "./text";
+import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, maintainerForfeitComment, money, namedPayout, payLink, unpaidClosedComment, utc, verdictComment } from "./text";
 
 const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 /** Labels maintainers can filter on: review the paid queue, ignore the rest. */
@@ -23,7 +23,7 @@ export type ChainPort = Pick<
   Chain,
   "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
 > &
-  Partial<Pick<Chain, "getTeeJob" | "judgeInTee" | "getPendingForfeit" | "confirmTeeForfeit" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee" | "claimBountyInTee">>;
+  Partial<Pick<Chain, "isMaintainerForfeit" | "getTeeJob" | "judgeInTee" | "getPendingForfeit" | "confirmTeeForfeit" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee" | "claimBountyInTee">>;
 
 /** What the contract acts on at once: refunds, and forfeits the model itself signed. */
 function actsOnChain(r: VerdictRecord): boolean {
@@ -164,12 +164,54 @@ export class Bot {
     for (const s of this.store.submissionsIn("awaiting_deposit")) {
       await this.maybeCloseUnpaid(s).catch((e) => this.log(`auto-close ${s.full_name}#${s.number}`, String(e)));
     }
+    // A maintainer can propose a forfeit (from the verdict page, or straight on the contract) any
+    // time the deposit is held; the contributor must hear about it while there's time to dispute.
+    for (const s of this.store.submissionsIn("deposit_received", "judged")) {
+      await this.noticeMaintainerForfeit(s).catch((e) => this.log(`forfeit notice ${s.full_name}#${s.number}`, String(e)));
+    }
     for (const s of this.store.submissionsIn("deposit_received")) {
       await this.maybeJudge(s).catch((e) => this.log(`judge ${s.full_name}#${s.number}`, String(e)));
     }
     for (const s of this.store.submissionsIn("judged")) {
       await this.settleDue(s).catch((e) => this.log(`finalize ${s.full_name}#${s.number}`, String(e)));
     }
+  }
+
+  /**
+   * Posts one PR comment per maintainer-proposed forfeit: the amount, the deadline in UTC, the verdict
+   * page and how to dispute. A failed post is logged and retried on the next tick; it never blocks
+   * the proposal or anything else the bot does.
+   */
+  private async noticeMaintainerForfeit(s: Submission) {
+    if (!this.chain.isMaintainerForfeit) return;
+    const d = await this.chain.getDeposit(s.repo_id, s.number);
+    if (!d || typeof d.status !== "object" || !("proposed" in d.status)) return;
+    const { verdict, deadline } = d.status.proposed;
+    if (verdict !== "forfeit" || Date.now() > deadline) return;
+    const key = `maintainer-forfeit:${deadline}`;
+    if (this.store.noticePosted(s.repo_id, s.number, key) || !(await this.chain.isMaintainerForfeit(s.repo_id, s.number))) return;
+    const currency = (await this.chain.getRepo(s.repo_id))?.currency ?? "usdc";
+    const gh = await this.app.getInstallationOctokit(s.installation_id);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    try {
+      await gh.rest.issues.createComment({
+        owner, repo, issue_number: s.number,
+        body: maintainerForfeitComment({
+          author: s.author,
+          amount: money(d.bond, currency),
+          deadline,
+          link: s.verdict_id ? `${this.cfg.webUrl}/v/${s.verdict_id}` : null,
+          contract: this.cfg.deployment.contract,
+          repoId: s.repo_id,
+          number: s.number,
+        }),
+      });
+    } catch (e) {
+      this.log(`couldn't post the forfeit notice on ${s.full_name}#${s.number}; retrying next tick`, String(e));
+      return;
+    }
+    this.store.markNoticePosted(s.repo_id, s.number, key);
+    this.log(`told ${s.author} about the maintainer's forfeit on ${s.full_name}#${s.number} (final ${utc(deadline)})`);
   }
 
   /**

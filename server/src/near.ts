@@ -132,6 +132,8 @@ export class Chain {
   judgeInTee = (repo_id: number, number: number, deposit = 20n * 10n ** 21n) => this.call("judge_in_tee", { repo_id, number }, 300n, deposit);
   /** A disputed verdict, re-judged in the enclave by the stronger model with the on-chain statements. */
   rejudgeInTee = (repo_id: number, number: number, deposit = 20n * 10n ** 21n) => this.call("rejudge_in_tee", { repo_id, number }, 300n, deposit);
+  /** Whether the pending forfeit on #number was proposed by the maintainer (free to dispute), not the AI. */
+  isMaintainerForfeit = (repo_id: number, number: number) => this.view<boolean>("is_maintainer_forfeit", { repo_id, number });
   /** An enclave forfeit waiting for its signed bytes, if any. */
   getPendingForfeit = (repo_id: number, number: number) => this.view<{ model: string; rejudge: boolean } | null>("get_pending_forfeit", { repo_id, number });
   /** Posts the signed request and response behind an enclave forfeit; the contract reads the verdict from them. */

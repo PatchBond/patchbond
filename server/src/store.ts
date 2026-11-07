@@ -103,6 +103,9 @@ export class Store {
       CREATE TABLE IF NOT EXISTS reports (
         repo_id INTEGER NOT NULL, number INTEGER NOT NULL, sealed TEXT NOT NULL, sha256 TEXT NOT NULL,
         reporter TEXT NOT NULL, created_at INTEGER NOT NULL, record TEXT, PRIMARY KEY (repo_id, number));
+      CREATE TABLE IF NOT EXISTS notices (
+        repo_id INTEGER NOT NULL, number INTEGER NOT NULL, key TEXT NOT NULL, posted_at INTEGER NOT NULL,
+        PRIMARY KEY (repo_id, number, key));
     `);
     // Databases from before auto-close existed.
     if (!this.db.query<{ name: string }, []>("PRAGMA table_info(submissions)").all().some((c) => c.name === "close_at")) {
@@ -232,6 +235,15 @@ export class Store {
   setState(repoId: number, number: number, state: SubmissionState, patch: Partial<Submission> = {}) {
     const s = this.submission(repoId, number);
     if (s) this.upsertSubmission({ ...s, ...patch, state });
+  }
+
+  /** One-off PR comments already posted (e.g. one maintainer-forfeit notice per proposal). */
+  noticePosted(repoId: number, number: number, key: string): boolean {
+    return !!this.db.query("SELECT 1 FROM notices WHERE repo_id = ? AND number = ? AND key = ?").get(repoId, number, key);
+  }
+
+  markNoticePosted(repoId: number, number: number, key: string) {
+    this.db.query("INSERT OR IGNORE INTO notices (repo_id, number, key, posted_at) VALUES (?, ?, ?, ?)").run(repoId, number, key, Date.now());
   }
 
   addAppeal(verdictId: string, author: string, note: string) {

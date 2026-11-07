@@ -36,7 +36,7 @@ Testnet, as of 2026-11-07. Full list with transactions: [docs/STATUS.md](docs/ST
 
 Each one holds under a condition, stated here rather than in a footnote.
 
-1. **Our server has no route to forfeit a bond.** With `exclusive` on, as it is live, the contract refuses the oracle's forfeit and bounty routes, and also refuses a forfeit with no signature, a forged one, or a spent one. The enclave route trusts OutLayer's attested worker for the verdict itself, because the contract sees only signed hashes there ([what the callback checks](docs/TRUST.md#what-the-outlayer-callbacks-verify)). A maintainer can still propose a forfeit with no signature: the contributor can dispute it for free, but **loses the bond if they don't within 48 h**. Open findings from screening, including a bounty path that isn't sound yet, are listed in [docs/TRUST.md](docs/TRUST.md#attacks-we-tested). → `bun run demo`, [`outlayer.rs`](contract/vault/src/outlayer.rs)
+1. **Our server has no route to forfeit a bond.** With `exclusive` on, as it is live, the contract refuses the oracle's forfeit and bounty routes, and also refuses a forfeit with no signature, a forged one, or a spent one. The enclave route trusts OutLayer's attested worker for the verdict itself, because the contract sees only signed hashes there ([what the callback checks](docs/TRUST.md#what-the-outlayer-callbacks-verify)). A maintainer can still propose a forfeit with no signature: the contributor can dispute it for free, but **loses the bond if they don't within 48 h**; the bot comments on the PR when a forfeit is proposed, with the deadline in UTC. Open findings from screening, including a bounty path that isn't sound yet, are listed in [docs/TRUST.md](docs/TRUST.md#attacks-we-tested). → `bun run demo`, [`outlayer.rs`](contract/vault/src/outlayer.rs)
 2. **The judge can run without our server.** Anyone can call `judge_in_tee`: an Intel TDX enclave reads GitHub itself, asks NEAR AI, and the contract acts on the answer. Disputes are re-judged the same way. → [docs/OUTLAYER.md](docs/OUTLAYER.md), with testnet transactions
 3. **An agent can be given money without the keys.** Its function-call key can only pay bonds, within a daily cap, a per-bond limit and a repo list the contract enforces. The sandbox demo's last section has a prompt-injected agent try to drain its budget five ways; each is refused. → [`budget.rs`](contract/vault/src/budget.rs), `bash scripts/demo-fast.sh`, the app's **Agents** page
 
@@ -147,7 +147,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 | Read | For |
 |---|---|
 | [docs/TRUST.md](docs/TRUST.md) | Who can move money, what each path checks, the attacks we tested |
-| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (231 tests, and how to get each count), how to check our claims |
+| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (235 tests, and how to get each count), how to check our claims |
 | [docs/eval/README.md](docs/eval/README.md) | Judge results, including what it misses |
 | [docs/DESIGN.md](docs/DESIGN.md) | Mechanisms, objections, costs, what comes next |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Every step from a clean clone, and running your own |

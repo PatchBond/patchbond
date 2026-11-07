@@ -33,6 +33,8 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
   /** Simulates GitHub expiring/revoking maintainers' sign-in tokens. */
   let userTokensRevoked = false;
   let nextId = 1000;
+  /** Simulates GitHub refusing to post comments (outage, rate limit, revoked install). */
+  let commentsFail = false;
   const full = `${repo.owner}/${repo.name}`;
   const server = Bun.serve({
     port: 0,
@@ -75,7 +77,9 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
       if (checks) return json({ total_count: 1, check_runs: prs.find((x) => x.number === Number(checks[1]))?.checks ?? [] });
       if (p === `/repos/${full}/check-runs` && req.method === "POST") return json({ id: nextId++ }, 201);
       if (p.startsWith(`/repos/${full}/check-runs/`) && req.method === "PATCH") return json({ id: Number(p.split("/").pop()) });
-      if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/comments$`)) && req.method === "POST") return json({ id: nextId++ }, 201);
+      if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/comments$`)) && req.method === "POST") {
+        return commentsFail ? json({ message: "Resource not accessible by integration" }, 403) : json({ id: nextId++ }, 201);
+      }
       if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/labels(/.+)?$`))) return json([{ name: "patchbond:forfeit" }]);
       const member = p.match(new RegExp(`^/orgs/${repo.owner}/members/([^/]+)$`));
       if (member) return orgMembers.includes(member[1]!) ? new Response(null, { status: 204 }) : json({ message: "Not Found" }, 404);
@@ -92,6 +96,7 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
     setRules: (text: string | null) => (rulesFile = text),
     setOrgMembers: (logins: string[]) => (orgMembers = logins),
     revokeUserTokens: (revoked = true) => (userTokensRevoked = revoked),
+    failComments: (fail = true) => (commentsFail = fail),
     posted: (re: RegExp) => calls.filter((c) => c.method !== "GET" && re.test(c.path)),
   };
 }
@@ -103,7 +108,9 @@ export function fakeChain(repoId: number) {
   const log: string[] = [];
   const key = (r: number, n: number) => `${r}/${n}`;
   const policy = { enabled: true, base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8, review_window_sec: 259200, challenge_window_sec: 259200, forfeit_threshold_bps: 8500 };
-  const chain: ChainPort & { linkRepo: (r: number, payout: string) => Promise<unknown>; pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[]; proofs: Map<string, TeeProof>; names: Map<number, string> } = {
+  /** PRs whose pending forfeit the maintainer proposed (the contract's `maintainer_forfeits`). */
+  const maintainerForfeits = new Set<string>();
+  const chain: ChainPort & { maintainerForfeit: (n: number) => void; linkRepo: (r: number, payout: string) => Promise<unknown>; pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[]; proofs: Map<string, TeeProof>; names: Map<number, string> } = {
     repos,
     deposits,
     log,
@@ -113,6 +120,13 @@ export function fakeChain(repoId: number) {
         reviewed_at: null, verdict_hash: null, status: "held", from_budget: false, harness: null,
       });
     },
+    /** The maintainer calls `settle(forfeit)` on a held deposit: a 48 h proposal the contributor can dispute. */
+    maintainerForfeit(n) {
+      const d = deposits.get(key(repoId, n))!;
+      d.status = { proposed: { verdict: "forfeit", deadline: Date.now() + 48 * 3_600_000 } };
+      maintainerForfeits.add(key(repoId, n));
+    },
+    isMaintainerForfeit: async (r, n) => maintainerForfeits.has(key(r, n)),
     getRepo: async (id) => repos.get(id) ?? null,
     getDeposit: async (r, n) => deposits.get(key(r, n)) ?? null,
     quote: async () => "2000000",

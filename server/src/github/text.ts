@@ -72,6 +72,21 @@ const TITLE = {
   needs_human: "A maintainer decides",
 } as const;
 
+/** Tells the contributor a maintainer proposed to forfeit their bond, and how to stop it in time. */
+export function maintainerForfeitComment(o: { author: string; amount: string; deadline: number; link: string | null; contract: string; repoId: number; number: number }) {
+  const how = o.link
+    ? `Open the [verdict page](${o.link}), sign in with the NEAR account that paid the bond, and press **Dispute**. It's free.`
+    : `Call \`dispute\` on \`${o.contract}\` from the NEAR account that paid the bond (it's free): \`near call ${o.contract} dispute '{"repo_id":${o.repoId},"number":${o.number}}' --useAccount <your-account>\`.`;
+  return `${MARKER}
+### ⚠️ A maintainer proposed to forfeit this deposit
+
+@${o.author}, a maintainer proposed to keep your **${o.amount}** deposit on this PR.
+
+**It becomes final on ${utc(o.deadline)}** (48 h after the proposal) unless you dispute it before then. If nobody disputes, the deposit goes to the repo's vault.
+
+**To dispute:** ${how} A stronger AI model then re-judges the PR, with a statement from each side. If it sides with you, you get your deposit back plus one bond from the maintainers' vault.${o.link ? `\n\n<sub>[Verdict page](${o.link})</sub>` : ""}`;
+}
+
 export function verdictComment(r: VerdictRecord, o: { webUrl: string; challengeHours: number; onChain: boolean }) {
   const v = r.final.verdict;
   const link = `${o.webUrl}/v/${r.id}`;

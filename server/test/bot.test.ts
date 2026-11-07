@@ -13,6 +13,7 @@ import { MockInference } from "../src/judge/nearai";
 import { Store } from "../src/store";
 import { TeeRecords } from "../src/teeRecords";
 import { judge } from "../src/judge/judge";
+import { utc } from "../src/github/text";
 import { fakeChain, fakeGithub, rsaKey, type PrFixture } from "./fakes";
 
 const REPO = { id: 4242, owner: "acme", name: "widget" };
@@ -115,6 +116,7 @@ describe("GitHub bot", () => {
     expect(comments().at(-1)).toContain("verify the signature yourself");
     await bot.tick();
     expect(chain.log).not.toContain(`finalize ${REPO.id}#1`); // window still open
+    // ...including finalizing once the 48 h pass undisputed.
     endWindow(1);
     await bot.tick();
     expect(chain.log).toContain(`finalize ${REPO.id}#1`);
@@ -301,6 +303,71 @@ describe("GitHub bot", () => {
     expect(chain.log).toContain(`resolve ${REPO.id}#1 forfeit`);
     expect(comments().at(-2)).toContain("The forfeit stands");
     expect(gh.posted(/\/pulls\/1$/).at(-1)?.body).toEqual({ state: "closed" });
+  });
+
+  test("a maintainer's forfeit gets one PR comment: amount, UTC deadline, verdict page, how to dispute", async () => {
+    await deliver("pull_request", prOpened(1));
+    chain.pay(1, "tunde.testnet", "tunde");
+    await bot.tick();
+    const verdictId = store.submission(REPO.id, 1)!.verdict_id!;
+    const before = comments().length;
+    chain.maintainerForfeit(1);
+    const deadline = (chain.deposits.get(`${REPO.id}/1`)!.status as { proposed: { deadline: number } }).proposed.deadline;
+    await bot.tick();
+    await bot.tick();
+    const notices = comments().slice(before);
+    expect(notices).toHaveLength(1);
+    const c = notices[0]!;
+    expect(c).toContain("@tunde");
+    expect(c).toContain("$2.00 USDC");
+    expect(c).toContain(utc(deadline));
+    expect(c).toContain(`https://patchbond.test/v/${verdictId}`);
+    expect(c).toContain("**Dispute**");
+    expect(c).toContain("goes to the repo's vault");
+  });
+
+  test("an AI-proposed forfeit gets no maintainer-forfeit notice", async () => {
+    await deliver("pull_request", prOpened(2));
+    chain.pay(2, "slop.testnet", "slopbot");
+    await bot.tick();
+    await bot.tick();
+    expect(comments().some((c) => c.includes("A maintainer proposed to forfeit"))).toBe(false);
+  });
+
+  test("before any verdict page exists, the notice says how to dispute on the contract", async () => {
+    await deliver("pull_request", prOpened(3));
+    chain.pay(3, "kenji.testnet", "kenji");
+    await bot.tick();
+    expect(store.submission(REPO.id, 3)?.state).toBe("deposit_received");
+    chain.maintainerForfeit(3);
+    await bot.tick();
+    const c = comments().at(-1)!;
+    expect(c).toContain("A maintainer proposed to forfeit");
+    expect(c).toContain(`dispute '{"repo_id":${REPO.id},"number":3}'`);
+  });
+
+  test("if GitHub refuses the notice, nothing else breaks: it's logged and posted on a later tick", async () => {
+    const logs: string[] = [];
+    bot = new Bot(loadConfig(), chain, store, new MockInference(), undefined, (m) => logs.push(m));
+    await deliver("pull_request", prOpened(1));
+    chain.pay(1, "tunde.testnet", "tunde");
+    await bot.tick();
+    chain.maintainerForfeit(1);
+    gh.failComments();
+    await bot.tick();
+    expect(logs.some((m) => m.startsWith("couldn't post the forfeit notice"))).toBe(true);
+    // The proposal stands and the bot carries on.
+    expect(chain.deposits.get(`${REPO.id}/1`)!.status).toHaveProperty("proposed");
+    const notices = () => comments().filter((c) => c.includes("A maintainer proposed to forfeit")).length;
+    expect(notices()).toBe(1); // the refused attempt
+    gh.failComments(false);
+    await bot.tick();
+    await bot.tick();
+    expect(notices()).toBe(2); // one retry that went through, and no more
+    endWindow(1);
+    await bot.tick();
+    expect(chain.log).toContain(`finalize ${REPO.id}#1`);
+    expect(store.submission(REPO.id, 1)?.state).toBe("settled");
   });
 
   test("only the team is exempt: org members (even private) and the team list; past contributors pay", async () => {
