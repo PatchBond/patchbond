@@ -83,6 +83,7 @@ way the real one does (yield and resume), so other transactions land while the e
 | Replay a signed forfeit through the oracle route, or use one about another PR | Refused ([`tee_proofs.rs`](../contract/vault/tests/tee_proofs.rs)) |
 | Random use: 240 steps of bonds, tips, refunds, forfeits, bounties, withdrawals and payouts to an account that left the token contract | After every step the contract's balance equals what it owes, to the unit; failed payouts are booked as claimable ([`solvency.rs`](../contract/vault/tests/solvency.rs)) |
 | Send the relayer anything but a bond or challenge payment into PatchBond | Refused before it spends gas ([`relayer.test.ts`](../server/test/relayer.test.ts)) |
+| Drain the relayer's NEAR from many accounts at once | Stopped at its daily gas budget (`RELAYER_DAILY_NEAR`, default 2 NEAR, across all senders); each payment holds its worst-case cost before it's sent, so 500 accounts at once spend no more than the budget ([`relayer.test.ts`](../server/test/relayer.test.ts)). Gasless bonds then pause until 00:00 UTC; paying from a wallet still works |
 | **A compromised OutLayer worker labels a genuine signed *refund* as a forfeit** | **Refused since the 2026-11-05 upgrade**: the deposit moves only on signed bytes that show a forfeit ([`screening.rs`](../contract/vault/tests/screening.rs), `a_relabelled_refund_never_forfeits_…`). Sealed reports stay one step; see below |
 
 ## Screening fixes: what's live
@@ -125,7 +126,6 @@ account confirmed the forfeit; neither is our oracle or server. Both are still t
 an outside user.
 
 Not covered yet:
-- **Relayer gas.** Its limit is one payment per account every 10 seconds, with no overall cap, so many accounts sending payments the contract refuses could spend its NEAR. The money isn't at risk; gasless bonds would stop until it's refilled.
 - **Economic attacks.** Sybil accounts and reputation farming are described in [SECURITY.md](../SECURITY.md), not measured.
 - **No outside review.** Every test here was written by the team.
 

@@ -44,6 +44,8 @@ export function loadConfig() {
     relayer: {
       account: process.env.RELAYER_ACCOUNT || deployment.oracle,
       key: () => process.env.RELAYER_PRIVATE_KEY || process.env.ORACLE_PRIVATE_KEY || legacyKey(network, process.env.RELAYER_ACCOUNT || deployment.oracle),
+      /** Most NEAR it spends on gas per UTC day, across all senders. */
+      dailyNear: Number(process.env.RELAYER_DAILY_NEAR || 2),
     },
     judge: {
       mode: judgeMode,

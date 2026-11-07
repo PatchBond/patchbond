@@ -159,7 +159,7 @@ maintainerRoutes(app, { cfg, store, chain, provider: chain.provider });
 let relayer: Relayer | null = null;
 app.post("/api/relay", async (c) => {
   try {
-    relayer ??= new Relayer(cfg.relayer.account, cfg.relayer.key(), chain.provider, cfg.deployment.token, cfg.deployment.contract);
+    relayer ??= new Relayer(cfg.relayer.account, cfg.relayer.key(), chain.provider, cfg.deployment.token, cfg.deployment.contract, BigInt(Math.round(cfg.relayer.dailyNear * 1e4)) * 10n ** 20n);
     const { signed_delegate } = await c.req.json<{ signed_delegate: string }>();
     return c.json(await relayer.relay(signed_delegate ?? ""));
   } catch (e) {
