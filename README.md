@@ -114,7 +114,7 @@ bun run --cwd server e2e:testnet
         └── forfeit     ──► proposed on-chain ──► challenge window ──► 90% repo vault · 10% PatchBond
 ```
 
-An AI verdict stands after the repo's challenge window (72 h by default, and a repo can shorten it); either side can stake to have a stronger model re-judge it. A maintainer's forfeit is a separate 48 h proposal, disputable for free. Maintainers, collaborators and proven contributors (≥3 refunds on ≥2 repos, no recent forfeit) never pay. **When in doubt, PatchBond refunds.** More: [docs/DESIGN.md](docs/DESIGN.md).
+An AI verdict stands after the repo's challenge window (72 h by default, and a repo can shorten it); either side can stake to have a stronger model re-judge it. A maintainer's forfeit is a separate 48 h proposal, disputable for free; the bot tells the contributor on the PR, with the amount, the deadline in UTC and how to dispute. Maintainers, collaborators and proven contributors (≥3 refunds on ≥2 repos, no recent forfeit) never pay. **When in doubt, PatchBond refunds.** More: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Why this exists
 
