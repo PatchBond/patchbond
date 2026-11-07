@@ -127,6 +127,8 @@ an outside user.
 
 Not covered yet:
 - **Economic attacks.** Sybil accounts and reputation farming are described in [SECURITY.md](../SECURITY.md), not measured.
+- **The "proven" exemption can be farmed** with self-written PRs on two repos the attacker controls and refunds them as maintainer. The path, its cost and its bound are in [SECURITY.md](../SECURITY.md); counting only refunds from repos with an outside maintainer, and a per-repo opt-out, are planned, not built.
+- **A maintainer's forfeit stands after 48 h of silence.** The contributor can dispute it for free, but if they don't within 48 h, they lose the bond. PatchBond doesn't tell them yet: the bot posts no PR comment and sends no message when a maintainer proposes a forfeit. It shows only on the verdict page and as the contract's `proposed` event. An honest newcomer who isn't watching can lose the bond. The maintainer's public record counts every forfeit they propose and every one overturned.
 - **No outside review.** Every test here was written by the team.
 
 ## Rebuilding the trusted enclave build
