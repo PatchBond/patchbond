@@ -18,7 +18,7 @@ A stranger's pull request needs a small **refundable bond** (USDC or NEAR) withi
 
 **The bond and the deadline are the filter; how far they deter real spammers isn't measured yet. The AI judge protects refunds.** A verifiable model in a TEE returns real work's bond automatically and sends doubtful cases to a person. It misses most slop. On two held-out sets, 99 labelled AI slop PRs judged, it forfeited 5, sent 42 to a person and refunded 52. Of 95 good PRs judged it forfeited none and sent 23 to a person ([results and limits](docs/eval/README.md)). When a forfeit does happen, with evidence and a window to dispute, 90% goes to the repo and 10% to PatchBond.
 
-Lead track: **AI Security & Defense**. Also submitted to Agent Economy and Privacy.
+Lead track: **AI Security & Defense**. Also submitted to Agent Economy, Privacy and Open Innovation.
 
 **A prompt-injected agent tries to drain its budget on the live testnet contract, and is refused.** The contract refuses a repo off its list ([tx](https://testnet.nearblocks.io/txns/EwFydECUFVX28muR344xGB3sX9bChmyFBgVuyfJVFay9)) and a bond past its daily cap ([tx](https://testnet.nearblocks.io/txns/9cgJ15GLC8Z3HTFDLTLmP7vbtuBVUL1ezHuvAc1BGjhV)); NEAR won't accept its key for another method, a USDC transfer or a NEAR transfer. The attempts are scripted; the refusals are the chain's. [Every step](docs/e2e/agent-attack-report.md) · rerun: `cd server && bun run e2e:agent-attack`
 
@@ -129,6 +129,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 | **AI Security & Defense** | Function-call keys under a spending policy the contract enforces, shown stopping a prompt-injected agent in the sandbox demo and on the live testnet contract ([every transaction](docs/e2e/agent-attack-report.md)); forfeits only through signed enclave verdicts and disputable proposals; attacks run against every money path | [`budget.rs`](contract/vault/src/budget.rs), [`outlayer.rs`](contract/vault/src/outlayer.rs), [docs/TRUST.md](docs/TRUST.md) |
 | **Agent Economy** | Agents pay for attention from capped budgets, declare a passport, and build a public record per agent and harness | [`mcp/`](mcp/src), the app's **Agents** page |
 | **Privacy & Private AI** | Sealed security reports, encrypted in the reporter's browser to the maintainer and an enclave key, judged in OutLayer | [`outlayer/judge`](outlayer/judge), [docs/OUTLAYER.md](docs/OUTLAYER.md#sealed-security-reports) |
+| **Open Innovation** | A price on a maintainer's attention: each repo's bond follows its open review queue on-chain, like EIP-1559's base fee, and a forfeit on a PR that claimed to fix an issue becomes a bounty on that issue | [`curve.rs`](contract/vault/src/curve.rs), [`queue.rs`](contract/vault/src/queue.rs), [`bounty.rs`](contract/vault/src/bounty.rs) |
 
 ## NEAR features used
 

@@ -100,5 +100,5 @@ NEAR AI Cloud verifiable inference + signatures (judge) · NEP-141 USDC + `ft_tr
 - `server/`, `mcp/`: `bun test`; judge eval script over `docs/eval/` (forfeit precision, needs_human rate, cost per verdict).
 - `bun run typecheck` everywhere; one end-to-end script on testnet: real PR on a demo repo → bond → verdict → payout.
 
-## Tracks (submit all; lead with security)
-`security` (primary — spending limits, policy engine, reputation, scam detection, Function Call Keys, TEE attestation), `agents`, `privacy`, `social`, `open`.
+## Tracks (lead with security)
+The live HACKATHON.md lists 13 tracks (re-read 2026-11-07). We submit the four we fit: `security` (primary — spending limits, policy engine, reputation, scam detection, Function Call Keys, TEE attestation), `agents`, `privacy`, `open`. Not `social` until the DAO proposal flow exists.
