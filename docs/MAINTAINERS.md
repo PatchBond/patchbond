@@ -60,11 +60,29 @@ Dashboard → your repo → **Bond policy → Edit**:
 
 ```yaml
 exempt: alice, bob              # people who never pay, beyond org members and collaborators
-close_unpaid_after_hours: 24    # default 24; "off" to never close unpaid PRs
+close_unpaid_after_hours: 24    # default 24; "now" closes unpaid PRs as they open; "off" never closes them
 close_forfeited: on             # default on: a PR closes once its forfeit is final; "off" keeps it open
 assignment_required: true       # contributors must be assigned the issue first
 unassigned_pr: flag             # flag = a maintainer decides; evidence = counts toward a forfeit
 ```
+
+## 6. Optional: no unpaid PR stays open, none can merge
+
+GitHub doesn't let any app stop a pull request from being *opened*. These two settings make that the
+only thing a non-payer can do:
+
+1. **Close unpaid PRs at once.** In `.github/patchbond.yml`:
+   ```yaml
+   close_unpaid_after_hours: now
+   ```
+   An unpaid PR gets the deposit comment and is closed within seconds. Paying reopens it
+   automatically. If you reopen one yourself, it stays open (you chose to look at it).
+2. **Require the PatchBond check to merge.** Settings → Rules → Rulesets → **New branch ruleset**
+   → target your default branch → **Require status checks to pass** → add **PatchBond** → Save.
+   (Classic branch protection works too: Settings → Branches → *Require status checks to pass*.)
+   The check stays pending until the deposit is paid and fails on a forfeit, so an unpaid or
+   forfeited PR can't be merged. Exempt people (your team, `exempt:`, proven contributors) get a
+   passing check at once, and every new commit on a PR gets the check again.
 
 ## What your contributors see
 

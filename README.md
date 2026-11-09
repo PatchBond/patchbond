@@ -14,7 +14,7 @@
 
 ---
 
-A stranger's pull request needs a small **refundable bond** (USDC or NEAR) within 24 hours, or it closes itself. The price follows the repo's review queue on-chain, like a base fee, and each extra open PR from the same payer costs them 12.5% more.
+A stranger's pull request needs a small **refundable bond** (USDC or NEAR) within 24 hours, or it closes itself (a repo can set this to close unpaid PRs at once, and require the PatchBond check so none can merge). The price follows the repo's review queue on-chain, like a base fee, and each extra open PR from the same payer costs them 12.5% more.
 
 **The bond and the deadline are the filter; how far they deter real spammers isn't measured yet. The AI judge protects refunds.** A verifiable model in a TEE returns real work's bond automatically and sends doubtful cases to a person. It misses most slop. On two held-out sets, 99 labelled AI slop PRs judged, it forfeited 5, sent 42 to a person and refunded 52. Of 95 good PRs judged it forfeited none and sent 23 to a person ([results and limits](docs/eval/README.md)). When a forfeit does happen, with evidence and a window to dispute, 90% goes to the repo and 10% to PatchBond.
 
@@ -147,7 +147,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 | Read | For |
 |---|---|
 | [docs/TRUST.md](docs/TRUST.md) | Who can move money, what each path checks, the attacks we tested |
-| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (235 tests, and how to get each count), how to check our claims |
+| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (239 tests, and how to get each count), how to check our claims |
 | [docs/eval/README.md](docs/eval/README.md) | Judge results, including what it misses |
 | [docs/DESIGN.md](docs/DESIGN.md) | Mechanisms, objections, costs, what comes next |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Every step from a clean clone, and running your own |

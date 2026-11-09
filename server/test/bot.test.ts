@@ -210,6 +210,61 @@ describe("GitHub bot", () => {
     expect(comments()[0]).toContain("Pay within 48 h");
   });
 
+  test("with close_unpaid_after_hours: now, an unpaid PR is closed as it opens and reopens once paid", async () => {
+    gh.setRules("close_unpaid_after_hours: now\n");
+    await deliver("pull_request", prOpened(3));
+    expect(comments()).toHaveLength(1);
+    expect(comments()[0]).toContain("closes unpaid PRs straight away");
+    expect(comments()[0]).toContain("Pay the deposit");
+    expect(gh.posted(/\/pulls\/3$/).at(-1)?.body).toEqual({ state: "closed" });
+    expect(store.submission(REPO.id, 3)?.state).toBe("closed_unpaid");
+
+    chain.pay(3, "kenji.testnet", "kenji");
+    await bot.tick();
+    expect(gh.posted(/\/pulls\/3$/).at(-1)?.body).toEqual({ state: "open" });
+    expect(store.submission(REPO.id, 3)?.state).toBe("deposit_received");
+  });
+
+  test("our own reopen of a paid PR doesn't ask for a second deposit", async () => {
+    await deliver("pull_request", prOpened(3));
+    store.db.query("UPDATE submissions SET close_at = ? WHERE number = 3").run(Date.now() - 1000);
+    await bot.tick();
+    chain.pay(3, "kenji.testnet", "kenji");
+    await bot.tick();
+    const before = comments().length;
+    await deliver("pull_request", { ...prOpened(3), action: "reopened", sender: { login: "patchbond[bot]" } });
+    expect(comments()).toHaveLength(before);
+    expect(store.submission(REPO.id, 3)?.state).toBe("deposit_received");
+  });
+
+  test("with close_unpaid_after_hours: now, a maintainer who reopens an unpaid PR keeps it open", async () => {
+    gh.setRules("close_unpaid_after_hours: now\n");
+    await deliver("pull_request", prOpened(3));
+    const closes = gh.posted(/\/pulls\/3$/).length;
+    await deliver("pull_request", { ...prOpened(3), action: "reopened", sender: { login: "amaka" } });
+    expect(gh.posted(/\/pulls\/3$/)).toHaveLength(closes);
+    expect(store.submission(REPO.id, 3)?.state).toBe("awaiting_deposit");
+    expect(store.submission(REPO.id, 3)?.close_at).toBeNull();
+    await bot.tick();
+    expect(gh.posted(/\/pulls\/3$/)).toHaveLength(closes);
+  });
+
+  test("a new commit gets the PatchBond check too, so a required check never waits forever", async () => {
+    await deliver("pull_request", prOpened(3));
+    const first = store.submission(REPO.id, 3)!.check_run_id!;
+    await deliver("pull_request", { ...prOpened(3), action: "synchronize", pull_request: { ...prOpened(3).pull_request, head: { sha: "newsha" } } });
+    const created = gh.posted(/\/check-runs$/).at(-1)!.body as { head_sha: string; status: string; name: string; output: { summary: string } };
+    expect(created).toMatchObject({ head_sha: "newsha", status: "in_progress", name: "PatchBond" });
+    expect(created.output.summary).toContain("Pay the refundable deposit");
+    const s = store.submission(REPO.id, 3)!;
+    expect(s.head_sha).toBe("newsha");
+    expect(s.check_run_id).not.toBe(first);
+    // Later updates (the deposit) land on the new commit's check.
+    chain.pay(3, "kenji.testnet", "kenji");
+    await bot.tick();
+    expect(gh.posted(/\/check-runs\/\d+$/).at(-1)!.path).toEndWith(`/${s.check_run_id}`);
+  });
+
   test("with close_unpaid_after_hours: off, nothing is announced and unpaid PRs stay open", async () => {
     gh.setRules("close_unpaid_after_hours: off\n");
     await deliver("pull_request", prOpened(3));

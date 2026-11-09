@@ -35,6 +35,8 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
   let nextId = 1000;
   /** Simulates GitHub refusing to post comments (outage, rate limit, revoked install). */
   let commentsFail = false;
+  /** Check runs as last created/updated, so the bot can read one back. */
+  const checkRuns = new Map<number, Record<string, unknown>>();
   const full = `${repo.owner}/${repo.name}`;
   const server = Bun.serve({
     port: 0,
@@ -75,8 +77,16 @@ export function fakeGithub(repo: { id: number; owner: string; name: string }, pr
       }
       const checks = p.match(new RegExp(`^/repos/${full}/commits/head(\\d+)/check-runs$`));
       if (checks) return json({ total_count: 1, check_runs: prs.find((x) => x.number === Number(checks[1]))?.checks ?? [] });
-      if (p === `/repos/${full}/check-runs` && req.method === "POST") return json({ id: nextId++ }, 201);
-      if (p.startsWith(`/repos/${full}/check-runs/`) && req.method === "PATCH") return json({ id: Number(p.split("/").pop()) });
+      if (p === `/repos/${full}/check-runs` && req.method === "POST") {
+        const id = nextId++;
+        checkRuns.set(id, { id, ...(body as object) });
+        return json({ id }, 201);
+      }
+      if (p.startsWith(`/repos/${full}/check-runs/`)) {
+        const id = Number(p.split("/").pop());
+        if (req.method === "PATCH") checkRuns.set(id, { ...checkRuns.get(id), ...(body as object), id });
+        return checkRuns.has(id) ? json(checkRuns.get(id)) : json({ message: "Not Found" }, 404);
+      }
       if (p.match(new RegExp(`^/repos/${full}/issues/\\d+/comments$`)) && req.method === "POST") {
         return commentsFail ? json({ message: "Resource not accessible by integration" }, 403) : json({ id: nextId++ }, 201);
       }

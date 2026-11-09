@@ -214,7 +214,7 @@ export interface RepoRules {
   assignmentRequired: boolean;
   /** "evidence": an unassigned PR counts as forfeit evidence; "flag": a human decides. */
   unassignedEffect: "evidence" | "flag";
-  /** Close PRs still unpaid after this many hours (they reopen when paid). Off when null. */
+  /** Close PRs still unpaid after this many hours (they reopen when paid). 0 = at once ("now"); off when null. */
   closeUnpaidAfterHours: number | null;
   /** Close a PR once its forfeit is final (`close_forfeited: off` to leave it open). */
   closeForfeited: boolean;
@@ -252,10 +252,14 @@ export function parseRepoRules(text: string | undefined): RepoRules {
   };
 }
 
-/** "off" / "false" / "0" turn auto-close off; otherwise at least an hour, so there's always time to pay. */
+/**
+ * "off" / "false" / "0" turn auto-close off; "now" closes an unpaid PR as soon as it opens (paying
+ * reopens it); otherwise at least an hour, so there's always time to pay.
+ */
 function closeAfter(v: string | undefined): number | null {
   if (v === undefined || v === "") return DEFAULT_CLOSE_UNPAID_HOURS;
   if (/^(off|false|no|never|0)$/i.test(v)) return null;
+  if (/^(now|immediately|immediate)$/i.test(v)) return 0;
   const h = Number(v);
   return Number.isFinite(h) ? Math.max(1, h) : DEFAULT_CLOSE_UNPAID_HOURS;
 }

@@ -237,6 +237,11 @@ export class Store {
     if (s) this.upsertSubmission({ ...s, ...patch, state });
   }
 
+  /** Sets or clears a submission's auto-close deadline (upserts keep the old one). */
+  setCloseAt(repoId: number, number: number, at: number | null) {
+    this.db.query("UPDATE submissions SET close_at = ? WHERE repo_id = ? AND number = ?").run(at, repoId, number);
+  }
+
   /** One-off PR comments already posted (e.g. one maintainer-forfeit notice per proposal). */
   noticePosted(repoId: number, number: number, key: string): boolean {
     return !!this.db.query("SELECT 1 FROM notices WHERE repo_id = ? AND number = ? AND key = ?").get(repoId, number, key);

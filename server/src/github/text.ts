@@ -31,12 +31,14 @@ This repository uses **PatchBond**: outside contributions carry a small **refund
 | **Slop** | Deposit goes to the maintainers |
 
 **[Pay the deposit →](${o.link})**
-${o.closeAt ? `
+${o.hours === 0 ? `
+> 🔒 **This repository closes unpaid PRs straight away.** Nothing is lost: pay the deposit and PatchBond reopens this PR automatically, usually within a minute.
+` : o.closeAt ? `
 > ⏰ **Pay within ${o.hours} h — by ${utc(o.closeAt)}.** Unpaid PRs are closed automatically then. Nothing is lost: paying later reopens this PR.
 ` : ""}
 An AI judge running in a verified enclave (NEAR AI Cloud) reviews the PR after CI. Every verdict is public, signed and challengeable. Contributors with 3 refunds on 2 repos pay nothing.
 
-<sub>[What is PatchBond?](${o.webUrl}) · ${o.closeAt ? "Maintainers can still review an unpaid PR before it closes." : "Not paying? The PR stays open; a maintainer can still review it."}</sub>`;
+<sub>[What is PatchBond?](${o.webUrl}) · ${o.hours === 0 ? "A maintainer can reopen it by hand to review it without a deposit." : o.closeAt ? "Maintainers can still review an unpaid PR before it closes." : "Not paying? The PR stays open; a maintainer can still review it."}</sub>`;
 }
 
 /** The account a PR names on a line of its own (`PatchBond: alice.near`); mirrors the enclave's `names_payout`. */

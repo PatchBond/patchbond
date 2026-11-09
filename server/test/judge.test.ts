@@ -216,6 +216,8 @@ describe("assignment check (a fact from GitHub, opt-in per repo)", () => {
     expect(parseRepoRules("close_forfeited: off").closeForfeited).toBe(false);
     expect(parseRepoRules("close_unpaid_after_hours: off").closeUnpaidAfterHours).toBeNull();
     expect(parseRepoRules("close_unpaid_after_hours: 0").closeUnpaidAfterHours).toBeNull();
+    expect(parseRepoRules("close_unpaid_after_hours: now").closeUnpaidAfterHours).toBe(0);
+    expect(parseRepoRules("close_unpaid_after_hours: immediately").closeUnpaidAfterHours).toBe(0);
     expect(parseRepoRules("close_unpaid_after_hours: 0.1").closeUnpaidAfterHours).toBe(1);
   });
   test("assigned to the author is fine; someone else or nobody only counts when the repo requires it", () => {

@@ -72,11 +72,21 @@ export class Bot {
       for (const r of repos) await this.ensureRepo(r.id, r.full_name);
     });
     w.on(["pull_request.opened", "pull_request.reopened"], ({ octokit, payload }) =>
-      this.onOpened(octokit, payload.installation!.id, payload.repository, payload.pull_request),
+      this.onOpened(
+        octokit, payload.installation!.id, payload.repository, payload.pull_request,
+        payload.action === "reopened" ? payload.sender?.login : undefined,
+      ),
     );
-    w.on("pull_request.synchronize", ({ payload }) => {
+    w.on("pull_request.synchronize", async ({ octokit, payload }) => {
       const s = this.store.submission(payload.repository.id, payload.pull_request.number);
-      if (s) this.store.upsertSubmission({ ...s, head_sha: payload.pull_request.head.sha });
+      if (!s) return;
+      const sha = payload.pull_request.head.sha;
+      // A required "PatchBond" check must be on the newest commit too, or GitHub waits on it forever.
+      const check = await this.carryCheck(octokit, s, sha).catch((e) => {
+        this.log(`couldn't copy the PatchBond check to ${s.full_name}#${s.number}@${sha}`, String(e));
+        return null;
+      });
+      this.store.upsertSubmission({ ...s, head_sha: sha, check_run_id: check });
     });
     w.on("pull_request_review.submitted", async ({ payload }) => {
       if (!MAINTAINER.has(payload.review.author_association)) return;
@@ -113,12 +123,18 @@ export class Bot {
     installationId: number,
     repo: { id: number; full_name: string; owner: { login: string }; name: string },
     pr: { number: number; user: { login: string } | null; author_association: string; head: { sha: string } },
+    /** Who reopened the PR, when this is a reopen. */
+    reopenedBy?: string,
   ) {
     const author = pr.user?.login ?? "ghost";
     const base = {
       repo_id: repo.id, number: pr.number, full_name: repo.full_name, installation_id: installationId,
       author, head_sha: pr.head.sha, check_run_id: null, comment_id: null, verdict_id: null, deposit_seen_at: null,
     };
+    // A reopen of a PR that's already paid, judged or exempt changes nothing (we reopen paid PRs
+    // ourselves, and GitHub tells us about that too): never ask for a second deposit.
+    const existing = this.store.submission(repo.id, pr.number);
+    if (existing && !["awaiting_deposit", "closed_unpaid", "closed"].includes(existing.state)) return;
     await this.ensureRepo(repo.id, repo.full_name);
     const onChain = await this.chain.getRepo(repo.id);
     if (!onChain?.policy.enabled) return;
@@ -144,15 +160,34 @@ export class Bot {
     const bond = (await this.chain.quote(repo.id, known ?? undefined)) ?? onChain.policy.base_bond;
     const link = payLink(this.cfg.webUrl, repo.id, pr.number, repo.full_name, author);
     // The deadline is announced here, up front; a PR is never closed on a deadline it wasn't told.
-    const hours = rules.closeUnpaidAfterHours;
-    const closeAt = hours ? Date.now() + hours * 3_600_000 : null;
-    const check = await this.check(gh, repo, pr.head.sha, "in_progress", null, checkSummary("awaiting", `Pay the refundable deposit: ${link}${closeAt ? `\n\nUnpaid PRs close at ${utc(closeAt)}; paying later reopens it.` : ""}`));
+    // "now": an unpaid PR is closed as it opens. A maintainer who reopens it by hand overrides that.
+    const byMaintainer = !!reopenedBy && reopenedBy.toLowerCase() !== author.toLowerCase();
+    const hours = rules.closeUnpaidAfterHours === 0 && byMaintainer ? null : rules.closeUnpaidAfterHours;
+    const closeNow = hours === 0;
+    const closeAt = hours === null ? null : Date.now() + hours * 3_600_000;
+    const summary = closeNow
+      ? `Pay the refundable deposit: ${link}\n\nThis repo closes unpaid PRs at once; paying reopens it automatically.`
+      : `Pay the refundable deposit: ${link}${closeAt ? `\n\nUnpaid PRs close at ${utc(closeAt)}; paying later reopens it.` : ""}`;
+    const check = await this.check(gh, repo, pr.head.sha, "in_progress", null, checkSummary("awaiting", summary));
     const { data: comment } = await gh.rest.issues.createComment({
       owner: repo.owner.login, repo: repo.name, issue_number: pr.number,
       body: depositComment({ author, bond, currency: onChain.currency ?? "usdc", open: onChain.open, target: onChain.policy.target_open, link, webUrl: this.cfg.webUrl, closeAt, hours }),
     });
-    this.store.upsertSubmission({ ...base, check_run_id: check, comment_id: comment.id, state: "awaiting_deposit", close_at: closeAt });
+    this.store.upsertSubmission({ ...base, check_run_id: check, comment_id: comment.id, state: closeNow ? "closed_unpaid" : "awaiting_deposit", close_at: closeAt });
+    if (closeAt === null) this.store.setCloseAt(repo.id, pr.number, null); // a reopen drops any old deadline
     await gh.rest.issues.addLabels({ owner: repo.owner.login, repo: repo.name, issue_number: pr.number, labels: [LABEL.awaiting] }).catch(() => {});
+    if (closeNow) {
+      try {
+        await gh.rest.pulls.update({ owner: repo.owner.login, repo: repo.name, pull_number: pr.number, state: "closed" });
+      } catch (e) {
+        // Leave it to the timer: the next tick closes it (its deadline has passed).
+        this.store.setState(repo.id, pr.number, "awaiting_deposit");
+        this.log(`couldn't close unpaid ${repo.full_name}#${pr.number}; retrying next tick`, String(e));
+        return;
+      }
+      this.log(`asked ${author} for a deposit on ${repo.full_name}#${pr.number} and closed it until paid`);
+      return;
+    }
     this.log(`asked ${author} for a deposit on ${repo.full_name}#${pr.number}`);
   }
 
@@ -309,7 +344,7 @@ export class Bot {
   private async maybeCloseUnpaid(s: Submission) {
     if (!s.close_at || Date.now() < s.close_at) return;
     // The repo may have turned auto-close off since.
-    if (!(await this.rulesOf(s.repo_id, s.installation_id, s.full_name)).closeUnpaidAfterHours) return;
+    if ((await this.rulesOf(s.repo_id, s.installation_id, s.full_name)).closeUnpaidAfterHours === null) return;
     const gh = await this.app.getInstallationOctokit(s.installation_id);
     const [owner, repo] = s.full_name.split("/") as [string, string];
     await gh.rest.issues.createComment({
@@ -583,6 +618,19 @@ export class Bot {
       ...(conclusion ? { conclusion } : {}), output,
     });
     return data.id;
+  }
+
+  /** Copies a submission's PatchBond check (status, conclusion, text) onto a new head commit. */
+  private async carryCheck(gh: Octokit, s: Submission, sha: string): Promise<number | null> {
+    if (!s.check_run_id) return null;
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    const { data: old } = await gh.rest.checks.get({ owner, repo, check_run_id: s.check_run_id });
+    const completed = old.status === "completed";
+    const conclusion = completed && (old.conclusion === "success" || old.conclusion === "failure" || old.conclusion === "neutral") ? old.conclusion : null;
+    return this.check(gh, { owner: { login: owner }, name: repo }, sha, conclusion ? "completed" : "in_progress", conclusion, {
+      title: old.output.title ?? CHECK_NAME,
+      summary: old.output.summary ?? "",
+    });
   }
 
   private async updateCheck(
