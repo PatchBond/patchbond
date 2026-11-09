@@ -2,7 +2,7 @@
 // then withdraw, tune the bond policy (with a live price preview) and decide needs_human cases.
 
 import { DECIMALS, formatAmount, parseAmount, SYMBOL, type Currency, type VerdictRecord } from "@patchbond/shared";
-import { Bell, Link2, Lock, LogOut, Scale, Settings2, Vault } from "lucide-react";
+import { Bell, ChevronDown, Link2, Lock, LogOut, Scale, Settings2, Vault } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -59,7 +59,7 @@ export function Dashboard() {
         <div className="mt-8 space-y-6">
           {me.repos.map((r, i) => (
             <Reveal key={r.repo_id} delay={i * 0.05}>
-              <RepoCard repo={r} onChange={reload} />
+              <RepoCard repo={r} onChange={reload} collapsible={me.repos.length > 1} defaultOpen={i === 0} />
             </Reveal>
           ))}
         </div>
@@ -229,13 +229,42 @@ function SignedOut({ ready, expired }: { ready: boolean; expired: boolean }) {
   );
 }
 
-function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => void }) {
+const OPEN_KEY = (repoId: number) => `pb-repo-open-${repoId}`;
+
+function RepoCard({
+  repo,
+  onChange,
+  collapsible,
+  defaultOpen,
+}: {
+  repo: MaintainerRepo;
+  onChange: () => void;
+  collapsible: boolean;
+  defaultOpen: boolean;
+}) {
   const wallet = useWallet();
   const r = repo.onchain;
   const linkedToMe = !!r?.payout && r.payout === wallet.accountId;
+  // With several repos, each card folds to its header; the choice is remembered per repo in this browser.
+  const [open, setOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(OPEN_KEY(repo.repo_id));
+      if (saved !== null) return saved === "1";
+    } catch {}
+    return defaultOpen;
+  });
+  const expanded = !collapsible || open;
+  function toggle() {
+    setOpen((o) => {
+      try {
+        localStorage.setItem(OPEN_KEY(repo.repo_id), o ? "0" : "1");
+      } catch {}
+      return !o;
+    });
+  }
   return (
     <Panel className="overflow-hidden">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-line p-5">
+      <div className={`flex flex-wrap items-center gap-x-6 gap-y-3 p-5 ${expanded ? "border-b border-line" : ""}`}>
         <div className="min-w-0 flex-1">
           <a href={`https://github.com/${repo.full_name}`} target="_blank" rel="noreferrer" className="text-lg font-semibold tracking-tight hover:underline">
             {repo.full_name}
@@ -267,7 +296,19 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
           <Mini label="Open" value={r?.open ?? 0} />
           <Mini label="Refund / forfeit" value={`${r?.stats.refunds ?? 0} / ${r?.stats.forfeits ?? 0}`} />
         </div>
+        {collapsible && (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={expanded}
+            aria-label={expanded ? `Collapse ${repo.full_name}` : `Expand ${repo.full_name}`}
+            className="grid size-9 place-items-center rounded-full border border-line text-muted-foreground transition hover:bg-raised hover:text-ink"
+          >
+            <ChevronDown className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
+        )}
       </div>
+      {expanded && (
       <div className="p-5">
         {!linkedToMe ? (
           <LinkPanel repo={repo} onLinked={onChange} />
@@ -293,6 +334,7 @@ function RepoCard({ repo, onChange }: { repo: MaintainerRepo; onChange: () => vo
           </Tabs>
         )}
       </div>
+      )}
     </Panel>
   );
 }
