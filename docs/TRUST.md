@@ -30,6 +30,30 @@ enforces today, method by method, and what each guarantee still rests on. Live c
 | **Withdraw a vault** | Payout account only | `predecessor == payout` | — |
 | **Agent spending** | The agent's function-call key → `deposit_from_budget` | Daily cap, most per bond, allowed repos, frozen flag — all in the contract ([`budget.rs`](../contract/vault/src/budget.rs)) | The owner's policy |
 
+## Where the 10% goes
+
+PatchBond's only income is a 10% cut of forfeits. It comes from one function, `split` in
+[`settle.rs`](../contract/vault/src/settle.rs), and the rate is a constant (`TREASURY_FEE_BPS = 1000`),
+so changing it takes a contract upgrade, not an admin call.
+
+| Outcome | Contributor | Repo vault | Treasury |
+|---|---|---|---|
+| Refund, or void (someone paid for a PR that isn't theirs) | 100% of the bond | — | **nothing** |
+| Forfeit | — | 90% | 10% |
+| Forfeit on a PR that claimed to fix an issue | — | 90% becomes a bounty on that issue | 10% |
+| Priority tip, PR reviewed in time | — | the whole tip | nothing |
+| Priority tip, not reviewed in time | the whole tip back | — | nothing |
+
+Challenge stakes and the penalty for an overturned maintainer forfeit move between the two sides; the
+treasury takes no cut of either. Good contributors and agents never pay PatchBond anything.
+
+**What it's for:** the cost of judging: NEAR AI inference (about $0.0015 per verdict, refunds included)
+and the NEAR gas our oracle and gasless relayer spend. **What enforces that:** nothing on-chain.
+`withdraw_treasury` is owner-only and sends the whole balance to the treasury account
+(`patchbond-dev.testnet` on testnet, the team's owner account); how it's spent is our stated intent.
+Because we earn only from forfeits, a forfeit needs a signed, high-confidence verdict with evidence,
+a maintainer's forfeit can be disputed for free, and an overturned one costs the maintainer.
+
 ## What a compromised party could do
 
 | If this is compromised | It could | It couldn't |
