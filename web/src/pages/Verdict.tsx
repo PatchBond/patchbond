@@ -331,12 +331,35 @@ function OnChain({ r }: { r: VerdictRecord }) {
   const cfg = useConfig();
   const wallet = useWallet();
   const { data, reload, loading } = useAsync(
-    () => Promise.all([chain.deposit(cfg, r.repo.id, r.number), chain.repo(cfg, r.repo.id), chain.isMaintainerForfeit(cfg, r.repo.id, r.number)]),
+    () =>
+      Promise.all([
+        chain.deposit(cfg, r.repo.id, r.number),
+        chain.repo(cfg, r.repo.id),
+        chain.isMaintainerForfeit(cfg, r.repo.id, r.number),
+        // When the stronger model re-judges an open dispute (the server's statement window).
+        api.submission(r.repo.id, r.number).then((x) => x.rejudge_at ?? null).catch(() => null),
+      ]),
     [cfg, r.repo.id, r.number],
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<{ tone: "ok" | "error"; text: string; hash?: string } | null>(null);
-  const [deposit, repo, byMaintainer] = data ?? [null, null, false];
+  const [deposit, repo, byMaintainer, rejudgeAt] = data ?? [null, null, false, null];
+  const challenged = !!deposit && typeof deposit.status === "object" && "challenged" in deposit.status;
+  // Tell the statements box below that the deposit changed (a dispute opened, or it settled).
+  const statusKey = deposit ? JSON.stringify(deposit.status) : "";
+  useEffect(() => {
+    if (statusKey) window.dispatchEvent(new Event(CHAIN_CHANGED));
+  }, [statusKey]);
+  // While a dispute is open, follow it live: the countdown, then the re-judge's result.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!challenged) return;
+    const t = setInterval(() => {
+      tick((n) => n + 1);
+      reload();
+    }, 20_000);
+    return () => clearInterval(t);
+  }, [challenged, reload]);
 
   async function act(label: string, f: () => Promise<{ hash: string; error: string | null }>) {
     setBusy(label);
@@ -366,7 +389,7 @@ function OnChain({ r }: { r: VerdictRecord }) {
   const me = wallet.accountId;
   const isPayer = me === deposit.payer;
   const isMaintainer = !!repo?.payout && me === repo.payout;
-  const status = describe(deposit, byMaintainer);
+  const status = describe(deposit, byMaintainer, rejudgeAt);
   const hashMatches = deposit.verdict_hash === r.verdict_hash;
 
   return (
@@ -504,7 +527,10 @@ function ProposedActions(p: {
   );
 }
 
-function describe(d: Deposit, byMaintainer = false): { title: string; detail: string } {
+/** Fired by the on-chain panel when the deposit's status changes, so the statements box follows. */
+const CHAIN_CHANGED = "pb:deposit-changed";
+
+function describe(d: Deposit, byMaintainer = false, rejudgeAt: number | null = null): { title: string; detail: string } {
   const s = d.status;
   if (s === "held") return { title: "Bond held", detail: "Waiting for the verdict to be posted." };
   if ("proposed" in s) {
@@ -514,7 +540,16 @@ function describe(d: Deposit, byMaintainer = false): { title: string; detail: st
       ? { title: `${who}: ${s.proposed.verdict}`, detail: `Stands in ${fmtDuration(left)} unless ${byMaintainer ? "the contributor disputes it (free)" : "challenged"}.` }
       : { title: `${who}: ${s.proposed.verdict}`, detail: "The window closed — anyone can finalize it." };
   }
-  if ("challenged" in s) return { title: `Challenged by ${s.challenged.challenger}`, detail: `Stake ${money(s.challenged.stake, d.currency)}. A stronger model is re-judging.` };
+  if ("challenged" in s) {
+    const stake = s.challenged.stake === "0" ? "Free dispute." : `Stake ${money(s.challenged.stake, d.currency)}.`;
+    const title = `${s.challenged.stake === "0" ? "Disputed" : "Challenged"} by ${s.challenged.challenger}`;
+    if (rejudgeAt && rejudgeAt > Date.now()) {
+      const at = new Date(rejudgeAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return { title, detail: `${stake} A stronger model re-judges at ${at} (in ${fmtDuration(rejudgeAt - Date.now())}). Until then, both sides can post a statement below.` };
+    }
+    if (rejudgeAt) return { title, detail: `${stake} Statements are closed: a stronger model is re-judging now in the enclave (usually 1–3 min). The contract pays out on its answer.` };
+    return { title, detail: `${stake} A stronger model re-judges after a short window for statements — post yours below.` };
+  }
   return { title: `Settled: ${s.settled.verdict}`, detail: new Date(s.settled.at).toLocaleString() };
 }
 
@@ -536,6 +571,11 @@ function Appeals({ r }: { r: VerdictRecord }) {
     const side = !wallet.accountId ? null : wallet.accountId === d?.payer ? "contributor" : wallet.accountId === repo?.payout ? "maintainer" : null;
     return { open, side, statements };
   }, [r.id, wallet.accountId]);
+  useEffect(() => {
+    const on = () => reloadChain();
+    window.addEventListener(CHAIN_CHANGED, on);
+    return () => window.removeEventListener(CHAIN_CHANGED, on);
+  }, [reloadChain]);
   const onChainSide = onChain?.open ? onChain.side : null;
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);

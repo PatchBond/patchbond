@@ -249,6 +249,11 @@ export class Store {
     return !!this.db.query("SELECT 1 FROM notices WHERE repo_id = ? AND number = ? AND key = ?").get(repoId, number, key);
   }
 
+  /** When a one-off notice was recorded, or null. */
+  noticeAt(repoId: number, number: number, key: string): number | null {
+    return this.db.query<{ posted_at: number }, [number, number, string]>("SELECT posted_at FROM notices WHERE repo_id = ? AND number = ? AND key = ?").get(repoId, number, key)?.posted_at ?? null;
+  }
+
   markNoticePosted(repoId: number, number: number, key: string) {
     this.db.query("INSERT OR IGNORE INTO notices (repo_id, number, key, posted_at) VALUES (?, ?, ?, ?)").run(repoId, number, key, Date.now());
   }

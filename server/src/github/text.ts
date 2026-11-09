@@ -89,6 +89,25 @@ export function maintainerForfeitComment(o: { author: string; amount: string; de
 **To dispute:** ${how} A stronger AI model then re-judges the PR, with a statement from each side. If it sides with you, you get your deposit back plus one bond from the maintainers' vault.${o.link ? `\n\n<sub>[Verdict page](${o.link})</sub>` : ""}`;
 }
 
+/** Tells both sides a dispute is open: when the stronger model re-judges and how to be heard first. */
+export function disputeOpenedComment(o: { author: string; maintainer: string | null; byMaintainer: boolean; free: boolean; proposed: string; rejudgeAt: number; link: string | null }) {
+  const who = o.free
+    ? `@${o.author} disputed the maintainer's forfeit (free).`
+    : `The ${o.byMaintainer ? "maintainer" : "contributor"} staked to challenge the **${o.proposed}** verdict.`;
+  const both = [`@${o.author}`, o.maintainer ? `@${o.maintainer}` : "the maintainer"].join(" and ");
+  const where = o.link
+    ? `on the [verdict page](${o.link}): connect the NEAR wallet that paid the bond (contributor) or the repo's payout account (maintainer) and press **Post statement on-chain**`
+    : "with `add_statement` on the PatchBond contract, from the NEAR account that paid the bond or the repo's payout account";
+  return `${MARKER}
+### ⚖️ Dispute opened — a stronger model re-judges at ${utc(o.rejudgeAt)}
+
+${who} A stronger verifiable model re-judges this PR inside the OutLayer enclave, and the contract pays out on its answer at once.
+
+**${both}: until then, you can each post up to 2 statements (1,500 characters each)** ${where}. The model reads them word for word. What helps: the file and line that does (or doesn't) do what the PR claims, a test that proves it, or why the change is enough for the linked issue.
+
+A forfeit needs the stronger model's own signed forfeit with evidence; anything less is a refund.`;
+}
+
 export function verdictComment(r: VerdictRecord, o: { webUrl: string; challengeHours: number; onChain: boolean }) {
   const v = r.final.verdict;
   const link = `${o.webUrl}/v/${r.id}`;

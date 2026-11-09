@@ -71,8 +71,11 @@ app.get("/api/submissions/:repo/:number", async (c) => {
   const repo = Number(c.req.param("repo"));
   const number = Number(c.req.param("number"));
   const [deposit, repoOnChain] = await Promise.all([chain.getDeposit(repo, number), chain.getRepo(repo)]);
+  // While a dispute is open: when the stronger model re-judges (statements close then).
+  const opened = deposit && typeof deposit.status === "object" && "challenged" in deposit.status ? store.noticeAt(repo, number, "dispute-open") : null;
   return c.json({
     submission: store.submission(repo, number),
+    rejudge_at: opened === null ? null : opened + cfg.rejudgeDelayMs,
     deposit,
     repo: repoOnChain,
     verdicts: store.recentVerdicts(10, repo).filter((v) => v.number === number),

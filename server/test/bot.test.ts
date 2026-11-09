@@ -338,7 +338,7 @@ describe("GitHub bot", () => {
       seen = req;
       return realRun(req);
     };
-    bot = new Bot(loadConfig(), chain, store, new MockInference(), strong, () => {});
+    bot = new Bot({ ...loadConfig(), rejudgeDelayMs: 0 }, chain, store, new MockInference(), strong, () => {});
     await deliver("pull_request", prOpened(2));
     chain.pay(2, "slop.testnet", "slopbot");
     await bot.tick(); // forfeit proposed
@@ -353,13 +353,36 @@ describe("GitHub bot", () => {
     expect(store.submission(REPO.id, 2)?.state).toBe("settled");
   });
 
+  test("a dispute is announced once to both sides, and the re-judge waits for their statements", async () => {
+    const strong = new MockInference(undefined, () => JSON.stringify({ verdict: "refund", confidence: 0.9, category: "ok", reasons: ["fine"], evidence: [] }));
+    bot = new Bot({ ...loadConfig(), rejudgeDelayMs: 20 * 60_000 }, chain, store, new MockInference(), strong, () => {});
+    store.setRepoMaintainer(REPO.id, "amaka");
+    await deliver("pull_request", prOpened(2));
+    chain.pay(2, "slop.testnet", "slopbot");
+    await bot.tick();
+    chain.deposits.get(`${REPO.id}/2`)!.status = { challenged: { verdict: "forfeit", challenger: "slop.testnet", stake: "0" } };
+    await bot.tick();
+    await bot.tick();
+    const notices = comments().filter((c) => c.includes("Dispute opened"));
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toContain("@slopbot and @amaka");
+    expect(notices[0]).toContain("disputed the maintainer's forfeit (free)");
+    expect(notices[0]).toContain("Post statement on-chain");
+    expect(chain.log.some((l) => l.startsWith(`resolve ${REPO.id}#2`))).toBe(false); // still in the statement window
+    // The window is counted from when the dispute was first seen, and survives a restart.
+    store.db.query("UPDATE notices SET posted_at = ? WHERE key = 'dispute-open'").run(Date.now() - 21 * 60_000);
+    bot = new Bot({ ...loadConfig(), rejudgeDelayMs: 20 * 60_000 }, chain, store, new MockInference(), strong, () => {});
+    await bot.tick();
+    expect(chain.log).toContain(`resolve ${REPO.id}#2 refund`);
+  });
+
   test("a disputed maintainer forfeit stands when the stronger model also signs forfeit — even with no hard fact", async () => {
     // Live case (CivicLedger #61): a README period "closing" a contract bug. GLM said forfeit at 0.75,
     // the maintainer forfeited, the contributor disputed, Kimi said forfeit at 0.97 — and it was refunded.
     const strong = new MockInference(undefined, () =>
       JSON.stringify({ verdict: "forfeit", confidence: 0.97, category: "does_not_work", reasons: ["Claims to close a contract bug; only adds a period to the README."], evidence: [{ file: "README.md", line: 17, note: "only change" }] }),
     );
-    bot = new Bot(loadConfig(), chain, store, new MockInference(), strong, () => {});
+    bot = new Bot({ ...loadConfig(), rejudgeDelayMs: 0 }, chain, store, new MockInference(), strong, () => {});
     await deliver("pull_request", prOpened(1));
     chain.pay(1, "tunde.testnet", "tunde");
     await bot.tick();

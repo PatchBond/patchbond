@@ -11,7 +11,7 @@ import { judge } from "../judge/judge";
 import type { Inference } from "../judge/nearai";
 import { parseRepoRules, type RepoRules } from "../judge/facts";
 import { gatherPr } from "./gather";
-import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, maintainerForfeitComment, money, namedPayout, payLink, unpaidClosedComment, utc, verdictComment } from "./text";
+import { CHECK_NAME, MARKER, checkSummary, depositComment, depositPaidComment, disputeOpenedComment, maintainerForfeitComment, money, namedPayout, payLink, unpaidClosedComment, utc, verdictComment } from "./text";
 
 const MAINTAINER = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 /** Labels maintainers can filter on: review the paid queue, ignore the rest. */
@@ -267,12 +267,15 @@ export class Bot {
     }
     if (typeof d.status === "object" && "challenged" in d.status) {
       const key = `${s.repo_id}/${s.number}`;
+      // Both sides get a window to post statements before the stronger model reads them.
+      const opened = await this.disputeOpened(s, d.status.challenged, repoFreeDispute(d.status.challenged.stake));
+      if (Date.now() < opened + this.cfg.rejudgeDelayMs) return;
       if (this.rejudging.has(key)) return;
       this.rejudging.add(key);
       try {
         const { verdict, challenger, stake } = d.status.challenged;
         if (this.tee && this.chain.rejudgeInTee && this.chain.getRejudgeJob) {
-          await this.rejudgeInEnclave(s, verdict as "refund" | "forfeit", challenger, stake === "0");
+          await this.rejudgeInEnclave(s, verdict as "refund" | "forfeit", challenger, stake === "0", opened);
         } else {
           await this.rejudge(s, verdict as "refund" | "forfeit", challenger, stake === "0");
         }
@@ -465,9 +468,9 @@ export class Bot {
    * Enclave route for a dispute: after a window for both sides to post statements on-chain, ask the
    * contract to re-judge in OutLayer. Its callback resolves the dispute; we announce the record.
    */
-  private async rejudgeInEnclave(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string, freeDispute: boolean) {
+  private async rejudgeInEnclave(s: Submission, proposed: "refund" | "forfeit", challengerAccount: string, freeDispute: boolean, opened: number) {
     const key = `${s.repo_id}/${s.number}`;
-    if (!this.disputes.has(key)) this.disputes.set(key, { seen: Date.now(), proposed, challenger: challengerAccount, free: freeDispute });
+    if (!this.disputes.has(key)) this.disputes.set(key, { seen: opened, proposed, challenger: challengerAccount, free: freeDispute });
     const job = await this.chain.getRejudgeJob!(s.repo_id, s.number);
     if (job) {
       // Running, or done: settled already, unless a forfeit still needs its signed bytes on-chain.
@@ -475,11 +478,46 @@ export class Bot {
       if (record) await this.confirmPendingForfeit(s, record);
       return;
     }
-    if (Date.now() - this.disputes.get(key)!.seen < this.cfg.rejudgeDelayMs) return;
     if (Date.now() - (this.teeAsked.get(`rj:${key}`) ?? 0) < 3 * 60_000) return;
     this.teeAsked.set(`rj:${key}`, Date.now());
     await this.chain.rejudgeInTee!(s.repo_id, s.number);
     this.log(`asked the contract to re-judge ${s.full_name}#${s.number} in OutLayer`);
+  }
+
+  /**
+   * When the bot first saw this dispute (kept in the database, so a restart doesn't reset the
+   * statement window). The first time, it tells both sides on the PR when the re-judge starts and
+   * how to post a statement. A failed comment is retried next tick and never delays the re-judge.
+   */
+  private async disputeOpened(s: Submission, c: { verdict: string; challenger: string }, free: boolean): Promise<number> {
+    let opened = this.store.noticeAt(s.repo_id, s.number, "dispute-open");
+    if (opened === null) {
+      this.store.markNoticePosted(s.repo_id, s.number, "dispute-open");
+      opened = this.store.noticeAt(s.repo_id, s.number, "dispute-open")!;
+    }
+    if (this.store.noticePosted(s.repo_id, s.number, "dispute-comment")) return opened;
+    const repoOnChain = await this.chain.getRepo(s.repo_id);
+    const gh = await this.app.getInstallationOctokit(s.installation_id);
+    const [owner, repo] = s.full_name.split("/") as [string, string];
+    try {
+      await gh.rest.issues.createComment({
+        owner, repo, issue_number: s.number,
+        body: disputeOpenedComment({
+          author: s.author,
+          maintainer: this.store.repoMaintainer(s.repo_id),
+          byMaintainer: repoOnChain?.payout === c.challenger,
+          free,
+          proposed: c.verdict,
+          rejudgeAt: opened + this.cfg.rejudgeDelayMs,
+          link: s.verdict_id ? `${this.cfg.webUrl}/v/${s.verdict_id}` : null,
+        }),
+      });
+      this.store.markNoticePosted(s.repo_id, s.number, "dispute-comment");
+      this.log(`told both sides about the dispute on ${s.full_name}#${s.number} (re-judge at ${utc(opened + this.cfg.rejudgeDelayMs)})`);
+    } catch (e) {
+      this.log(`couldn't post the dispute notice on ${s.full_name}#${s.number}; retrying next tick`, String(e));
+    }
+    return opened;
   }
 
   /** An enclave forfeit stands only once its signed bytes are on-chain. Anyone can post them; we do. */
@@ -648,4 +686,9 @@ export class Bot {
       owner, repo, check_run_id: s.check_run_id, status, ...(conclusion ? { conclusion } : {}), output,
     });
   }
+}
+
+/** A free dispute (of a maintainer's forfeit) carries no stake. */
+function repoFreeDispute(stake: string) {
+  return stake === "0";
 }
