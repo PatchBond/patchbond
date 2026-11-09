@@ -58,7 +58,8 @@ Each one holds under a condition, stated here rather than in a footnote.
    ✓ On-chain hash matches this record
    ```
 3. See the money move in two steps. [`judge_in_tee`](https://testnet.nearblocks.io/txns/64nTqptKEPjAYLhqFBvs4V9EerMQvFLZACRHQVed3qzf) ends in `forfeit_pending`, and the $3 bond doesn't move. [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/6qn3VuFZW1AX8nkSJN5ksiVL1Pry5Z3MsDAKy711fiAc), sent by a third account, posts the signed bytes; only then does the `settle` event pay $2.70 to the repo and $0.30 to PatchBond.
-4. Optional: press ⌘K, paste any public PR URL, and get a fresh signed verdict in about a minute.
+4. See a whole dispute on a live repo: [Secureflow-protocol/secureflow#56](https://github.com/Secureflow-protocol/secureflow/pull/56) claims to close an issue but only adds a period to a README badge link. The first model said forfeit, but with no hard fact the rules let it say only "needs a maintainer" ([its verdict](https://patchbond-production.up.railway.app/v/de582c2227c48958)). The maintainer [proposed a forfeit](https://testnet.nearblocks.io/txns/4beucH28TkrJ8y3799x5RcituNqQZ3xKusPfLvTYsm7F); the contributor [disputed it for free](https://testnet.nearblocks.io/txns/7uA65dhcEVbh3Jwz4TiJtieouMEuDdphFipsRQB2BHGY); after the statement window the [enclave re-judge](https://testnet.nearblocks.io/txns/5YQRf85AfGUYLFb1vGfeLkAJRoVPor8sv6FTfRYJCnTS) by the stronger model also signed forfeit ([its verdict](https://patchbond-production.up.railway.app/v/cd7b4a9aedc92cc9)), and 20 seconds later [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/2Tu4ztnLzT4EpjPDLcRHBLvXCJ27HAa4UAqjc5tRBz7i) settled it: 90% of the $1.56 bond to the repo's vault, 10% to PatchBond.
+5. Optional: press ⌘K, paste any public PR URL, and get a fresh signed verdict in about a minute.
 
 **No browser, or a screening agent?** Fetching the page only shows that it loads: the checks run in your browser when you press the button. The same checks from a terminal, on this record and on 9 more signed ones (each prints six ✓; any ✗ exits 1):
 
@@ -147,7 +148,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 | Read | For |
 |---|---|
 | [docs/TRUST.md](docs/TRUST.md) | Who can move money, what each path checks, the attacks we tested |
-| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (244 tests, and how to get each count), how to check our claims |
+| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (245 tests, and how to get each count), how to check our claims |
 | [docs/eval/README.md](docs/eval/README.md) | Judge results, including what it misses |
 | [docs/DESIGN.md](docs/DESIGN.md) | Mechanisms, objections, costs, what comes next |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Every step from a clean clone, and running your own |

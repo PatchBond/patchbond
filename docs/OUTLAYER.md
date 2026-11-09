@@ -43,7 +43,8 @@ maintainer each post up to two statements on-chain (`add_statement`, signed by t
 When the bot first sees a dispute it comments on the PR, @mentioning both sides with the time the
 re-judge starts and how to post a statement; the verdict page counts down to it. That window is the
 server's `REJUDGE_DELAY_MIN` (default 20 minutes, kept short for the demo; hours suit real repos) and
-survives a server restart. Then anyone calls `rejudge_in_tee`: the enclave fetches the PR again, sends the stronger model
+survives a server restart; it ends early once both sides have each posted a statement. Then anyone
+calls `rejudge_in_tee` (the contract doesn't enforce the window yet; see SECURITY.md): the enclave fetches the PR again, sends the stronger model
 (`get_rejudge_model`) the PR, the challenged verdict and those statements, and the contract checks
 NEAR AI's signature before it settles — the model's enclave key, or the gateway key registered for
 that one model. The rule is the server's: a disputed *maintainer* forfeit stands only if the stronger

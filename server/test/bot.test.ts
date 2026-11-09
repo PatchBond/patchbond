@@ -376,6 +376,21 @@ describe("GitHub bot", () => {
     expect(chain.log).toContain(`resolve ${REPO.id}#2 refund`);
   });
 
+  test("the re-judge starts early once both sides have posted a statement, not when only one has", async () => {
+    const strong = new MockInference(undefined, () => JSON.stringify({ verdict: "refund", confidence: 0.9, category: "ok", reasons: ["fine"], evidence: [] }));
+    bot = new Bot({ ...loadConfig(), rejudgeDelayMs: 20 * 60_000 }, chain, store, new MockInference(), strong, () => {});
+    await deliver("pull_request", prOpened(2));
+    chain.pay(2, "slop.testnet", "slopbot");
+    await bot.tick();
+    chain.deposits.get(`${REPO.id}/2`)!.status = { challenged: { verdict: "forfeit", challenger: "slop.testnet", stake: "0" } };
+    chain.statements.set(`${REPO.id}/2`, [{ from: "contributor", note: "It does fix the bug: see src/a.ts:3." }]);
+    await bot.tick();
+    expect(chain.log.some((l) => l.startsWith(`resolve ${REPO.id}#2`))).toBe(false); // the maintainer hasn't spoken
+    chain.statements.get(`${REPO.id}/2`)!.push({ from: "maintainer", note: "It only touches the README." });
+    await bot.tick();
+    expect(chain.log).toContain(`resolve ${REPO.id}#2 refund`);
+  });
+
   test("a disputed maintainer forfeit stands when the stronger model also signs forfeit — even with no hard fact", async () => {
     // Live case (CivicLedger #61): a README period "closing" a contract bug. GLM said forfeit at 0.75,
     // the maintainer forfeited, the contributor disputed, Kimi said forfeit at 0.97 — and it was refunded.

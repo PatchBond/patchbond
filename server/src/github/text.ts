@@ -99,11 +99,11 @@ export function disputeOpenedComment(o: { author: string; maintainer: string | n
     ? `on the [verdict page](${o.link}): connect the NEAR wallet that paid the bond (contributor) or the repo's payout account (maintainer) and press **Post statement on-chain**`
     : "with `add_statement` on the PatchBond contract, from the NEAR account that paid the bond or the repo's payout account";
   return `${MARKER}
-### ⚖️ Dispute opened — a stronger model re-judges at ${utc(o.rejudgeAt)}
+### ⚖️ Dispute opened — a stronger model re-judges at ${utc(o.rejudgeAt)}, or as soon as both sides have posted a statement
 
 ${who} A stronger verifiable model re-judges this PR inside the OutLayer enclave, and the contract pays out on its answer at once.
 
-**${both}: until then, you can each post up to 2 statements (1,500 characters each)** ${where}. The model reads them word for word. What helps: the file and line that does (or doesn't) do what the PR claims, a test that proves it, or why the change is enough for the linked issue.
+**${both}: until then, you can each post up to 2 statements (1,500 characters each)** ${where}. Once each of you has posted one, the re-judge starts right away. The model reads them word for word. What helps: the file and line that does (or doesn't) do what the PR claims, a test that proves it, or why the change is enough for the linked issue.
 
 A forfeit needs the stronger model's own signed forfeit with evidence; anything less is a refund.`;
 }

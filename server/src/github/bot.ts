@@ -23,7 +23,7 @@ export type ChainPort = Pick<
   Chain,
   "getRepo" | "getDeposit" | "quote" | "isExempt" | "getReputation" | "getBounty" | "registerRepo" | "settle" | "markReviewed" | "payBounty" | "finalize" | "resolveChallenge"
 > &
-  Partial<Pick<Chain, "isMaintainerForfeit" | "getTeeJob" | "judgeInTee" | "getPendingForfeit" | "confirmTeeForfeit" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee" | "claimBountyInTee">>;
+  Partial<Pick<Chain, "isMaintainerForfeit" | "getStatements" | "getTeeJob" | "judgeInTee" | "getPendingForfeit" | "confirmTeeForfeit" | "getRepoName" | "setRepoName" | "getRejudgeJob" | "rejudgeInTee" | "claimBountyInTee">>;
 
 /** What the contract acts on at once: refunds, and forfeits the model itself signed. */
 function actsOnChain(r: VerdictRecord): boolean {
@@ -269,7 +269,8 @@ export class Bot {
       const key = `${s.repo_id}/${s.number}`;
       // Both sides get a window to post statements before the stronger model reads them.
       const opened = await this.disputeOpened(s, d.status.challenged, repoFreeDispute(d.status.challenged.stake));
-      if (Date.now() < opened + this.cfg.rejudgeDelayMs) return;
+      // The window ends early once both sides have been heard: nobody is cut off, nobody waits.
+      if (Date.now() < opened + this.cfg.rejudgeDelayMs && !(await this.bothSidesHeard(s))) return;
       if (this.rejudging.has(key)) return;
       this.rejudging.add(key);
       try {
@@ -518,6 +519,13 @@ export class Bot {
       this.log(`couldn't post the dispute notice on ${s.full_name}#${s.number}; retrying next tick`, String(e));
     }
     return opened;
+  }
+
+  /** The contributor and the maintainer have each posted at least one on-chain statement. */
+  private async bothSidesHeard(s: Submission): Promise<boolean> {
+    if (!this.chain.getStatements) return false;
+    const st = (await this.chain.getStatements(s.repo_id, s.number).catch(() => null)) ?? [];
+    return st.some((x) => x.from === "contributor") && st.some((x) => x.from === "maintainer");
   }
 
   /** An enclave forfeit stands only once its signed bytes are on-chain. Anyone can post them; we do. */

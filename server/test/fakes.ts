@@ -120,10 +120,14 @@ export function fakeChain(repoId: number) {
   const policy = { enabled: true, base_bond: "2000000", min_bond: "250000", max_bond: "50000000", target_open: 8, review_window_sec: 259200, challenge_window_sec: 259200, forfeit_threshold_bps: 8500 };
   /** PRs whose pending forfeit the maintainer proposed (the contract's `maintainer_forfeits`). */
   const maintainerForfeits = new Set<string>();
-  const chain: ChainPort & { maintainerForfeit: (n: number) => void; linkRepo: (r: number, payout: string) => Promise<unknown>; pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[]; proofs: Map<string, TeeProof>; names: Map<number, string> } = {
+  /** On-chain dispute statements per PR (`add_statement`). */
+  const statements = new Map<string, { from: string; note: string }[]>();
+  const chain: ChainPort & { statements: typeof statements; maintainerForfeit: (n: number) => void; linkRepo: (r: number, payout: string) => Promise<unknown>; pay: (n: number, payer: string, githubUser: string) => void; repos: typeof repos; deposits: typeof deposits; log: string[]; proofs: Map<string, TeeProof>; names: Map<number, string> } = {
     repos,
     deposits,
+    statements,
     log,
+    getStatements: async (r, n) => statements.get(key(r, n)) ?? [],
     pay(n, payer, githubUser) {
       deposits.set(key(repoId, n), {
         payer, github_user: githubUser, kind: "pr", bond: "2000000", tip: "0", fixes_issue: null, created_at: Date.now(),

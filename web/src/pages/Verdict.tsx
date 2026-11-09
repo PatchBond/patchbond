@@ -608,7 +608,7 @@ function describe(d: Deposit, byMaintainer = false, rejudgeAt: number | null = n
     const title = `${s.challenged.stake === "0" ? "Disputed" : "Challenged"} by ${s.challenged.challenger}`;
     if (rejudgeAt && rejudgeAt > Date.now()) {
       const at = new Date(rejudgeAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      return { title, detail: `${stake} A stronger model re-judges at ${at} (in ${fmtDuration(rejudgeAt - Date.now())}). Until then, both sides can post a statement below.` };
+      return { title, detail: `${stake} A stronger model re-judges at ${at} (in ${fmtDuration(rejudgeAt - Date.now())}), or as soon as both sides have posted a statement below.` };
     }
     if (rejudgeAt) return { title, detail: `${stake} Statements are closed: a stronger model is re-judging now in the enclave (usually 1–3 min). The contract pays out on its answer.` };
     return { title, detail: `${stake} A stronger model re-judges after a short window for statements — post yours below.` };
