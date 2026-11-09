@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Eyebrow, Panel, Spinner, VerdictBadge } from "../components/kit";
-import { api } from "../lib/api";
+import { api, shownVerdict } from "../lib/api";
 import { useAsync } from "../lib/useAsync";
 
 type Verdict = VerdictRecord["final"]["verdict"];
@@ -26,11 +26,11 @@ export function Verdicts() {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: data?.length ?? 0 };
-    for (const v of data ?? []) c[v.final.verdict] = (c[v.final.verdict] ?? 0) + 1;
+    for (const v of data ?? []) c[shownVerdict(v)] = (c[shownVerdict(v)] ?? 0) + 1;
     return c;
   }, [data]);
   const shown = (data ?? []).filter((v) => {
-    if (filter !== "all" && v.final.verdict !== filter) return false;
+    if (filter !== "all" && shownVerdict(v) !== filter) return false;
     const needle = q.trim().toLowerCase();
     return !needle || `${v.repo.full_name}#${v.number} ${v.author} ${v.final.reasons.join(" ")}`.toLowerCase().includes(needle);
   });
@@ -77,7 +77,7 @@ export function Verdicts() {
           {shown.map((v, i) => (
             <motion.li key={v.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 12) * 0.025 }}>
               <Link to={`/v/${v.id}`} className="group flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-4 transition hover:bg-raised/60">
-                <VerdictBadge verdict={v.final.verdict} />
+                <VerdictBadge verdict={shownVerdict(v)} />
                 <span className="font-medium">
                   {v.repo.full_name}
                   <span className="text-faint">#{v.number}</span>

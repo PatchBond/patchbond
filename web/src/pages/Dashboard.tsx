@@ -560,6 +560,7 @@ function Withdraw({ repo, onDone }: { repo: MaintainerRepo; onDone: () => void }
       <div>
         <div className="text-xs text-faint">Available</div>
         <div className="num text-3xl font-semibold">{money(vault, currency)}</div>
+        <div className="mt-0.5 max-w-48 text-[11px] leading-snug text-faint">Each forfeit pays 90% here; 10% is PatchBond's fee (set in the contract).</div>
       </div>
       <label className="text-sm">
         <span className="text-muted-foreground">Amount ({SYMBOL[currency]})</span>

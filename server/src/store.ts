@@ -106,6 +106,8 @@ export class Store {
       CREATE TABLE IF NOT EXISTS notices (
         repo_id INTEGER NOT NULL, number INTEGER NOT NULL, key TEXT NOT NULL, posted_at INTEGER NOT NULL,
         PRIMARY KEY (repo_id, number, key));
+      CREATE TABLE IF NOT EXISTS outcomes (
+        repo_id INTEGER NOT NULL, number INTEGER NOT NULL, outcome TEXT NOT NULL, PRIMARY KEY (repo_id, number));
       CREATE TABLE IF NOT EXISTS repo_settings (
         repo_id INTEGER PRIMARY KEY, close_unpaid TEXT, updated_by TEXT NOT NULL, updated_at INTEGER NOT NULL);
     `);
@@ -294,6 +296,16 @@ export class Store {
   /** The GitHub login that linked the repo: who the bot @mentions (GitHub emails them for free). */
   setRepoMaintainer(repoId: number, githubLogin: string) {
     this.db.query("INSERT OR REPLACE INTO repo_maintainers VALUES (?, ?, ?)").run(repoId, githubLogin, Date.now());
+  }
+
+  /** How a settled deposit ended (see outcomes.ts). */
+  outcome(repoId: number, number: number): import("./outcomes").Outcome | null {
+    const row = this.db.query<{ outcome: string }, [number, number]>("SELECT outcome FROM outcomes WHERE repo_id = ? AND number = ?").get(repoId, number);
+    return row ? JSON.parse(row.outcome) : null;
+  }
+
+  saveOutcome(repoId: number, number: number, o: import("./outcomes").Outcome) {
+    this.db.query("INSERT OR REPLACE INTO outcomes VALUES (?, ?, ?)").run(repoId, number, JSON.stringify(o));
   }
 
   /** When unpaid PRs close, as set on the dashboard ("now", "off" or hours); null = not set there. */

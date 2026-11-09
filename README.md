@@ -147,7 +147,7 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 | Read | For |
 |---|---|
 | [docs/TRUST.md](docs/TRUST.md) | Who can move money, what each path checks, the attacks we tested |
-| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (243 tests, and how to get each count), how to check our claims |
+| [docs/STATUS.md](docs/STATUS.md) | Every part with its evidence, test suites (244 tests, and how to get each count), how to check our claims |
 | [docs/eval/README.md](docs/eval/README.md) | Judge results, including what it misses |
 | [docs/DESIGN.md](docs/DESIGN.md) | Mechanisms, objections, costs, what comes next |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Every step from a clean clone, and running your own |

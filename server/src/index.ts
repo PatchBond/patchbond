@@ -7,6 +7,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join, normalize } from "node:path";
 import { loadConfig } from "./config";
 import { Chain } from "./near";
+import { outcomeOf } from "./outcomes";
 import { Store } from "./store";
 import { DEFAULT_LIMITS, JudgeBudget, visitorOf } from "./judgeBudget";
 import { Bot } from "./github/bot";
@@ -54,17 +55,22 @@ app.get("/api/config", (c) =>
 // Public, aggregate numbers for the README's live block and the home page.
 app.get("/api/stats", (c) => c.json({ ...store.stats(), network: cfg.deployment.network, contract: cfg.deployment.contract, judge: inference.model, at: new Date().toISOString() }));
 
-app.get("/api/verdicts", (c) => {
+app.get("/api/verdicts", async (c) => {
   const repo = c.req.query("repo");
   // With the live judge on, public lists show live (TEE-signed) verdicts only.
   const list = store.recentVerdicts(Math.min(Number(c.req.query("limit") ?? 50), 200), repo ? Number(repo) : undefined, !inference.mock);
-  // The list omits the raw bytes; the single-verdict endpoint has everything.
-  return c.json(list.map(({ request_body: _q, response_body: _r, ...rest }) => rest));
+  // The list omits the raw bytes; the single-verdict endpoint has everything. Each row carries what
+  // the contract finally did with the deposit, which can differ from what that one model said.
+  return c.json(
+    await Promise.all(
+      list.map(async ({ request_body: _q, response_body: _r, ...rest }) => ({ ...rest, outcome: await outcomeOf(store, chain, rest.repo.id, rest.number) })),
+    ),
+  );
 });
 
-app.get("/api/verdicts/:id", (c) => {
+app.get("/api/verdicts/:id", async (c) => {
   const r = store.verdict(c.req.param("id"));
-  return r ? c.json(r) : c.json({ error: "No verdict with this id. Check the link, or the verdict may be on another PatchBond server." }, 404);
+  return r ? c.json({ ...r, outcome: await outcomeOf(store, chain, r.repo.id, r.number) }) : c.json({ error: "No verdict with this id. Check the link, or the verdict may be on another PatchBond server." }, 404);
 });
 
 app.get("/api/submissions/:repo/:number", async (c) => {

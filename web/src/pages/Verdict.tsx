@@ -7,7 +7,7 @@ import { Scramble } from "../components/fx";
 import { Seal, type SealState } from "../components/Seal";
 import { useParams } from "react-router";
 import { Button, Eyebrow, Hash, Notice, Panel, Spinner, VERDICT_STYLE, VerdictBadge } from "../components/kit";
-import { api, chain, explorerTx, money, type Deposit, type Repo } from "../lib/api";
+import { api, chain, explorerTx, money, type Deposit, type Outcome, type Repo } from "../lib/api";
 import { useConfig } from "../lib/config";
 import { useAsync } from "../lib/useAsync";
 import { useWallet } from "../lib/wallet";
@@ -20,8 +20,9 @@ export function VerdictPage() {
   return <Verdict r={r} />;
 }
 
-function Verdict({ r }: { r: VerdictRecord }) {
+function Verdict({ r }: { r: VerdictRecord & { outcome?: Outcome | null } }) {
   const v = r.final.verdict;
+  const settled = r.outcome?.verdict === "refund" || r.outcome?.verdict === "forfeit" ? (r.outcome.verdict as "refund" | "forfeit") : null;
   const ghUrl = `https://github.com/${r.repo.full_name}/${r.kind === "pr" ? "pull" : "issues"}/${r.number}`;
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
@@ -39,13 +40,25 @@ function Verdict({ r }: { r: VerdictRecord }) {
           {r.repo.full_name} <span className="text-faint">#{r.number}</span> · by @{r.author} ↗
         </a>
         <div className="mt-4 flex flex-wrap items-center gap-4">
-          <VerdictBadge verdict={v} size="lg" />
+          {settled ? (
+            <>
+              <VerdictBadge verdict={settled} size="lg" />
+              {settled !== v && (
+                <span className="flex items-center gap-2 text-xs text-faint">
+                  this model said <VerdictBadge verdict={v} />
+                </span>
+              )}
+            </>
+          ) : (
+            <VerdictBadge verdict={v} size="lg" />
+          )}
           <ConfidenceBar value={r.final.confidence} />
         </div>
         <h1 className="mt-4 max-w-3xl text-2xl font-semibold leading-snug tracking-tight sm:text-3xl">{r.final.reasons[0] ?? VERDICT_STYLE[v].blurb}</h1>
         <p className="mt-2 text-sm text-faint">
           Judged {new Date(r.created_at).toLocaleString()} by <span className="font-mono">{r.model}</span>
         </p>
+        {r.outcome && settled && <OutcomeBanner r={r} outcome={r.outcome} verdict={settled} />}
         {r.runner === "outlayer-tdx" && (
           <p className="mt-3 inline-flex max-w-3xl items-start gap-2 rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-sm">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />
@@ -104,7 +117,7 @@ function Verdict({ r }: { r: VerdictRecord }) {
         </div>
 
         <div className="space-y-6">
-          <OnChain r={r} />
+          <OnChain r={r} decidedBy={r.outcome?.decided_by ?? null} />
           <Panel className="p-5 text-sm leading-relaxed text-muted-foreground">
             <Eyebrow>Why you can trust this</Eyebrow>
             <p className="mt-3">
@@ -327,7 +340,7 @@ function Row({ k, children }: { k: string; children: React.ReactNode }) {
 
 // ---- On-chain state and actions ----
 
-function OnChain({ r }: { r: VerdictRecord }) {
+function OnChain({ r, decidedBy }: { r: VerdictRecord; decidedBy: string | null }) {
   const cfg = useConfig();
   const wallet = useWallet();
   const { data, reload, loading } = useAsync(
@@ -405,8 +418,14 @@ function OnChain({ r }: { r: VerdictRecord }) {
         <div className="mt-0.5 text-muted-foreground">{status.detail}</div>
       </div>
       {deposit.verdict_hash && (
-        <div className={`mt-3 text-xs ${hashMatches ? "text-brand" : "text-warn"}`}>
-          {hashMatches ? "✓ On-chain hash matches this verdict" : "On-chain hash is from a different verdict (e.g. a maintainer override or re-judge)"}
+        <div className={`mt-3 text-xs ${hashMatches || decidedBy ? "text-brand" : "text-warn"}`}>
+          {hashMatches ? (
+            "✓ On-chain hash matches this verdict"
+          ) : decidedBy ? (
+            <a href={`/v/${decidedBy}`} className="hover:underline">✓ Settled with the re-judge's signed verdict →</a>
+          ) : (
+            "On-chain hash is from a different verdict (e.g. a maintainer override or re-judge)"
+          )}
         </div>
       )}
 
@@ -522,6 +541,50 @@ function ProposedActions(p: {
         <Button variant="ghost" className="w-full" disabled={!!p.busy} onClick={p.onFinalize}>
           Finalize verdict (anyone can)
         </Button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What the contract finally did, on top of what this one model said: a maintainer's forfeit upheld by
+ * a re-judge reads "Forfeited" even when the first model was only allowed to say "needs a maintainer".
+ */
+function OutcomeBanner({ r, outcome, verdict }: { r: VerdictRecord; outcome: Outcome; verdict: "refund" | "forfeit" }) {
+  const other = outcome.decided_by && outcome.decided_by !== r.id ? outcome.decided_by : null;
+  const { data: decider } = useAsync(() => (other ? api.verdict(other) : Promise.resolve(null)), [other]);
+  const when = new Date(outcome.at).toLocaleString();
+  const word = verdict === "forfeit" ? "Forfeited" : "Refunded";
+  const why =
+    other
+      ? `After a dispute, a stronger model re-judged this PR in the enclave and the contract settled on its signed verdict${decider ? ` (${decider.model})` : ""}.`
+      : outcome.decided_by === r.id && r.final.verdict !== verdict
+        ? `This is the verdict the contract settled with. The safety rules don't let a model forfeit on its own without a hard fact, so it shows "${VERDICT_STYLE[r.final.verdict].label}"; here a maintainer had proposed the forfeit and the model also signed ${r.model_verdict?.verdict ?? verdict}, so it stood.`
+        : outcome.decided_by === r.id
+          ? "This is the verdict the contract settled with."
+          : verdict === "refund"
+            ? "Settled on-chain: the maintainer refunded it, or nobody decided in time (when in doubt, PatchBond refunds)."
+            : "Settled on-chain after the challenge window.";
+  return (
+    <div className={`mt-4 max-w-3xl rounded-xl border px-4 py-3 text-sm ${verdict === "forfeit" ? "border-danger/40 bg-danger/5" : "border-brand/30 bg-brand/5"}`}>
+      <div className="font-medium">
+        {word} on-chain · {when}
+      </div>
+      <p className="mt-1 text-muted-foreground">{why}</p>
+      {decider && (
+        <>
+          <ul className="mt-2 space-y-1">
+            {decider.final.reasons.slice(0, 3).map((x, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="mt-2 size-1 shrink-0 rounded-full bg-faint" />
+                <span>{x}</span>
+              </li>
+            ))}
+          </ul>
+          <a href={`/v/${decider.id}`} className="mt-2 inline-block text-brand hover:underline">
+            Open the re-judge's signed verdict →
+          </a>
+        </>
       )}
     </div>
   );

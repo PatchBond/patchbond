@@ -16,6 +16,21 @@ export interface AppConfig {
   github?: { app_url: string | null; sign_in: boolean };
 }
 
+/** What the contract finally did with a deposit — can differ from what one model said. */
+export interface Outcome {
+  verdict: string;
+  at: number;
+  verdict_hash: string | null;
+  /** The stored verdict record the contract settled with (e.g. a re-judge), when known. */
+  decided_by: string | null;
+}
+
+/** The label a verdict row should carry: the on-chain result once the deposit settled, else the model's verdict. */
+export function shownVerdict(v: { final: { verdict: "refund" | "forfeit" | "needs_human" }; outcome?: Outcome | null }): "refund" | "forfeit" | "needs_human" {
+  const o = v.outcome?.verdict;
+  return o === "refund" || o === "forfeit" ? o : v.final.verdict;
+}
+
 export interface MaintainerRepo {
   repo_id: number;
   full_name: string;
@@ -83,9 +98,9 @@ export const api = {
   linkChallenge: (repo_id: number, account_id: string) => post<{ message: string; recipient: string; nonce: string }>("/api/link/challenge", { repo_id, account_id }),
   linkConfirm: (b: { nonce: string; account_id: string; public_key: string; signature: string }) => post<{ ok: true }>("/api/link/confirm", b),
   config: () => get<AppConfig>("/api/config"),
-  verdict: (id: string) => get<VerdictRecord>(`/api/verdicts/${encodeURIComponent(id)}`),
+  verdict: (id: string) => get<VerdictRecord & { outcome?: Outcome | null }>(`/api/verdicts/${encodeURIComponent(id)}`),
   verdicts: (limit = 20, repo?: number) =>
-    get<Omit<VerdictRecord, "request_body" | "response_body">[]>(`/api/verdicts?limit=${limit}${repo ? `&repo=${repo}` : ""}`),
+    get<(Omit<VerdictRecord, "request_body" | "response_body"> & { outcome?: Outcome | null })[]>(`/api/verdicts?limit=${limit}${repo ? `&repo=${repo}` : ""}`),
   submission: (repo: number, number: number) => get<{ submission: { state: string; close_at: number | null } | null; rejudge_at?: number | null; deposit: Deposit | null; repo: Repo | null }>(`/api/submissions/${repo}/${number}`),
   appeals: (verdictId: string) => get<{ author: string; note: string; created_at: number }[]>(`/api/appeals/${encodeURIComponent(verdictId)}`),
   appeal: async (verdict_id: string, note: string, from: string) => {
