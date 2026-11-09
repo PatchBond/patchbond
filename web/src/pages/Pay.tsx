@@ -25,11 +25,14 @@ export function Pay() {
   const [result, setResult] = useState<{ ok: boolean; text: string; hash?: string } | null>(null);
 
   const { data, error, loading, reload } = useAsync(async () => {
-    const [repo, deposit, quote, record] = await Promise.all([
+    const [repo, deposit, quote, record, newcomer, rep] = await Promise.all([
       chain.repo(cfg, repoId),
       chain.deposit(cfg, repoId, number),
       chain.quote(cfg, repoId, wallet.accountId),
       chain.maintainerRecord(cfg, repoId).catch(() => null),
+      // What a newcomer pays (the price the maintainer sees), to explain any difference.
+      wallet.accountId ? chain.quote(cfg, repoId, null).catch(() => null) : Promise.resolve(null),
+      wallet.accountId ? chain.reputation(cfg, wallet.accountId).catch(() => null) : Promise.resolve(null),
     ]);
     // The deadline the bot announced on the PR (the server may be unreachable; the page still works).
     const closeAt = await api.submission(repoId, number).then((r) => r.submission?.close_at ?? null).catch(() => null);
@@ -40,7 +43,7 @@ export function Pay() {
           currency === "near" && cfg.wnear ? chain.registered(cfg, cfg.wnear, wallet.accountId) : Promise.resolve(true),
         ])
       : [null, true];
-    return [repo, deposit, quote, balance, registered, record, closeAt] as const;
+    return [repo, deposit, quote, balance, registered, record, closeAt, newcomer, rep] as const;
   }, [cfg, repoId, number, wallet.accountId]);
 
   if (!Number.isInteger(repoId) || !Number.isInteger(number)) {
@@ -48,7 +51,7 @@ export function Pay() {
   }
   if (loading && !data) return <Centered><Spinner /></Centered>;
   if (error) return <Centered><Notice tone="error" title="Couldn't read the contract">{error}. Try again in a moment.</Notice></Centered>;
-  const [repo, deposit, quote, balance, registered, record, closeAt] = data!;
+  const [repo, deposit, quote, balance, registered, record, closeAt, newcomer, rep] = data!;
   if (!repo) {
     return <Centered><Notice tone="error" title="This repo doesn't use PatchBond">Repo {repoId} isn't registered on {cfg.network}. Check the link, or ask the maintainers to install the GitHub App.</Notice></Centered>;
   }
@@ -188,6 +191,13 @@ export function Pay() {
                 </Notice>
               </div>
             )}
+            {newcomer !== null && bond > BigInt(newcomer) && BigInt(newcomer) > 0n && (
+              <div className="mt-4">
+                <Notice tone="info" title={`Why ${money(bond, currency)} and not ${money(newcomer, currency)}`}>
+                  {priceReason(wallet.accountId!, rep, bond, BigInt(newcomer))}
+                </Notice>
+              </div>
+            )}
             {bond === 0n && wallet.accountId && (
               <div className="mt-4"><Notice tone="ok" title="You're a proven contributor">No deposit needed — 3+ refunds on 2+ repos. Just ask a maintainer to review.</Notice></div>
             )}
@@ -280,4 +290,30 @@ export function Pay() {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <div className="mx-auto grid min-h-[50vh] max-w-lg place-items-center px-4 py-20">{children}</div>;
+}
+
+/** Mirrors the contract (curve.rs, FORFEIT_MEMORY_MS): a forfeit in the last 90 days multiplies the bond by 1 + forfeits (max 4). */
+const FORFEIT_MEMORY_MS = 90 * 86_400_000;
+
+function priceReason(
+  account: string,
+  rep: { forfeits: number; last_forfeit_at: number | null } | null,
+  bond: bigint,
+  newcomer: bigint,
+): string {
+  const recent = !!rep?.last_forfeit_at && Date.now() - rep.last_forfeit_at < FORFEIT_MEMORY_MS;
+  const m = recent ? 1 + Math.min(rep!.forfeits, 3) : 1;
+  const parts: string[] = [];
+  if (recent) {
+    const when = new Date(rep!.last_forfeit_at!).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    const until = new Date(rep!.last_forfeit_at! + FORFEIT_MEMORY_MS).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+    parts.push(
+      `${account} had ${rep!.forfeits} forfeited deposit${rep!.forfeits === 1 ? "" : "s"} (last on ${when}), so its deposit is ×${m} until ${until}. Refunds don't shorten that; it fades 90 days after the last forfeit.`,
+    );
+  }
+  // Anything above newcomer × multiplier comes from this account's own open deposits on the repo.
+  if (bond > newcomer * BigInt(m)) {
+    parts.push("Your own unsettled deposits on this repo count in full toward your price (+12.5% each); everyone else's count less.");
+  }
+  return parts.join(" ") || "Your price is set per account by the contract.";
 }
