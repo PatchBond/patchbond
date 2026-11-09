@@ -177,3 +177,28 @@ test("an expired or revoked GitHub sign-in ends the session and asks to sign in 
     gh.revokeUserTokens(false);
   }
 });
+
+describe("when unpaid PRs close, set from the dashboard", () => {
+  const set = (req: Awaited<ReturnType<typeof signIn>>, id: number, value: unknown) =>
+    req(`/api/repos/${id}/close-unpaid`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ value }) });
+
+  test("an admin sets it, /api/me shows it, and null goes back to the repo's file", async () => {
+    const req = await signIn();
+    expect((await set(req, REPO.id, "now")).status).toBe(200);
+    expect(store.closeUnpaidSetting(REPO.id)).toBe("now");
+    const me = (await (await req("/api/me")).json()) as { repos: { repo_id: number; close_unpaid: string | null }[] };
+    expect(me.repos.find((r) => r.repo_id === REPO.id)?.close_unpaid).toBe("now");
+    expect((await set(req, REPO.id, "6")).status).toBe(200);
+    expect(store.closeUnpaidSetting(REPO.id)).toBe("6");
+    expect((await set(req, REPO.id, null)).status).toBe(200);
+    expect(store.closeUnpaidSetting(REPO.id)).toBeNull();
+  });
+
+  test("only admins of the repo, only sane values, only when signed in", async () => {
+    const req = await signIn();
+    expect((await set(req, 99, "now")).status).toBe(403); // not an admin there
+    for (const bad of ["0", "721", "1.5", "soon", 24, ""]) expect((await set(req, REPO.id, bad)).status).toBe(400);
+    expect((await set(client(), REPO.id, "now")).status).toBe(401);
+    expect(store.closeUnpaidSetting(99)).toBeNull();
+  });
+});

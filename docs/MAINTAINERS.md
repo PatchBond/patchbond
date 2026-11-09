@@ -56,6 +56,11 @@ Dashboard → your repo → **Bond policy → Edit**:
 
 **Save policy on-chain** (one wallet approval). From now on, outside PRs get the bond comment.
 
+Under it, **Unpaid pull requests** sets how long a PR stays open without a deposit: at once, after
+1 h … 7 days, a custom number of hours, or never. It's saved by PatchBond's server (it's what the bot
+does, not money), so no wallet approval; it overrides `close_unpaid_after_hours` in the file below and
+applies from the next PR.
+
 ## 5. Optional: `.github/patchbond.yml`
 
 ```yaml
@@ -71,7 +76,8 @@ unassigned_pr: flag             # flag = a maintainer decides; evidence = counts
 GitHub doesn't let any app stop a pull request from being *opened*. These two settings make that the
 only thing a non-payer can do:
 
-1. **Close unpaid PRs at once.** In `.github/patchbond.yml`:
+1. **Close unpaid PRs at once.** Dashboard → Bond policy → **Unpaid pull requests** → *At once*, or in
+   `.github/patchbond.yml`:
    ```yaml
    close_unpaid_after_hours: now
    ```

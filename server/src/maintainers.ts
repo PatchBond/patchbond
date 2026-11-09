@@ -9,6 +9,7 @@ import { Octokit } from "octokit";
 import type { Config } from "./config";
 import type { ChainPort } from "./github/bot";
 import type { Session, Store } from "./store";
+import { validCloseUnpaid } from "./judge/facts";
 
 const SESSION = "pb_session";
 const STATE = "pb_oauth_state";
@@ -93,7 +94,9 @@ export function maintainerRoutes(app: Hono, d: MaintainerDeps) {
     if (!s) return c.json({ signed_in: false, github_ready: Boolean(cfg.github.clientId) });
     try {
       const repos = await adminRepos(cfg, s.token);
-      const withChain = await Promise.all(repos.map(async (r) => ({ ...r, onchain: await d.chain.getRepo(r.repo_id) })));
+      const withChain = await Promise.all(
+        repos.map(async (r) => ({ ...r, onchain: await d.chain.getRepo(r.repo_id), close_unpaid: store.closeUnpaidSetting(r.repo_id) })),
+      );
       return c.json({ signed_in: true, github_login: s.github_login, repos: withChain });
     } catch (e) {
       // GitHub App user tokens expire (8 h) and are revoked when the App's permissions change: end the
@@ -117,6 +120,24 @@ export function maintainerRoutes(app: Hono, d: MaintainerDeps) {
       verdict_id: x.verdict_id, at: x.updated_at,
     }));
     return c.json({ items });
+  });
+
+  /**
+   * When unpaid PRs close: "now", whole hours (1–720), "off", or null to go back to the repo's
+   * .github/patchbond.yml (24 h when the file doesn't say). Only an admin of the repo may change it.
+   */
+  app.post("/api/repos/:id/close-unpaid", async (c) => {
+    const s = await session(c);
+    if (!s) return c.json({ error: "Sign in with GitHub first." }, 401);
+    const repoId = Number(c.req.param("id"));
+    const { value } = await c.req.json<{ value: unknown }>().catch(() => ({ value: undefined }));
+    if (value !== null && !validCloseUnpaid(value)) {
+      return c.json({ error: 'Use "now", "off", or a whole number of hours from 1 to 720.' }, 400);
+    }
+    const repo = (await adminRepos(cfg, s.token)).find((r) => r.repo_id === repoId);
+    if (!repo) return c.json({ error: "You're not an admin of that repository, or the PatchBond App isn't installed on it." }, 403);
+    store.setCloseUnpaidSetting(repoId, value, s.github_login);
+    return c.json({ ok: true, repo_id: repoId, close_unpaid: value });
   });
 
   app.post("/api/link/challenge", async (c) => {

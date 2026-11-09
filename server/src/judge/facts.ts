@@ -233,9 +233,12 @@ export const DEFAULT_RULES: RepoRules = {
   exempt: [],
 };
 
-/** Parses `.github/patchbond.yml` (flat `key: value` lines; unknown keys ignored). */
-export function parseRepoRules(text: string | undefined): RepoRules {
-  if (!text) return DEFAULT_RULES;
+/**
+ * Parses `.github/patchbond.yml` (flat `key: value` lines; unknown keys ignored). `closeUnpaid` is the
+ * dashboard's setting for when unpaid PRs close; when set, it wins over the file.
+ */
+export function parseRepoRules(text: string | undefined, o: { closeUnpaid?: string | null } = {}): RepoRules {
+  if (!text) return o.closeUnpaid ? { ...DEFAULT_RULES, closeUnpaidAfterHours: closeAfter(o.closeUnpaid) } : DEFAULT_RULES;
   const kv = Object.fromEntries(
     text
       .split("\n")
@@ -246,7 +249,7 @@ export function parseRepoRules(text: string | undefined): RepoRules {
   return {
     assignmentRequired: /^(true|yes|on)$/i.test(kv.assignment_required ?? ""),
     unassignedEffect: kv.unassigned_pr === "evidence" ? "evidence" : "flag",
-    closeUnpaidAfterHours: closeAfter(kv.close_unpaid_after_hours),
+    closeUnpaidAfterHours: closeAfter(o.closeUnpaid ?? kv.close_unpaid_after_hours),
     closeForfeited: !/^(off|false|no|never)$/i.test(kv.close_forfeited ?? ""),
     exempt: (kv.exempt ?? "").replace(/^\[|\]$/g, "").split(/[\s,]+/).map((u) => u.replace(/^@/, "").toLowerCase()).filter(Boolean),
   };
@@ -257,11 +260,19 @@ export function parseRepoRules(text: string | undefined): RepoRules {
  * reopens it); otherwise at least an hour, so there's always time to pay.
  */
 function closeAfter(v: string | undefined): number | null {
+  v = v?.trim();
   if (v === undefined || v === "") return DEFAULT_CLOSE_UNPAID_HOURS;
   if (/^(off|false|no|never|0)$/i.test(v)) return null;
   if (/^(now|immediately|immediate)$/i.test(v)) return 0;
   const h = Number(v);
   return Number.isFinite(h) ? Math.max(1, h) : DEFAULT_CLOSE_UNPAID_HOURS;
+}
+
+/** Checks a dashboard value for when unpaid PRs close: "now", "off", or whole hours from 1 to 720. */
+export function validCloseUnpaid(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  if (v === "now" || v === "off") return true;
+  return /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 720;
 }
 
 export function assignmentFact(author: string, issue: { exists: boolean; assignees?: string[] } | null, rules: RepoRules): Facts["assignment"] {

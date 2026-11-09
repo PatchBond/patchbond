@@ -265,6 +265,17 @@ describe("GitHub bot", () => {
     expect(gh.posted(/\/check-runs\/\d+$/).at(-1)!.path).toEndWith(`/${s.check_run_id}`);
   });
 
+  test("the dashboard's setting wins over .github/patchbond.yml and applies to the next PR", async () => {
+    gh.setRules("close_unpaid_after_hours: 48\n");
+    store.setCloseUnpaidSetting(REPO.id, "now", "amaka");
+    await deliver("pull_request", prOpened(3));
+    expect(comments()[0]).toContain("closes unpaid PRs straight away");
+    expect(store.submission(REPO.id, 3)?.state).toBe("closed_unpaid");
+    store.setCloseUnpaidSetting(REPO.id, null, "amaka"); // back to the file
+    await deliver("pull_request", prOpened(4));
+    expect(comments().at(-1)).toContain("Pay within 48 h");
+  });
+
   test("with close_unpaid_after_hours: off, nothing is announced and unpaid PRs stay open", async () => {
     gh.setRules("close_unpaid_after_hours: off\n");
     await deliver("pull_request", prOpened(3));

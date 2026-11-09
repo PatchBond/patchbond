@@ -41,7 +41,8 @@ export class Bot {
   /** Re-judge results not yet accepted on-chain, so a retry never pays for a second model call. */
   private rejudged = new Map<string, VerdictRecord>();
   /** `.github/patchbond.yml` per repo, briefly cached (the tick reads it for auto-close). */
-  private rulesCache = new Map<number, { rules: RepoRules; at: number }>();
+  /** `.github/patchbond.yml` per repo (undefined when there's none), fetched at most every 10 min. */
+  private rulesCache = new Map<number, { text: string | undefined; at: number }>();
   /** JUDGE_RUNNER=outlayer: the contract judges in an OutLayer enclave; we only ask and announce. */
   private tee?: TeeRecords;
   /** When we last asked the contract to judge each PR in OutLayer. */
@@ -385,17 +386,18 @@ export class Bot {
   }
 
   private async rulesOf(repoId: number, installationId: number, fullName: string): Promise<RepoRules> {
+    // The dashboard's setting is read fresh every time, so a change applies to the next PR.
+    const closeUnpaid = this.store.closeUnpaidSetting(repoId);
     const hit = this.rulesCache.get(repoId);
-    if (hit && Date.now() - hit.at < RULES_TTL_MS) return hit.rules;
+    if (hit && Date.now() - hit.at < RULES_TTL_MS) return parseRepoRules(hit.text, { closeUnpaid });
     const gh = await this.app.getInstallationOctokit(installationId);
     const [owner, repo] = fullName.split("/") as [string, string];
     const text = await gh.rest.repos
       .getContent({ owner, repo, path: ".github/patchbond.yml", mediaType: { format: "raw" } })
       .then((r) => String(r.data))
       .catch(() => undefined);
-    const rules = parseRepoRules(text);
-    this.rulesCache.set(repoId, { rules, at: Date.now() });
-    return rules;
+    this.rulesCache.set(repoId, { text, at: Date.now() });
+    return parseRepoRules(text, { closeUnpaid });
   }
 
   private async maybeJudge(s: Submission) {

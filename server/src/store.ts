@@ -106,6 +106,8 @@ export class Store {
       CREATE TABLE IF NOT EXISTS notices (
         repo_id INTEGER NOT NULL, number INTEGER NOT NULL, key TEXT NOT NULL, posted_at INTEGER NOT NULL,
         PRIMARY KEY (repo_id, number, key));
+      CREATE TABLE IF NOT EXISTS repo_settings (
+        repo_id INTEGER PRIMARY KEY, close_unpaid TEXT, updated_by TEXT NOT NULL, updated_at INTEGER NOT NULL);
     `);
     // Databases from before auto-close existed.
     if (!this.db.query<{ name: string }, []>("PRAGMA table_info(submissions)").all().some((c) => c.name === "close_at")) {
@@ -287,6 +289,17 @@ export class Store {
   /** The GitHub login that linked the repo: who the bot @mentions (GitHub emails them for free). */
   setRepoMaintainer(repoId: number, githubLogin: string) {
     this.db.query("INSERT OR REPLACE INTO repo_maintainers VALUES (?, ?, ?)").run(repoId, githubLogin, Date.now());
+  }
+
+  /** When unpaid PRs close, as set on the dashboard ("now", "off" or hours); null = not set there. */
+  closeUnpaidSetting(repoId: number): string | null {
+    return this.db.query<{ close_unpaid: string | null }, [number]>("SELECT close_unpaid FROM repo_settings WHERE repo_id = ?").get(repoId)?.close_unpaid ?? null;
+  }
+
+  setCloseUnpaidSetting(repoId: number, value: string | null, by: string) {
+    this.db
+      .query("INSERT INTO repo_settings VALUES (?, ?, ?, ?) ON CONFLICT (repo_id) DO UPDATE SET close_unpaid = excluded.close_unpaid, updated_by = excluded.updated_by, updated_at = excluded.updated_at")
+      .run(repoId, value, by, Date.now());
   }
 
   repoMaintainer(repoId: number): string | null {

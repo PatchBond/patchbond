@@ -40,7 +40,7 @@ We ran PatchBond on **[near/nearcore](https://github.com/near/nearcore)**'s open
 
 ## Testing
 
-**239 automated tests run by default**, all passing, counted on 2026-11-09: contract 81 (13 unit, 68 sandbox), TypeScript 146 (server 111, shared 22, MCP 13), enclave program 12. CI runs all of them on every push. Five more, the contract upgrade replays, need old builds and run separately. The web app has **no tests of its own**; the verifier its "Verify signature" button runs is `shared/src/verify.ts`, tested on 9 real NEAR AI-signed records. This is the only place the breakdown is kept.
+**242 automated tests run by default**, all passing, counted on 2026-11-09: contract 81 (13 unit, 68 sandbox), TypeScript 149 (server 114, shared 22, MCP 13), enclave program 12. CI runs all of them on every push. Five more, the contract upgrade replays, need old builds and run separately. The web app has **no tests of its own**; the verifier its "Verify signature" button runs is `shared/src/verify.ts`, tested on 9 real NEAR AI-signed records. This is the only place the breakdown is kept.
 
 **Getting a smaller number?** The 68 sandbox tests start a local NEAR node, which `near-workspaces` downloads on first use. Without it, `cargo test` runs the 13 unit tests and the sandbox suites fail to start. If the download times out, see [REPRODUCE.md](REPRODUCE.md) (`NEAR_SANDBOX_BIN_PATH`). If parallel sandbox tests stall, or your environment can't write outside the repo, `bash scripts/test-contract.sh` runs all 81 one at a time against prebuilt contracts (about 17 minutes on an M-series Mac). And `bun test` from the repo root runs only one package: use `bun run test`, which runs each package.
 
@@ -50,7 +50,7 @@ We ran PatchBond on **[near/nearcore](https://github.com/near/nearcore)**'s open
 | Contract sandbox: money paths 16 · NEAR bonds 7 · optimistic & agents 9 · maintainer safeguards 4 · TEE proofs 5 · OutLayer 4 · disputes 3 · bounties 3 · sealed reports 1 | 52 | `cd contract && cargo test -p patchbond-vault` (runs every contract test: 81) |
 | Contract attacks and solvency: adversarial 7 · screening findings 7 · random-use solvency 2 | 16 | `cargo test -p patchbond-vault --test adversarial --test screening --test solvency` |
 | Contract upgrades (replay each older live build; reported as ignored, not passed, unless run with `--ignored` and the old wasm; last run 2026-11-05, 5 of 5) | 5 | [`tests/migrate.rs`](../contract/vault/tests/migrate.rs) |
-| Server: facts, malicious scan, rules, bot vs fake GitHub, onboarding, spending guard, Intents, relayer and its daily gas budget, the maintainer-forfeit notice, closing unpaid PRs at once, the check on every new commit | 111 | `cd server && bun test` |
+| Server: facts, malicious scan, rules, bot vs fake GitHub, onboarding, spending guard, Intents, relayer and its daily gas budget, the maintainer-forfeit notice, closing unpaid PRs at once or when the dashboard says, the check on every new commit | 114 | `cd server && bun test` |
 | OutLayer program: JS-semantics unit 2 · byte parity with the TS judge on 30 real PRs 1 · bounty check 6 · rejudge 1 · report 1 · sealed envelope 1 | 12 | `cd outlayer/judge && cargo test` |
 | MCP · shared (curve, sealed envelopes, the verifier on made-up and on 9 real signed records) | 13 · 22 | `cd mcp && bun test` · `cd shared && bun test` |
 | Web app | 0 | — |

@@ -646,11 +646,88 @@ function PolicyTab({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => voi
         <Button onClick={() => setEditing(true)}>
           <Settings2 className="size-4" /> Edit policy
         </Button>
+        <CloseUnpaid repo={repo} onSaved={onSaved} />
       </div>
       <div className="rounded-2xl border border-line bg-bg p-4">
         <div className="mb-2 text-xs text-faint">What newcomers pay as the queue grows</div>
         <AttentionMeter policy={p} open={r.open} maxOpen={Math.max(24, p.target_open * 3)} compact currency={currency} />
       </div>
+    </div>
+  );
+}
+
+const CLOSE_CHOICES: [string, string][] = [
+  ["", "Repo default (.github/patchbond.yml, else 24 h)"],
+  ["now", "At once — closed until paid"],
+  ["1", "After 1 hour"],
+  ["6", "After 6 hours"],
+  ["24", "After 24 hours"],
+  ["72", "After 3 days"],
+  ["168", "After 7 days"],
+  ["off", "Never — unpaid PRs stay open"],
+  ["custom", "Custom hours…"],
+];
+
+/** When unpaid PRs close. Stored by PatchBond's server (it's what the bot does, not money): no wallet needed. */
+function CloseUnpaid({ repo, onSaved }: { repo: MaintainerRepo; onSaved: () => void }) {
+  const saved = repo.close_unpaid ?? "";
+  const preset = CLOSE_CHOICES.some(([v]) => v === saved && v !== "custom");
+  const [choice, setChoice] = useState(preset ? saved : "custom");
+  const [hours, setHours] = useState(preset ? "" : saved);
+  const [busy, setBusy] = useState(false);
+  const value = choice === "custom" ? hours.trim() : choice;
+  const valid = choice !== "custom" || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 720);
+  const changed = value !== saved;
+  async function save() {
+    setBusy(true);
+    try {
+      await api.setCloseUnpaid(repo.repo_id, value === "" ? null : value);
+      toast.success("Saved", { description: "Applies to the next pull request; open ones keep the deadline they were told." });
+      onSaved();
+    } catch (e) {
+      toast.error("Couldn't save", { description: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="rounded-xl border border-line bg-bg p-4">
+      <div className="text-sm font-medium">Unpaid pull requests</div>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        How long a stranger's PR stays open without a deposit. Paying always reopens it. Saved by PatchBond, no wallet needed;
+        it overrides <span className="font-mono">close_unpaid_after_hours</span> in your repo's file.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select
+          value={choice}
+          onChange={(e) => setChoice(e.target.value)}
+          aria-label="When unpaid pull requests close"
+          className="min-w-0 flex-1 rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-brand"
+        >
+          {CLOSE_CHOICES.map(([v, label]) => (
+            <option key={v} value={v}>{label}</option>
+          ))}
+        </select>
+        {choice === "custom" && (
+          <input
+            value={hours}
+            onChange={(e) => setHours(e.target.value)}
+            inputMode="numeric"
+            placeholder="hours (1–720)"
+            aria-label="Hours before an unpaid PR closes"
+            className="w-36 rounded-xl border border-line bg-bg px-3 py-2 font-mono text-sm outline-none focus:border-brand"
+          />
+        )}
+        <Button onClick={() => void save()} disabled={!changed || !valid || busy}>
+          {busy ? <Spinner /> : "Save"}
+        </Button>
+      </div>
+      {choice === "custom" && hours !== "" && !valid && <p className="mt-2 text-xs text-warn">Use a whole number of hours from 1 to 720 (30 days).</p>}
+      {choice === "now" && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Pair it with a required <span className="font-mono">PatchBond</span> check (Settings → Rules → Rulesets) so no unpaid PR can be merged either.
+        </p>
+      )}
     </div>
   );
 }

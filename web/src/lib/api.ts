@@ -21,6 +21,8 @@ export interface MaintainerRepo {
   full_name: string;
   private: boolean;
   onchain: Repo | null;
+  /** When unpaid PRs close, set on the dashboard: "now", "off" or hours. null = the repo's file (24 h default). */
+  close_unpaid?: string | null;
 }
 
 export interface ActivityItem {
@@ -93,6 +95,8 @@ export const api = {
   },
   /** What happened lately on the signed-in maintainer's repos (in-app notifications). */
   activity: () => get<{ items: ActivityItem[] }>("/api/activity"),
+  setCloseUnpaid: (repoId: number, value: string | null) =>
+    post<{ ok: true; close_unpaid: string | null }>(`/api/repos/${repoId}/close-unpaid`, { value }),
   intentsQuote: (b: { amount: string; currency?: Currency; chain: string; recipient: string; refund_to: string }) =>
     post<{ dry: true; chain: string; amount_in: string; amount_out: string; min_amount_out: string; seconds: number; fees: { withdraw: string; refund: string } }>("/api/intents/quote", b),
   judge: async (url: string) => {
