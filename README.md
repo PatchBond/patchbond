@@ -168,6 +168,10 @@ Free slop detectors exist, and PatchBond isn't a code reviewer. What's different
 
 Two tags mark the work (Q-003): `pre-hackathon` is the first commit (`2ee2f14`), and `hackathon-submission` is the final one. The full diff is [`pre-hackathon...hackathon-submission`](https://github.com/PatchBond/patchbond/compare/pre-hackathon...hackathon-submission). Building started on 2026-10-28, inside the hackathon window (Q-001), so there is no earlier code.
 
+### Other project
+
+I'm also a team member on **[Handova](https://github.com/UseHandova/handova-near)** (Lagos rentals with caution-fee escrow held by a lease NFT on NEAR), a separate and independent project submitted on its own (Q-015).
+
 ## Libraries and AI-assisted code
 
 As the rules ask (Q-005): near-sdk, near-contract-standards, near-workspaces, cargo-near, near-api-js, NEAR Connect, Octokit, Hono, viem, zod, the MCP TypeScript SDK, React, Vite, Tailwind CSS, shadcn/ui (Radix), Motion, sonner, cmdk and lucide. Much of the code was drafted with AI coding assistants, directed, reviewed and tested by me (PatchBond is a solo build). No templates were used. First commit 2026-10-28.
