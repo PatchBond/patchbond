@@ -78,6 +78,12 @@ bun scripts/verify-record.ts https://patchbond-production.up.railway.app/api/ver
 bun scripts/verify-record.ts docs/eval/examples/*.json
 ```
 
+The testnet explorer pages linked in this README block scripted clients (HTTP 403). To check any linked transaction from a terminal, use the same explorer's API with the hash from the link:
+
+```bash
+curl -s https://api-testnet.nearblocks.io/v3/txns/CbHs72AkM82cX6eDyQCufXDKT8yAviNEqwGBc1d4b2TJ
+```
+
 ### The sandbox demo: no keys, no wallet
 
 The real contract on a local NEAR sandbox, using recorded NEAR AI signatures.
