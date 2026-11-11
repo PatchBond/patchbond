@@ -11,6 +11,20 @@ import { CommandPalette } from "./CommandPalette";
 import { FaucetDialog } from "./Faucet";
 import { Button, Mark } from "./kit";
 
+/** Called once the old page has faded out, so the jump is never visible. */
+function openAtTop(hash: string) {
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  if (!hash) return;
+  // The new page mounts after this runs; look for its #section on the next frames.
+  let tries = 0;
+  const seek = () => {
+    const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (target) target.scrollIntoView();
+    else if (++tries < 30) requestAnimationFrame(seek);
+  };
+  requestAnimationFrame(seek);
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const cfg = useConfig();
   const loc = useLocation();
@@ -93,7 +107,8 @@ export function Shell({ children }: { children: ReactNode }) {
         </header>
         <main className="flex-1">
           {/* initial={false}: the first paint never waits on an animation (screenshots, slow devices). */}
-          <AnimatePresence mode="wait" initial={false}>
+          {/* A new page opens at its top (or at its #section), not at the old page's scroll position. */}
+          <AnimatePresence mode="wait" initial={false} onExitComplete={() => openAtTop(loc.hash)}>
             <motion.div
               key={loc.pathname}
               initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
