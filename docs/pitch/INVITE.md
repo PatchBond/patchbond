@@ -29,8 +29,8 @@
 > forfeits, and when it isn't sure it refunds or asks you. It runs in an OutLayer enclave that reads
 > GitHub directly, and our server has no route to forfeit on the live contract. You can propose a
 > forfeit yourself; the contributor can dispute it for free within 48 h. Every verdict is public, with
-> the exact bytes the model saw. It's early and no outside contributor has paid a bond yet, so your
-> feedback decides what it becomes.
+> the exact bytes the model saw. It's early: so far only a few invited testers outside the team have paid
+> bonds, so your feedback decides what it becomes.
 > On NEAR's own nearcore it judged 20 stranger PRs for under a cent in total.
 >
 > It runs on **testnet** right now, so no real money moves. Setup is install → sign in → link a

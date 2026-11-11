@@ -29,7 +29,7 @@ Testnet, as of 2026-11-11. Full list with transactions: [docs/STATUS.md](docs/ST
 | | |
 |---|---|
 | ✅ **Running on testnet** | Vault contract, GitHub App bot, web app, MCP server for agents, gasless bonds, enclave judging, enclave dispute re-judging, enclave bounty checks, sealed security reports, in-app testnet faucet |
-| ✅ **Used outside the team** | A maintainer outside the team installed the App on their own repo; contributors outside the team paid bonds, and one disputed a forfeit and lost to the enclave re-judge (below). These were deliberate tests by friends of the team, not organic spam |
+| ✅ **Used outside the team** | A maintainer outside the team installed the App on their own repo; contributors outside the team paid bonds, and one disputed a forfeit and lost to the enclave re-judge (below). These were people outside the team we invited to try it (one maintainer, two contributors), testing on purpose, not organic spam |
 | 🟡 **Partly done** | Cross-chain payouts are quotes only (NEAR Intents has no testnet). Payout to a DAO's account works, but there is no proposal flow |
 | ❌ **Not shown yet** | Unprompted slop from strangers. Whether the deposit deters real spammers, or saves maintainers time. Mainnet |
 
