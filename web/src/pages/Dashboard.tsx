@@ -255,7 +255,8 @@ function RepoCard({
   });
   const expanded = !collapsible || open;
   const queue = useQueue(repo);
-  const waiting = linkedToMe ? (queue.data?.length ?? 0) : 0;
+  // Only deposits still held need a click; a proposed or disputed one is already moving.
+  const waiting = linkedToMe ? (queue.data?.filter(({ d }) => d.status === "held").length ?? 0) : 0;
   const [tab, setTab] = useState("vault");
   // Open straight on "Needs you" when something is waiting, unless the maintainer already picked a tab.
   const [picked, setPicked] = useState(false);
@@ -901,6 +902,23 @@ function PolicyEditor({ repo, onSaved, onCancel }: { repo: MaintainerRepo; onSav
   );
 }
 
+// What a deposit that's no longer waiting on the maintainer is doing instead.
+function stateNote(d: Deposit): string {
+  if (typeof d.status === "object" && "proposed" in d.status) {
+    const { verdict, deadline } = d.status.proposed;
+    const when = new Date(deadline).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    return verdict === "forfeit" ? `Forfeit proposed · stands ${when} unless the contributor disputes` : `Refund proposed · settles ${when}`;
+  }
+  if (typeof d.status === "object" && "challenged" in d.status) return "Disputed · the stronger model re-judges";
+  return "Settling";
+}
+
+// Wallet errors arrive as nested JSON; pull out the contract's own sentence.
+function friendly(msg: string): string {
+  const m = /Smart contract panicked: ([^"\\]+)/.exec(msg ?? "");
+  return m?.[1] ?? msg;
+}
+
 // Unsettled "needs a maintainer" cases. Loaded by the card itself so the count shows on the tab and the header, even folded.
 function useQueue(repo: MaintainerRepo) {
   const cfg = useConfig();
@@ -922,12 +940,17 @@ function Queue({ repo, queue }: { repo: MaintainerRepo; queue: ReturnType<typeof
     setBusy(`${v.number}:${verdict}`);
     try {
       const out = await wallet.call(cfg.contract, "settle", { repo_id: repo.repo_id, number: v.number, verdict, verdict_hash: v.verdict_hash }, { tgas: 150 });
-      if (out.error) toast.error("Not settled", { description: out.error });
-      else toast.success(`#${v.number}: ${verdict === "refund" ? "refunded" : "forfeited"}`);
-      reload();
+      if (out.error) toast.error("Not settled", { description: friendly(out.error) });
+      else
+        toast.success(
+          verdict === "refund"
+            ? `#${v.number}: refunded`
+            : `#${v.number}: forfeit proposed — the contributor can dispute it before it stands`,
+        );
     } catch (e) {
-      toast.error("Not settled", { description: (e as Error).message || "The wallet closed before signing." });
+      toast.error("Not settled", { description: friendly((e as Error).message) || "The wallet closed before signing." });
     } finally {
+      reload();
       setBusy(null);
     }
   }
@@ -945,12 +968,18 @@ function Queue({ repo, queue }: { repo: MaintainerRepo; queue: ReturnType<typeof
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{v.final.reasons[0]}</span>
           <span className="num text-xs text-faint">{money(d.bond, repo.onchain?.currency)}</span>
           <Link to={`/v/${v.id}`} className="text-xs text-faint hover:text-ink">verdict</Link>
-          <Button variant="ghost" disabled={!!busy} onClick={() => void decide(v, "refund")}>
-            {busy === `${v.number}:refund` ? <Spinner /> : "Refund"}
-          </Button>
-          <Button variant="danger" disabled={!!busy} onClick={() => void decide(v, "forfeit")}>
-            {busy === `${v.number}:forfeit` ? <Spinner /> : "Forfeit"}
-          </Button>
+          {d.status === "held" ? (
+            <>
+              <Button variant="ghost" disabled={!!busy} onClick={() => void decide(v, "refund")}>
+                {busy === `${v.number}:refund` ? <Spinner /> : "Refund"}
+              </Button>
+              <Button variant="danger" disabled={!!busy} onClick={() => void decide(v, "forfeit")}>
+                {busy === `${v.number}:forfeit` ? <Spinner /> : "Forfeit"}
+              </Button>
+            </>
+          ) : (
+            <span className="rounded-full bg-raised px-2.5 py-1 text-xs text-muted-foreground">{stateNote(d)}</span>
+          )}
         </li>
       ))}
     </ul>
