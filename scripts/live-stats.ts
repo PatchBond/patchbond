@@ -43,7 +43,7 @@ const block = `<!-- live:start -->
 | Unpaid PRs closed after their 24 h notice | **${stats.by_state.closed_unpaid ?? 0}** |
 | TEE-signed verdicts on the hosted service | **${stats.verdicts_live}** (PRs handled there: ${stats.prs}) · the contract trusts ${signers.length} NEAR AI key${signers.length === 1 ? "" : "s"} |
 
-<sub>${deployment.network} · contract [\`${deployment.contract}\`](https://${deployment.network === "testnet" ? "testnet." : ""}nearblocks.io/address/${deployment.contract}) · updated ${date} by [\`scripts/live-stats.ts\`](scripts/live-stats.ts) from the contract's own views and the hosted service. So far these are the team's own test PRs and test accounts — no outside contributor has paid a bond yet</sub>
+<sub>${deployment.network} · contract [\`${deployment.contract}\`](https://${deployment.network === "testnet" ? "testnet." : ""}nearblocks.io/address/${deployment.contract}) · updated ${date} by [\`scripts/live-stats.ts\`](scripts/live-stats.ts) from the contract's own views and the hosted service. Mostly the team's own test PRs; since 2026-11-11 also people outside the team, testing it on purpose (see Where it stands)</sub>
 <!-- live:end -->`;
 
 const readmePath = join(ROOT, "README.md");

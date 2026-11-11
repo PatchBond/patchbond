@@ -24,13 +24,19 @@ Lead track: **AI Security & Defense**. Also submitted to Agent Economy, Privacy 
 
 ## Where it stands
 
-Testnet, as of 2026-11-07. Full list with transactions: [docs/STATUS.md](docs/STATUS.md).
+Testnet, as of 2026-11-11. Full list with transactions: [docs/STATUS.md](docs/STATUS.md).
 
 | | |
 |---|---|
-| ✅ **Running on testnet** | Vault contract, GitHub App bot, web app, MCP server for agents, gasless bonds, enclave judging, enclave dispute re-judging, enclave bounty checks, sealed security reports |
+| ✅ **Running on testnet** | Vault contract, GitHub App bot, web app, MCP server for agents, gasless bonds, enclave judging, enclave dispute re-judging, enclave bounty checks, sealed security reports, in-app testnet faucet |
+| ✅ **Used outside the team** | A maintainer outside the team installed the App on their own repo; contributors outside the team paid bonds, and one disputed a forfeit and lost to the enclave re-judge (below). These were deliberate tests by friends of the team, not organic spam |
 | 🟡 **Partly done** | Cross-chain payouts are quotes only (NEAR Intents has no testnet). Payout to a DAO's account works, but there is no proposal flow |
-| ❌ **Not shown yet** | Any outside contributor paying a bond. A forfeit on a real slop PR from outside: the on-chain forfeits so far are on test PRs we wrote. Whether the deposit deters real spammers, or saves maintainers time. Mainnet |
+| ❌ **Not shown yet** | Unprompted slop from strangers. Whether the deposit deters real spammers, or saves maintainers time. Mainnet |
+
+**Outside the team, 2026-11-11** (times UTC):
+
+- **[FinesseStudioLab/modeltrace-contract#91](https://github.com/FinesseStudioLab/modeltrace-contract/pull/91)**, another maintainer's repo. The PR says it closes #82 but only adds a full stop to the README. The contributor paid the $1 bond; the enclave judge said forfeit, but with no hard fact the rules let it say only "needs a maintainer" ([verdict](https://patchbond-production.up.railway.app/v/a892986abcf8e571), [tx](https://testnet.nearblocks.io/txns/5p4rLbuizUf5JuAHrzzmdHbcVuwaPS8vbbLf53HPXrKf)). The maintainer [proposed a forfeit](https://testnet.nearblocks.io/txns/31464ZSvrxcHB7digJ4Y9se6eU7EWsSGVBCL9Dj7NgDM) at 16:19, the contributor [disputed it](https://testnet.nearblocks.io/txns/5oecG1aWMiXdbjGV63rLBYJSVpLnKXYh4ZzKpCS6mSeh) for free at 16:21, the stronger model [re-judged it in the enclave](https://testnet.nearblocks.io/txns/HvdQyqUjY78vAX8PVeRRb1ecfgJZ97G38mkyF96JWSUy) at 16:41 and signed forfeit ([verdict](https://patchbond-production.up.railway.app/v/041ceceb1bd80f73)), and [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/CbHs72AkM82cX6eDyQCufXDKT8yAviNEqwGBc1d4b2TJ) paid $0.90 to that repo's vault.
+- **[Secureflow-protocol/secureflow#57](https://github.com/Secureflow-protocol/secureflow/pull/57)**: the title claims "a thorough e2e test", the diff is one README line. The contributor paid $0.78; the claim missing from the diff is a hard fact, so the enclave judge [proposed the forfeit on its own](https://testnet.nearblocks.io/txns/47iwbcmY4e12AqiQpBpEcufY1dBQnMGffqWA4T99G7vH) at 90% ([verdict](https://patchbond-production.up.railway.app/v/c04acf2a1b0f15b8), [signed bytes posted](https://testnet.nearblocks.io/txns/Ay1mGWQe9AxRqsUJum6L2woFjhUdF5JQheAJmgRBg96A)). It stands only if nobody challenges it within 72 h.
 
 ## Three claims you can check
 
@@ -92,13 +98,13 @@ bun run --cwd server e2e:testnet
 
 | | |
 |---|---|
-| Bonds paid on-chain | **11** |
-| Refunded to contributors | **$2.00** |
-| Forfeited to maintainers | **$8.00** |
-| Unpaid PRs closed after their 24 h notice | **0** |
-| TEE-signed verdicts on the hosted service | **8** (PRs handled there: 4) · the contract trusts 3 NEAR AI keys |
+| Bonds paid on-chain | **18** |
+| Refunded to contributors | **$6.00** |
+| Forfeited to maintainers | **$10.56** |
+| Unpaid PRs closed after their 24 h notice | **1** |
+| TEE-signed verdicts on the hosted service | **19** (PRs handled there: 12) · the contract trusts 3 NEAR AI keys |
 
-<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-11-06 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service. So far these are the team's own test PRs and test accounts — no outside contributor has paid a bond yet</sub>
+<sub>testnet · contract [`patchbond-dev.testnet`](https://testnet.nearblocks.io/address/patchbond-dev.testnet) · updated 2026-11-11 by [`scripts/live-stats.ts`](scripts/live-stats.ts) from the contract's own views and the hosted service. Mostly the team's own test PRs; since 2026-11-11 also people outside the team, testing it on purpose (see Where it stands)</sub>
 <!-- live:end -->
 
 ## How it works
