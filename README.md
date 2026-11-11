@@ -8,6 +8,7 @@
 
 <p align="center">
   <a href="https://patchbond-production.up.railway.app"><img src="https://img.shields.io/badge/live%20demo-patchbond--production.up.railway.app-22C55E" alt="Live demo"></a>
+  <a href="https://youtu.be/ObzFt_vIqBA"><img src="https://img.shields.io/badge/demo%20video-4%20min-FF0000" alt="Demo video (YouTube)"></a>
   <a href="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml"><img src="https://github.com/PatchBond/patchbond/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/license-MIT-ECEAE4" alt="MIT">
 </p>
@@ -49,6 +50,8 @@ Each one holds under a condition, stated here rather than in a footnote.
 **What we still control:** the owner key can upgrade the code, change which NEAR AI keys are trusted, repoint OutLayer and turn `exclusive` off. So "non-custodial" describes today's code, not a promise that can't change. Every power, every money path and the attacks we ran are in **[docs/TRUST.md](docs/TRUST.md)**.
 
 ## Try it
+
+**Watch first (4 min):** [the demo video](https://youtu.be/ObzFt_vIqBA) (also [on X](https://x.com/GbangbolaPhilip/status/2120643306438746442)), recorded on the live testnet app: judging a public PR, a maintainer's bond policy and activity feed, a real outside dispute settled by the enclave re-judge, and verifying a signature in the browser.
 
 ### Judge it in 5 minutes: a browser, nothing installed
 
