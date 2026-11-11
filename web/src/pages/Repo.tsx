@@ -25,7 +25,7 @@ export function RepoPage() {
         {repo.payout ? <>Payouts to <span className="font-mono">{repo.payout}</span></> : "No payout account linked yet — forfeits wait safely in the vault."}
         {!repo.policy.enabled && " · PatchBond is off"}
       </p>
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="space-y-4">
           <Panel className="p-6">
             <AttentionMeter policy={repo.policy} open={repo.open} maxOpen={Math.max(24, repo.policy.target_open * 3)} currency={repo.currency} />
