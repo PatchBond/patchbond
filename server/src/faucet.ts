@@ -5,10 +5,10 @@
 
 import { Account, JsonRpcProvider, type KeyPairString } from "near-api-js";
 
-// Fees only: a testnet transaction costs well under 0.003 NEAR, and USDC bonds are gasless, so
-// 0.05 NEAR covers a tester's ~15–20 transactions — and stretches the faucet ~4× further.
-export const NEAR_DRIP = 5n * 10n ** 22n; // 0.05 NEAR
-const NEAR_ENOUGH = 10n ** 23n; // skip NEAR if they already hold 0.1
+// 1 NEAR: plenty for a tester's fees (a testnet transaction costs well under 0.003 NEAR) plus a
+// small bond on a repo that prices bonds in NEAR, so nobody runs dry halfway through a demo.
+export const NEAR_DRIP = 10n ** 24n; // 1 NEAR
+const NEAR_ENOUGH = 5n * 10n ** 23n; // skip NEAR if they already hold 0.5
 export const USDC_DRIP = 2_000_000n; // 2 USDC (6 decimals)
 const USDC_STORAGE = 1_250_000_000_000_000_000_000n; // 0.00125 NEAR, NEP-145 registration
 const DAY = 86_400_000;

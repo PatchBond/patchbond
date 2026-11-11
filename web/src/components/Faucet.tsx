@@ -37,7 +37,7 @@ export function FaucetDialog({ trigger, open, onOpenChange }: { trigger?: ReactN
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Droplets className="size-5 text-brand" /> Get test funds</DialogTitle>
           <DialogDescription>
-            This is NEAR testnet — nothing here is real money. One click sends your wallet <b className="text-ink">0.05 NEAR</b> — enough for ~15 transactions' fees (saving a bond policy, linking a repo) — and{" "}
+            This is NEAR testnet — nothing here is real money. One click sends your wallet <b className="text-ink">1 NEAR</b> — enough for every fee you'll pay here (saving a bond policy, linking a repo) and a small bond priced in NEAR — and{" "}
             <b className="text-ink">2 test USDC</b> for a bond. Once a day per account; it only tops up what you're missing.
           </DialogDescription>
         </DialogHeader>
