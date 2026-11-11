@@ -254,6 +254,14 @@ function RepoCard({
     return defaultOpen;
   });
   const expanded = !collapsible || open;
+  const queue = useQueue(repo);
+  const waiting = linkedToMe ? (queue.data?.length ?? 0) : 0;
+  const [tab, setTab] = useState("vault");
+  // Open straight on "Needs you" when something is waiting, unless the maintainer already picked a tab.
+  const [picked, setPicked] = useState(false);
+  useEffect(() => {
+    if (waiting > 0 && !picked) setTab("queue");
+  }, [waiting, picked]);
   function toggle() {
     setOpen((o) => {
       try {
@@ -280,6 +288,19 @@ function RepoCard({
               <span className="rounded-full bg-warn-soft px-2 py-0.5 text-warn">Not linked — forfeits wait safely in the vault</span>
             )}
             {r && !r.policy.enabled && <span className="rounded-full bg-raised px-2 py-0.5 text-muted-foreground">PatchBond off</span>}
+            {waiting > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("queue");
+                  setPicked(true);
+                  if (!expanded) toggle();
+                }}
+                className="flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 font-medium text-warn hover:underline"
+              >
+                <Scale className="size-3" /> {waiting} {waiting === 1 ? "PR needs" : "PRs need"} your decision
+              </button>
+            )}
             <Link to={`/r/${repo.repo_id}`} className="text-faint hover:text-ink">public page →</Link>
           </div>
         </div>
@@ -313,11 +334,17 @@ function RepoCard({
         {!linkedToMe ? (
           <LinkPanel repo={repo} onLinked={onChange} />
         ) : (
-          <Tabs defaultValue="vault">
+          <Tabs value={tab} onValueChange={(t) => { setTab(t); setPicked(true); }}>
             <TabsList>
               <TabsTrigger value="vault"><Vault className="size-4" /> Vault</TabsTrigger>
               <TabsTrigger value="policy"><Settings2 className="size-4" /> Bond policy</TabsTrigger>
-              <TabsTrigger value="queue"><Scale className="size-4" /> Needs you</TabsTrigger>
+              <TabsTrigger value="queue"><Scale className="size-4" /> Needs you
+                {waiting > 0 && (
+                  <span aria-label={`${waiting} waiting`} className="num ml-1 grid min-w-5 place-items-center rounded-full bg-warn px-1.5 text-[11px] font-semibold leading-5 text-bg">
+                    {waiting}
+                  </span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="reports"><Lock className="size-4" /> Security reports</TabsTrigger>
             </TabsList>
             <TabsContent value="vault" className="pt-4">
@@ -329,7 +356,7 @@ function RepoCard({
               <PolicyTab repo={repo} onSaved={onChange} />
               <BadgeSnippet repoId={repo.repo_id} />
             </TabsContent>
-            <TabsContent value="queue" className="pt-4"><Queue repo={repo} /></TabsContent>
+            <TabsContent value="queue" className="pt-4"><Queue repo={repo} queue={queue} /></TabsContent>
             <TabsContent value="reports" className="pt-4"><SecurityReports repoId={repo.repo_id} /></TabsContent>
           </Tabs>
         )}
@@ -874,14 +901,21 @@ function PolicyEditor({ repo, onSaved, onCancel }: { repo: MaintainerRepo; onSav
   );
 }
 
-function Queue({ repo }: { repo: MaintainerRepo }) {
+// Unsettled "needs a maintainer" cases. Loaded by the card itself so the count shows on the tab and the header, even folded.
+function useQueue(repo: MaintainerRepo) {
   const cfg = useConfig();
-  const wallet = useWallet();
-  const { data, loading, reload } = useAsync(async () => {
+  return useAsync(async () => {
+    if (!repo.onchain) return [];
     const list = (await api.verdicts(50, repo.repo_id)).filter((v) => v.final.verdict === "needs_human");
     const withDeposit = await Promise.all(list.map(async (v) => ({ v, d: await chain.deposit(cfg, repo.repo_id, v.number) })));
     return withDeposit.filter((x): x is { v: (typeof list)[number]; d: Deposit } => !!x.d && !(typeof x.d.status === "object" && "settled" in x.d.status));
-  }, [repo.repo_id]);
+  }, [repo.repo_id, repo.onchain?.open]);
+}
+
+function Queue({ repo, queue }: { repo: MaintainerRepo; queue: ReturnType<typeof useQueue> }) {
+  const cfg = useConfig();
+  const wallet = useWallet();
+  const { data, loading, reload } = queue;
   const [busy, setBusy] = useState<string | null>(null);
 
   async function decide(v: Pick<VerdictRecord, "number" | "verdict_hash">, verdict: "refund" | "forfeit") {
