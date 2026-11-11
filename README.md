@@ -128,7 +128,7 @@ An AI verdict stands after the repo's challenge window (72 h by default, and a r
 
 ## Why this exists
 
-One of us maintains [Sanctifier](https://github.com/HyperSafeD/Sanctifier), with 120+ contributors and 570 pull requests. People keep opening tens of PRs for issues they were never assigned, or describing changes their PR doesn't contain, and each one costs a maintainer time. A Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** ([Phoronix](https://www.phoronix.com/news/Linux-Foundation-25p-AI-Slop), [The Register](https://www.theregister.com/ai-and-ml/2026/10/21/ai-cuts-coding-time-but-its-also-filling-open-sources-inbox-with-crap/5304389)). PatchBond is installed on Sanctifier, with one test PR through it so far, paid from the maintainer's own second account.
+I maintain [Sanctifier](https://github.com/HyperSafeD/Sanctifier), with 120+ contributors and 570 pull requests. People keep opening tens of PRs for issues they were never assigned, or describing changes their PR doesn't contain, and each one costs a maintainer time. A Linux Foundation study (Oct 2026) estimates **~25% of incoming pull requests are low-quality AI output** ([Phoronix](https://www.phoronix.com/news/Linux-Foundation-25p-AI-Slop), [The Register](https://www.theregister.com/ai-and-ml/2026/10/21/ai-cuts-coding-time-but-its-also-filling-open-sources-inbox-with-crap/5304389)). PatchBond is installed on Sanctifier, with one test PR through it so far, paid from the maintainer's own second account.
 
 Free slop detectors exist, and PatchBond isn't a code reviewer. What's different is the mechanism, enforced by one contract: queue pricing, disputable verdicts, forfeits that fund a bounty on the issue (paid when the maintainer merges a PR that says it fixes the issue and names a payout account; nothing checks the fix itself), and capped agent wallets. Nobody is ever paid for submitting, and there is no token.
 
@@ -170,7 +170,7 @@ Two tags mark the work (Q-003): `pre-hackathon` is the first commit (`2ee2f14`),
 
 ## Libraries and AI-assisted code
 
-As the rules ask (Q-005): near-sdk, near-contract-standards, near-workspaces, cargo-near, near-api-js, NEAR Connect, Octokit, Hono, viem, zod, the MCP TypeScript SDK, React, Vite, Tailwind CSS, shadcn/ui (Radix), Motion, sonner, cmdk and lucide. Much of the code was drafted with AI coding assistants, directed, reviewed and tested by the team. No templates were used. First commit 2026-10-28.
+As the rules ask (Q-005): near-sdk, near-contract-standards, near-workspaces, cargo-near, near-api-js, NEAR Connect, Octokit, Hono, viem, zod, the MCP TypeScript SDK, React, Vite, Tailwind CSS, shadcn/ui (Radix), Motion, sonner, cmdk and lucide. Much of the code was drafted with AI coding assistants, directed, reviewed and tested by me (PatchBond is a solo build). No templates were used. First commit 2026-10-28.
 
 ## License
 
