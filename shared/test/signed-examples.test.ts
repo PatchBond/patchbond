@@ -40,6 +40,6 @@ describe("real signed records", () => {
     const r = load(files.find((f) => f.includes("forfeit"))!);
     const flipped = { ...r, final: { ...r.final, verdict: "refund" as const } };
     const failed = (await verifyRecord(flipped)).filter((c) => !c.ok).map((c) => c.name);
-    expect(failed).toContain("On-chain hash matches this record");
+    expect(failed).toContain("Verdict hash recomputes from this record");
   });
 });

@@ -99,7 +99,7 @@ export async function verifyRecord(r: VerdictRecord): Promise<Check[]> {
 
   const vh = verdictHash(r);
   checks.push({
-    name: "On-chain hash matches this record",
+    name: "Verdict hash recomputes from this record",
     ok: vh === r.verdict_hash,
     detail: `verdict_hash = ${vh}`,
   });

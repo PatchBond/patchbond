@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>AI made sending free. PatchBond makes wasting a maintainer's time cost something — and pays the maintainer whose time was wasted.</b>
+  <b>A refundable deposit on pull requests: an AI judge in an enclave refunds real work and forfeits low-effort PRs to the maintainer, settled by a NEAR contract.</b>
 </p>
 
 <p align="center">
@@ -30,14 +30,14 @@ Testnet, as of 2026-11-11. Full list with transactions: [docs/STATUS.md](docs/ST
 | | |
 |---|---|
 | ✅ **Running on testnet** | Vault contract, GitHub App bot, web app, MCP server for agents, gasless bonds, enclave judging, enclave dispute re-judging, enclave bounty checks, sealed security reports, in-app testnet faucet |
-| ✅ **Used outside the team** | A maintainer outside the team installed the App on their own repo; contributors outside the team paid bonds, and one disputed a forfeit and lost to the enclave re-judge (below). These were people outside the team we invited to try it (one maintainer, two contributors), testing on purpose, not organic spam |
+| ✅ **Tried by people outside the build** | A maintainer I invited installed the App on their own repo; contributors paid bonds, and one disputed a forfeit and lost to the enclave re-judge (below). Everyone was invited or came from my X post and tested on purpose: this is not organic spam |
 | 🟡 **Partly done** | Cross-chain payouts are quotes only (NEAR Intents has no testnet). Payout to a DAO's account works, but there is no proposal flow |
 | ❌ **Not shown yet** | Unprompted slop from strangers. Whether the deposit deters real spammers, or saves maintainers time. Mainnet |
 
-**Outside the team, 2026-11-11** (times UTC):
+**Contributors and testers, 2026-11-11** (times UTC). Who they are: `joelpeace48-cell` maintains modeltrace-contract and was invited to test; `codemagician1949` saw my X post and asked to try it as a contributor; `kulayddon` is an invited tester. Secureflow-protocol is my own organisation, used for test runs.
 
-- **[FinesseStudioLab/modeltrace-contract#91](https://github.com/FinesseStudioLab/modeltrace-contract/pull/91)**, another maintainer's repo. The PR says it closes #82 but only adds a full stop to the README. The contributor paid the $1 bond; the enclave judge said forfeit, but with no hard fact the rules let it say only "needs a maintainer" ([verdict](https://patchbond-production.up.railway.app/v/a892986abcf8e571), [tx](https://testnet.nearblocks.io/txns/5p4rLbuizUf5JuAHrzzmdHbcVuwaPS8vbbLf53HPXrKf)). The maintainer [proposed a forfeit](https://testnet.nearblocks.io/txns/31464ZSvrxcHB7digJ4Y9se6eU7EWsSGVBCL9Dj7NgDM) at 16:19, the contributor [disputed it](https://testnet.nearblocks.io/txns/5oecG1aWMiXdbjGV63rLBYJSVpLnKXYh4ZzKpCS6mSeh) for free at 16:21, the stronger model [re-judged it in the enclave](https://testnet.nearblocks.io/txns/HvdQyqUjY78vAX8PVeRRb1ecfgJZ97G38mkyF96JWSUy) at 16:41 and signed forfeit ([verdict](https://patchbond-production.up.railway.app/v/041ceceb1bd80f73)), and [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/CbHs72AkM82cX6eDyQCufXDKT8yAviNEqwGBc1d4b2TJ) paid $0.90 to that repo's vault.
-- **[Secureflow-protocol/secureflow#57](https://github.com/Secureflow-protocol/secureflow/pull/57)**: the title claims "a thorough e2e test", the diff is one README line. The contributor paid $0.78; the claim missing from the diff is a hard fact, so the enclave judge [proposed the forfeit on its own](https://testnet.nearblocks.io/txns/47iwbcmY4e12AqiQpBpEcufY1dBQnMGffqWA4T99G7vH) at 90% ([verdict](https://patchbond-production.up.railway.app/v/c04acf2a1b0f15b8), [signed bytes posted](https://testnet.nearblocks.io/txns/Ay1mGWQe9AxRqsUJum6L2woFjhUdF5JQheAJmgRBg96A)). It stands only if nobody challenges it within 72 h.
+- **[FinesseStudioLab/modeltrace-contract#91](https://github.com/FinesseStudioLab/modeltrace-contract/pull/91)**, another maintainer's repo, PR by `codemagician1949`. The PR says it closes #82 but only adds a full stop to the README. The contributor paid the $1 bond; the enclave judge said forfeit, but with no hard fact the rules let it say only "needs a maintainer" ([verdict](https://patchbond-production.up.railway.app/v/a892986abcf8e571), [tx](https://testnet.nearblocks.io/txns/5p4rLbuizUf5JuAHrzzmdHbcVuwaPS8vbbLf53HPXrKf)). The maintainer [proposed a forfeit](https://testnet.nearblocks.io/txns/31464ZSvrxcHB7digJ4Y9se6eU7EWsSGVBCL9Dj7NgDM) at 16:19, the contributor [disputed it](https://testnet.nearblocks.io/txns/5oecG1aWMiXdbjGV63rLBYJSVpLnKXYh4ZzKpCS6mSeh) for free at 16:21, the stronger model [re-judged it in the enclave](https://testnet.nearblocks.io/txns/HvdQyqUjY78vAX8PVeRRb1ecfgJZ97G38mkyF96JWSUy) at 16:41 and signed forfeit ([verdict](https://patchbond-production.up.railway.app/v/041ceceb1bd80f73)), and [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/CbHs72AkM82cX6eDyQCufXDKT8yAviNEqwGBc1d4b2TJ) paid $0.90 to that repo's vault.
+- **[Secureflow-protocol/secureflow#57](https://github.com/Secureflow-protocol/secureflow/pull/57)**, my own repo, PR by the invited tester `kulayddon`: the title claims "a thorough e2e test", the diff is one README line. The contributor paid $0.78; the claim missing from the diff is a hard fact, so the enclave judge [proposed the forfeit on its own](https://testnet.nearblocks.io/txns/47iwbcmY4e12AqiQpBpEcufY1dBQnMGffqWA4T99G7vH) at 90% ([verdict](https://patchbond-production.up.railway.app/v/c04acf2a1b0f15b8), [signed bytes posted](https://testnet.nearblocks.io/txns/Ay1mGWQe9AxRqsUJum6L2woFjhUdF5JQheAJmgRBg96A)). It stands only if nobody challenges it within 72 h.
 
 ## Three claims you can check
 
@@ -51,7 +51,7 @@ Each one holds under a condition, stated here rather than in a footnote.
 
 ## Try it
 
-**Watch first (4 min):** [the demo video](https://youtu.be/ObzFt_vIqBA) (also [on X](https://x.com/GbangbolaPhilip/status/2120643306438746442)), recorded on the live testnet app: judging a public PR, a maintainer's bond policy and activity feed, a real outside dispute settled by the enclave re-judge, and verifying a signature in the browser.
+**Watch first (4 min):** [the demo video](https://youtu.be/ObzFt_vIqBA) (also [on X](https://x.com/GbangbolaPhilip/status/2120643306438746442)), recorded on the live testnet app: judging a public PR, a maintainer's bond policy and activity feed, a real contributor dispute settled by the enclave re-judge, and verifying a signature in the browser.
 
 ### Judge it in 5 minutes: a browser, nothing installed
 
@@ -64,8 +64,10 @@ Each one holds under a condition, stated here rather than in a footnote.
    ✓ Signed by the stated model            (z-ai/glm-5.3-flash)
    ✓ Signature recovers to the signing address   (0x3b75…fa0c, NEAR AI's enclave key)
    ✓ Model verdict is inside the signed response (forfeit)
-   ✓ On-chain hash matches this record
+   ✓ Verdict hash recomputes from this record
    ```
+
+   The sixth check is about the record itself. The **On-chain** panel on the same page reads the deposit from the contract (`get_deposit`) and shows whether the hash stored there matches this verdict.
 3. See the money move in two steps. [`judge_in_tee`](https://testnet.nearblocks.io/txns/64nTqptKEPjAYLhqFBvs4V9EerMQvFLZACRHQVed3qzf) ends in `forfeit_pending`, and the $3 bond doesn't move. [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/6qn3VuFZW1AX8nkSJN5ksiVL1Pry5Z3MsDAKy711fiAc), sent by a third account, posts the signed bytes; only then does the `settle` event pay $2.70 to the repo and $0.30 to PatchBond.
 4. See a whole dispute on a live repo: [Secureflow-protocol/secureflow#56](https://github.com/Secureflow-protocol/secureflow/pull/56) claims to close an issue but only adds a period to a README badge link. The first model said forfeit, but with no hard fact the rules let it say only "needs a maintainer" ([its verdict](https://patchbond-production.up.railway.app/v/de582c2227c48958)). The maintainer [proposed a forfeit](https://testnet.nearblocks.io/txns/4beucH28TkrJ8y3799x5RcituNqQZ3xKusPfLvTYsm7F); the contributor [disputed it for free](https://testnet.nearblocks.io/txns/7uA65dhcEVbh3Jwz4TiJtieouMEuDdphFipsRQB2BHGY); after the statement window the [enclave re-judge](https://testnet.nearblocks.io/txns/5YQRf85AfGUYLFb1vGfeLkAJRoVPor8sv6FTfRYJCnTS) by the stronger model also signed forfeit ([its verdict](https://patchbond-production.up.railway.app/v/cd7b4a9aedc92cc9)), and 20 seconds later [`confirm_tee_forfeit`](https://testnet.nearblocks.io/txns/2Tu4ztnLzT4EpjPDLcRHBLvXCJ27HAa4UAqjc5tRBz7i) settled it: 90% of the $1.56 bond to the repo's vault, 10% to PatchBond.
 5. Optional: press ⌘K, paste any public PR URL, and get a fresh signed verdict in about a minute.

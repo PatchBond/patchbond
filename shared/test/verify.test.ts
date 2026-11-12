@@ -57,6 +57,6 @@ describe("verifyRecord", () => {
     const r = await record();
     r.final.verdict = "refund";
     const failed = (await verifyRecord(r)).filter((c) => !c.ok).map((c) => c.name);
-    expect(failed).toEqual(["On-chain hash matches this record"]);
+    expect(failed).toEqual(["Verdict hash recomputes from this record"]);
   });
 });

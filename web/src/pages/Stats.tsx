@@ -47,7 +47,7 @@ export function Stats() {
         <Stat icon={Activity} label="TEE-signed verdicts" value={String(s.verdicts_live)} sub={`${s.verdicts.in_enclave} judged inside OutLayer TDX`} />
         <Stat icon={Scale} label="Cleared without a human" value={cleared === null ? "—" : `${cleared}%`} sub={`${s.verdicts.refund} refunded · ${s.verdicts.forfeit} forfeited · ${s.verdicts.needs_human} to a maintainer`} />
         <Stat icon={Timer} label="Bond to verdict (median)" value={minutes(s.median_minutes_to_verdict)} sub="from the bond being seen; waits for CI" />
-        <Stat icon={Gavel} label="Disputed verdicts" value={String(s.disputes)} sub="re-judged by a stronger model" />
+        <Stat icon={Gavel} label="Written appeals" value={String(s.disputes)} sub="attached to a verdict in the app" />
       </div>
 
       <h2 className="mt-14 text-xl font-semibold tracking-tight">What it costs to run</h2>
